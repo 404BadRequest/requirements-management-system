@@ -16,7 +16,12 @@ export function SettingsPageIntro({
   actions?: ReactNode;
 }) {
   return (
-    <header className={cn("border-b border-border pb-5", actions && "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between")}>
+    <header
+      className={cn(
+        "density-page-header surface-card p-[length:var(--density-inset-pad)]",
+        actions && "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+      )}
+    >
       <div className="min-w-0 space-y-2">
         {eyebrow ? (
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
