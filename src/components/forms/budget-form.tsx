@@ -23,6 +23,7 @@ export const BudgetForm = ({
       quotedMinutes: 600,
     },
   });
+  const isSubmitting = form.formState.isSubmitting;
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
@@ -52,8 +53,15 @@ export const BudgetForm = ({
           {...form.register("quotedMinutes", { valueAsNumber: true })}
         />
       </FormField>
-      <button type="submit" className="btn-primary py-2 text-sm">
-        Guardar presupuesto
+      <button type="submit" className="btn-primary py-2 text-sm" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" aria-hidden />
+            Guardando...
+          </span>
+        ) : (
+          "Guardar presupuesto"
+        )}
       </button>
     </form>
   );

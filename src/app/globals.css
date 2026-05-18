@@ -226,6 +226,14 @@ body {
     animation: meridian-route-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  .loader-overlay-enter {
+    animation: meridian-overlay-in 180ms ease-out both;
+  }
+
+  .loader-card-enter {
+    animation: meridian-loader-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .skeleton-shimmer {
     position: relative;
     overflow: hidden;
@@ -280,6 +288,26 @@ body {
   0% {
     opacity: 0;
     transform: translateY(8px) scale(0.996);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes meridian-overlay-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes meridian-loader-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
   }
   100% {
     opacity: 1;

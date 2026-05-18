@@ -14,7 +14,6 @@ const RULES: PersistRule[] = [
   { path: "/dashboard", params: ["clientId"] },
   { path: "/requirements", params: ["clientId"] },
   { path: "/requirements/kanban", params: ["clientId"] },
-  { path: "/time-entries", params: ["clientId"] },
   { path: "/reports", params: ["clientId"] },
 ];
 

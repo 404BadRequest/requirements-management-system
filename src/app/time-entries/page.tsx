@@ -35,19 +35,20 @@ export default async function TimeEntriesPage({
   const requirementMap = new Map(requirements.map((requirement) => [requirement.id, requirement]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const activeClients = clients.filter((c) => c.active);
+  const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(user, users);
 
   const filteredEntries = entries.filter((entry) => {
-    if (clientId) {
+    if (selectedClientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
-      if (requirement?.clientId !== clientId) return false;
+      if (requirement?.clientId !== selectedClientId) return false;
     }
     return true;
   });
 
   const exportHref = (() => {
     const q = new URLSearchParams();
-    if (clientId) q.set("clientId", clientId);
+    if (selectedClientId) q.set("clientId", selectedClientId);
     const s = q.toString();
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
   })();
@@ -85,7 +86,7 @@ export default async function TimeEntriesPage({
           <label htmlFor="client-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Filtrar por cliente
           </label>
-          <select id="client-filter" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
+          <select id="client-filter" name="clientId" defaultValue={selectedClientId} className="field-control w-full max-w-md">
             <option value="">Todos los clientes</option>
             {activeClients.map((item) => (
               <option key={item.id} value={item.id}>

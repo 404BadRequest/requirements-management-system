@@ -104,6 +104,7 @@ export function RequirementsPageClient({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [reassignTarget, setReassignTarget] = useState<Requirement | null>(null);
   const [reassignOwnerId, setReassignOwnerId] = useState("");
+  const [isReassigning, setIsReassigning] = useState(false);
 
   const reload = useCallback(async () => {
     setListLoading(true);
@@ -348,8 +349,9 @@ export function RequirementsPageClient({
               className="grid gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!reassignTarget || !reassignOwnerId) return;
+                if (!reassignTarget || !reassignOwnerId || isReassigning) return;
                 void (async () => {
+                  setIsReassigning(true);
                   try {
                     await updateRequirementAction(reassignTarget.id, { ownerId: reassignOwnerId });
                     toast.success("Responsable actualizado");
@@ -357,6 +359,8 @@ export function RequirementsPageClient({
                     await reload();
                   } catch (e) {
                     toast.error(e instanceof Error ? e.message : "No se pudo reasignar.");
+                  } finally {
+                    setIsReassigning(false);
                   }
                 })();
               }}
@@ -377,10 +381,17 @@ export function RequirementsPageClient({
                 </select>
               </label>
               <div className="flex flex-wrap gap-2 pt-1">
-                <button type="submit" className="btn-primary py-2 text-sm">
-                  Guardar reasignación
+                <button type="submit" className="btn-primary py-2 text-sm" disabled={isReassigning}>
+                  {isReassigning ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" aria-hidden />
+                      Guardando...
+                    </span>
+                  ) : (
+                    "Guardar reasignación"
+                  )}
                 </button>
-                <button type="button" className="btn-secondary py-2 text-sm" onClick={() => setReassignTarget(null)}>
+                <button type="button" className="btn-secondary py-2 text-sm" onClick={() => setReassignTarget(null)} disabled={isReassigning}>
                   Cancelar
                 </button>
               </div>

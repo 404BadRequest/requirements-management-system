@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { DensityMain } from "@/components/layout/density-main";
 import { FilterStatePersistence } from "@/components/layout/filter-state-persistence";
+import { RouteProgressBar } from "@/components/layout/route-progress-bar";
 
 type AppShellClientProps = {
   children: ReactNode;
@@ -27,6 +28,7 @@ export function AppShellClient({
 }: AppShellClientProps) {
   return (
     <div className="min-h-screen bg-background">
+      <RouteProgressBar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Suspense fallback={null}>
           <FilterStatePersistence />
