@@ -1,0 +1,90 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { getAppSession } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/permissions";
+import { getClients, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { csvEscape } from "@/lib/export/csv-escape";
+
+export async function GET(req: NextRequest) {
+  const { user } = await getAppSession();
+  try {
+    assertPermission(user?.role, "exports.run");
+  } catch {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const clientId = req.nextUrl.searchParams.get("clientId")?.trim() ?? "";
+  const projectId = req.nextUrl.searchParams.get("projectId")?.trim() ?? "";
+
+  const [entries, users, requirements, clients] = await Promise.all([
+    getTimeEntries(),
+    getUsers(),
+    getRequirements(),
+    getClients(),
+  ]);
+  const userMap = new Map(users.map((u) => [u.id, u.name]));
+  const requirementMap = new Map(requirements.map((r) => [r.id, r]));
+  const clientMap = new Map(clients.map((c) => [c.id, c]));
+
+  const filtered = entries.filter((entry) => {
+    if (projectId && entry.projectId !== projectId) return false;
+    if (clientId) {
+      const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
+      if (requirement?.clientId !== clientId) return false;
+    }
+    return true;
+  });
+
+  const header = [
+    "id",
+    "projectId",
+    "requirementId",
+    "category",
+    "taskDescription",
+    "date",
+    "startTime",
+    "endTime",
+    "durationMinutes",
+    "userId",
+    "userName",
+    "clientLabel",
+    "observations",
+    "createdAt",
+    "updatedAt",
+  ];
+  const lines = [
+    header.join(","),
+    ...filtered.map((e) => {
+      const requirement = e.requirementId ? requirementMap.get(e.requirementId) : undefined;
+      const clientLabel = requirement
+        ? clientMap.get(requirement.clientId)?.name ?? requirement.clientId
+        : "Sin requerimiento";
+      return [
+        e.id,
+        e.projectId,
+        e.requirementId ?? "",
+        e.category,
+        e.taskDescription,
+        e.date,
+        e.startTime,
+        e.endTime,
+        String(e.durationMinutes),
+        e.userId,
+        userMap.get(e.userId) ?? e.userId,
+        clientLabel,
+        e.observations,
+        e.createdAt,
+        e.updatedAt,
+      ]
+        .map((cell) => csvEscape(String(cell)))
+        .join(",");
+    }),
+  ];
+  const body = `\uFEFF${lines.join("\n")}`;
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="time-entries.csv"',
+    },
+  });
+}

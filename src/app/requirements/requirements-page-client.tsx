@@ -1,0 +1,456 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { DataTable } from "@/components/common/data-table";
+import { EmptyState } from "@/components/common/empty-state";
+import { PageHeader } from "@/components/common/page-header";
+import { SyncStatusBanner } from "@/components/common/sync-status-banner";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { PriorityBadge, StatusBadge } from "@/components/common/badges";
+import { RequirementForm } from "@/components/forms/requirement-form";
+import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
+import { SettingsModal } from "@/components/settings/settings-modal";
+import {
+  createRequirementAction,
+  deleteRequirementAction,
+  loadRequirementsPageData,
+  updateRequirementAction,
+} from "@/app/requirements/data-actions";
+import { requirementDetailPath } from "@/lib/routes/requirements";
+import { formatStatusLabel } from "@/lib/formatting/status-label";
+import type { Client, Requirement, SettingsCatalogEntry } from "@/types/domain";
+
+export type RequirementsPageClientProps = {
+  canWrite: boolean;
+  canDelete: boolean;
+  canExport: boolean;
+  canReassignOwner: boolean;
+  canManageRequirement: boolean;
+  /** Abre el modal de alta al cargar (p. ej. `?nueva=1`). */
+  autoOpenNewModal?: boolean;
+  /** Filtro por cliente (query `clientId`). */
+  clientId?: string;
+};
+
+function NewRequirementModalBody({
+  formKey,
+  canShowForm,
+  activeClients,
+  statusOpts,
+  priorityOpts,
+  owners,
+  onCreated,
+}: {
+  formKey: number;
+  canShowForm: boolean;
+  activeClients: Client[];
+  statusOpts: { code: string; label: string }[];
+  priorityOpts: { code: string; label: string }[];
+  owners: { id: string; name: string }[];
+  onCreated: () => void;
+}) {
+  if (!canShowForm) {
+    return (
+      <EmptyState
+        title="Faltan datos de configuración"
+        description="Define al menos un cliente activo y entradas en catálogo de estado y prioridad."
+      />
+    );
+  }
+  return (
+    <RequirementForm
+      key={formKey}
+      clients={activeClients.map((c) => ({ id: c.id, name: c.name }))}
+      statusOptions={statusOpts}
+      priorityOptions={priorityOpts}
+      owners={owners}
+      compact
+      onSubmit={async (values) => {
+        try {
+          await createRequirementAction(values);
+          toast.success("Requerimiento creado");
+          onCreated();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "No se pudo crear el requerimiento.");
+        }
+      }}
+    />
+  );
+}
+
+export function RequirementsPageClient({
+  canWrite,
+  canDelete,
+  canExport,
+  canReassignOwner,
+  canManageRequirement,
+  autoOpenNewModal = false,
+  clientId = "",
+}: RequirementsPageClientProps) {
+  const router = useRouter();
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [owners, setOwners] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [statusCatalog, setStatusCatalog] = useState<SettingsCatalogEntry[]>([]);
+  const [priorityCatalog, setPriorityCatalog] = useState<SettingsCatalogEntry[]>([]);
+  const [newModalOpen, setNewModalOpen] = useState(Boolean(autoOpenNewModal && canWrite));
+  const [newFormKey, setNewFormKey] = useState(0);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<Requirement | null>(null);
+  const [reassignOwnerId, setReassignOwnerId] = useState("");
+
+  const reload = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const data = await loadRequirementsPageData();
+      setRequirements(data.requirements);
+      setOwners(data.users);
+      setClients(data.clients);
+      setStatusCatalog(data.statusCatalog);
+      setPriorityCatalog(data.priorityCatalog);
+      setLastSyncedAt(new Date().toISOString());
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No se pudieron cargar los requerimientos.";
+      setListError(message);
+      toast.error(message);
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (!autoOpenNewModal || !canWrite) return;
+    router.replace("/requirements", { scroll: false });
+  }, [autoOpenNewModal, canWrite, router]);
+
+  const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const ownerById = useMemo(() => new Map(owners.map((o) => [o.id, o.name])), [owners]);
+
+  const clientIdTrim = clientId.trim();
+  const filteredRequirements = useMemo(() => {
+    if (!clientIdTrim) return requirements;
+    return requirements.filter((r) => r.clientId === clientIdTrim);
+  }, [requirements, clientIdTrim]);
+
+  const exportRequirementsHref =
+    clientIdTrim !== ""
+      ? `/api/export/requirements?clientId=${encodeURIComponent(clientIdTrim)}`
+      : "/api/export/requirements";
+  const kanbanHref =
+    clientIdTrim !== ""
+      ? `/requirements/kanban?clientId=${encodeURIComponent(clientIdTrim)}`
+      : "/requirements/kanban";
+
+  const statusOpts = useMemo(
+    () =>
+      statusCatalog
+        .filter((s) => s.active)
+        .map((s) => ({ code: s.code, label: formatStatusLabel(s.code, s.label) })),
+    [statusCatalog],
+  );
+  const priorityOpts = useMemo(
+    () => priorityCatalog.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label })),
+    [priorityCatalog],
+  );
+  const activeClients = useMemo(() => clients.filter((c) => c.active), [clients]);
+  const canShowForm = statusOpts.length > 0 && priorityOpts.length > 0 && activeClients.length > 0;
+
+  const columns = useMemo<ColumnDef<Requirement>[]>(() => {
+    const base: ColumnDef<Requirement>[] = [
+      {
+        accessorKey: "id",
+        header: "ID",
+        cell: ({ row }) => (
+          <Link href={requirementDetailPath(row.original.id)} className="font-medium text-primary hover:underline">
+            {row.original.id}
+          </Link>
+        ),
+      },
+      {
+        accessorKey: "clientId",
+        header: "Cliente",
+        cell: ({ row }) => clientById.get(row.original.clientId)?.name ?? row.original.clientId,
+      },
+      {
+        accessorKey: "ownerId",
+        header: "Responsable",
+        cell: ({ row }) => (
+          <span className="inline-flex rounded-[2px] border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+            {ownerById.get(row.original.ownerId) ?? row.original.ownerId}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "title",
+        header: "Título",
+        cell: ({ row }) => row.original.title,
+      },
+      { accessorKey: "priority", header: "Prioridad", cell: ({ row }) => <PriorityBadge priority={row.original.priority} /> },
+      { accessorKey: "status", header: "Estado", cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+    ];
+    if (!canWrite && !canDelete) return base;
+    return [
+      ...base,
+      {
+        id: "actions",
+        header: "Acciones",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            {canWrite ? (
+              <>
+                {canReassignOwner ? (
+                  <button
+                    type="button"
+                    className="btn-secondary px-2.5 py-1 text-xs"
+                    onClick={() => {
+                      setReassignTarget(row.original);
+                      setReassignOwnerId(row.original.ownerId);
+                    }}
+                  >
+                    Reasignar
+                  </button>
+                ) : null}
+                <RequirementEditModal
+                  requirement={row.original}
+                  clients={activeClients.map((c) => ({ id: c.id, name: c.name }))}
+                  statusOptions={statusOpts}
+                  priorityOptions={priorityOpts}
+                  owners={owners}
+                  canManageRequirement={canManageRequirement}
+                  onUpdated={reload}
+                />
+              </>
+            ) : null}
+            {canDelete ? (
+              <ConfirmDialog
+                label="Eliminar"
+                title="¿Eliminar requerimiento?"
+                onConfirm={() => {
+                  void (async () => {
+                    try {
+                      await deleteRequirementAction(row.original.id);
+                      toast.success("Requerimiento eliminado");
+                      await reload();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "No se pudo eliminar.");
+                    }
+                  })();
+                }}
+              />
+            ) : null}
+          </div>
+        ),
+      },
+    ];
+  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById, activeClients, statusOpts, priorityOpts, owners, reload]);
+
+  const openNewRequirementModal = () => {
+    setNewFormKey((k) => k + 1);
+    setNewModalOpen(true);
+  };
+
+  const closeNewRequirementModal = () => {
+    setNewModalOpen(false);
+    if (typeof window !== "undefined" && window.location.search.includes("nueva=")) {
+      router.replace("/requirements", { scroll: false });
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Requerimientos"
+        description="Los catálogos de cliente, estado y prioridad se configuran en Configuración."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/settings/clients" className="btn-secondary py-2 text-sm">
+              Configurar datos
+            </Link>
+            {canWrite ? (
+              <button type="button" className="btn-secondary py-2 text-sm" onClick={() => openNewRequirementModal()}>
+                Nuevo requerimiento
+              </button>
+            ) : null}
+            <Link href={kanbanHref} className="btn-primary py-2 text-sm no-underline">
+              Ver Kanban
+            </Link>
+            {canExport ? (
+              <a href={exportRequirementsHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
+                Exportar CSV
+              </a>
+            ) : null}
+          </div>
+        }
+      />
+
+      <SyncStatusBanner
+        loading={listLoading && requirements.length > 0}
+        error={listError}
+        lastSyncedAt={lastSyncedAt}
+        onRetry={() => {
+          void reload();
+        }}
+        loadingLabel="Actualizando requerimientos…"
+      />
+
+      {canWrite ? (
+        <SettingsModal
+          open={newModalOpen}
+          onClose={closeNewRequirementModal}
+          title="Nuevo requerimiento"
+          description="Completa los datos; el identificador técnico se genera al guardar."
+          dialogClassName="max-w-3xl max-h-[94vh] lg:max-h-none lg:overflow-visible"
+          bodyClassName="px-4 py-4 sm:px-5 sm:py-4"
+        >
+          <NewRequirementModalBody
+            formKey={newFormKey}
+            canShowForm={canShowForm}
+            activeClients={activeClients}
+            statusOpts={statusOpts}
+            priorityOpts={priorityOpts}
+            owners={owners}
+            onCreated={() => {
+              void reload();
+              closeNewRequirementModal();
+            }}
+          />
+        </SettingsModal>
+      ) : null}
+
+      {canReassignOwner ? (
+        <SettingsModal
+          open={Boolean(reassignTarget)}
+          onClose={() => setReassignTarget(null)}
+          title="Reasignar requerimiento"
+          description={
+            reassignTarget
+              ? `Selecciona quién quedará como responsable de «${reassignTarget.title}».`
+              : "Selecciona un nuevo responsable."
+          }
+        >
+          {owners.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay usuarios disponibles para asignar.</p>
+          ) : (
+            <form
+              className="grid gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!reassignTarget || !reassignOwnerId) return;
+                void (async () => {
+                  try {
+                    await updateRequirementAction(reassignTarget.id, { ownerId: reassignOwnerId });
+                    toast.success("Responsable actualizado");
+                    setReassignTarget(null);
+                    await reload();
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "No se pudo reasignar.");
+                  }
+                })();
+              }}
+            >
+              <label className="grid gap-1.5">
+                <span className="field-label">Nuevo responsable</span>
+                <select
+                  className="field-control w-full"
+                  value={reassignOwnerId}
+                  onChange={(event) => setReassignOwnerId(event.target.value)}
+                  required
+                >
+                  {owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button type="submit" className="btn-primary py-2 text-sm">
+                  Guardar reasignación
+                </button>
+                <button type="button" className="btn-secondary py-2 text-sm" onClick={() => setReassignTarget(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+        </SettingsModal>
+      ) : null}
+
+      <form
+        className="surface-card mb-4 flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)]"
+        action="/requirements"
+        method="get"
+      >
+        <div className="flex min-w-[12rem] flex-col gap-2">
+          <label htmlFor="req-client" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cliente
+          </label>
+          <select id="req-client" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
+            <option value="">Todos los clientes</option>
+            {activeClients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="submit" className="btn-primary">
+          Aplicar filtro
+        </button>
+      </form>
+
+      {listLoading ? (
+        <div
+          className="skeleton-shimmer h-72 rounded-[2px] border border-border"
+          aria-busy
+          aria-label="Cargando requerimientos"
+        />
+      ) : requirements.length === 0 ? (
+        <EmptyState
+          title="Sin requerimientos"
+          description="Crea tu primer requerimiento para comenzar."
+          action={
+            canWrite ? (
+              <button type="button" className="btn-primary py-2 text-sm" onClick={() => openNewRequirementModal()}>
+                Crear requerimiento
+              </button>
+            ) : (
+              <a href="/settings/clients" className="btn-secondary py-2 text-sm no-underline">
+                Revisar configuracion
+              </a>
+            )
+          }
+        />
+      ) : filteredRequirements.length === 0 ? (
+        <EmptyState
+          title="Sin requerimientos en este cliente"
+          description="Prueba otro cliente o quita el filtro para ver todos."
+          action={
+            <a href="/requirements?clientId=" className="btn-secondary py-2 text-sm no-underline">
+              Quitar filtro
+            </a>
+          }
+        />
+      ) : (
+        <DataTable
+          data={filteredRequirements}
+          columns={columns}
+          globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
+        />
+      )}
+    </>
+  );
+}

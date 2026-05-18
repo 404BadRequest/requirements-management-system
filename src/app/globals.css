@@ -1,0 +1,297 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Palette: neutral-light + red/blue accents */
+  --background: 0 0% 92%;
+  --foreground: 0 0% 14%;
+  --card: 0 0% 96%;
+  --card-foreground: 0 0% 14%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 0 0% 34%;
+  --border: 0 0% 66%;
+
+  --primary: 357 79% 43%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 207 53% 51%;
+  --accent-foreground: 0 0% 100%;
+  --danger: 357 79% 43%;
+  --ring: 357 79% 43%;
+
+  --chart-1: 357 79% 43%;
+  --chart-2: 207 53% 51%;
+  --chart-3: 28 90% 60%;
+  --chart-4: 170 50% 38%;
+  --chart-5: 270 45% 55%;
+
+  /* Semantic status colors */
+  --status-backlog:  220 16% 56%;
+  --status-progress: 214 70% 50%;
+  --status-review:   38 92% 48%;
+  --status-done:     145 55% 40%;
+  --status-blocked:  2 72% 48%;
+
+  /* Semantic priority colors */
+  --priority-high:   2 72% 48%;
+  --priority-medium: 38 92% 48%;
+  --priority-low:    145 55% 42%;
+
+  /* Shadow spec from references: 0 2 4 #00000066 */
+  --shadow-card: 0 2px 4px #00000066;
+  --shadow-hover: 0 2px 6px #00000066;
+
+  --radius-card: 0rem;
+  --sidebar-width: 15.75rem;
+  --sidebar-active-border: 3px;
+
+  /** Densidad "cómoda" (valor por defecto; `compact` en `html[data-density]`). */
+  --density-inset-pad: 1.25rem;
+  --density-page-header-gap: 0.75rem;
+  --density-page-header-pb: 1.25rem;
+  --density-table-th-py: 0.75rem;
+  --density-table-th-px: 1rem;
+  --density-table-td-py: 0.625rem;
+  --density-table-td-px: 1rem;
+  --density-billing-bar-py: 1rem;
+  --density-billing-bar-px: 1.25rem;
+  --motion-fast: 160ms;
+  --motion-normal: 240ms;
+  --motion-slow: 420ms;
+}
+
+html[data-density="compact"] {
+  --density-inset-pad: 0.8125rem;
+  --density-page-header-gap: 0.5rem;
+  --density-page-header-pb: 0.875rem;
+  --density-table-th-py: 0.45rem;
+  --density-table-th-px: 0.65rem;
+  --density-table-td-py: 0.4rem;
+  --density-table-td-px: 0.6rem;
+  --density-billing-bar-py: 0.6rem;
+  --density-billing-bar-px: 1rem;
+}
+
+.dark {
+  --background: 0 0% 92%;
+  --foreground: 0 0% 14%;
+  --card: 0 0% 96%;
+  --card-foreground: 0 0% 14%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 0 0% 34%;
+  --border: 0 0% 66%;
+  --primary: 357 79% 43%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 207 53% 51%;
+  --accent-foreground: 0 0% 100%;
+  --danger: 357 79% 43%;
+  --ring: 357 79% 43%;
+}
+
+body {
+  @apply bg-background text-foreground font-sans antialiased;
+  background-image: none;
+  background-attachment: fixed;
+}
+
+.density-page-header {
+  gap: var(--density-page-header-gap);
+  padding-bottom: var(--density-page-header-pb);
+}
+
+.density-billing-bar {
+  padding: var(--density-billing-bar-py) var(--density-billing-bar-px);
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-[var(--radius-card)] border border-border bg-card text-card-foreground shadow-soft transition-all;
+    background-image: none;
+    transition:
+      transform var(--motion-normal) cubic-bezier(0.22, 1, 0.36, 1),
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-normal) ease,
+      background-color var(--motion-normal) ease;
+  }
+
+  .surface-card:hover {
+    @apply border-border shadow-hover;
+    transform: translateY(-2px);
+  }
+
+  /** Controles coherentes para formularios y filtros del shell */
+  .field-control {
+    @apply rounded-[2px] border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors;
+    @apply hover:border-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20;
+    transition:
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      transform var(--motion-fast) ease;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-[2px] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all;
+    @apply hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50;
+    transition:
+      transform var(--motion-fast) ease,
+      filter var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-[2px] border border-border bg-background px-4 py-2 text-sm font-medium transition-all;
+    @apply hover:bg-muted hover:border-foreground/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-0;
+    transition:
+      transform var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease;
+  }
+
+  .btn-quiet {
+    @apply inline-flex items-center justify-center rounded-[2px] border border-transparent bg-transparent px-3 py-1.5 text-sm font-medium text-foreground transition hover:bg-muted;
+  }
+
+  /** Etiqueta estándar sobre controles */
+  .field-label {
+    @apply text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .btn-danger-ghost {
+    @apply inline-flex items-center justify-center rounded-[2px] border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-danger transition hover:bg-danger/10;
+  }
+
+  /** Tablas densas: encabezado "pegajoso", filas con hover */
+  .data-table-shell {
+    @apply overflow-auto rounded-[2px] border border-border bg-card shadow-soft [scrollbar-width:thin];
+    background-image: none;
+    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease;
+  }
+
+  .data-table-shell table {
+    @apply min-w-full text-sm;
+  }
+
+  .data-table-shell thead {
+    @apply sticky top-0 z-[1] border-b border-border bg-muted;
+  }
+
+  .data-table-shell thead th {
+    @apply whitespace-nowrap text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+    padding: var(--density-table-th-py) var(--density-table-th-px);
+  }
+
+  .data-table-shell tbody td {
+    @apply align-middle;
+    padding: var(--density-table-td-py) var(--density-table-td-px);
+  }
+
+  .data-table-shell tbody tr:nth-child(even) {
+    @apply bg-muted/20;
+  }
+
+  .data-table-shell tbody tr {
+    @apply border-b border-border/40 transition-colors hover:bg-accent/50;
+    transition: background-color var(--motion-fast) ease;
+  }
+
+  /** Chip de estado/prioridad: punto coloreado + texto */
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .top-nav-pill {
+    transition:
+      transform var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      box-shadow var(--motion-normal) ease;
+  }
+
+  .top-nav-pill:hover {
+    transform: translateY(-1px);
+  }
+
+  .menu-fade-in {
+    animation: meridian-fade-up var(--motion-slow) cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .soft-glow-pulse {
+    animation: meridian-glow 3.2s ease-in-out infinite;
+  }
+
+  .route-content-enter {
+    animation: meridian-route-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.45) 0%,
+      hsl(var(--muted) / 0.72) 35%,
+      hsl(var(--muted) / 0.45) 70%
+    );
+    background-size: 220% 100%;
+    animation: meridian-shimmer 1.35s linear infinite;
+  }
+}
+
+* {
+  @apply border-border;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes meridian-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes meridian-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 6px hsl(var(--primary) / 0.03);
+  }
+}
+
+@keyframes meridian-route-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.996);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes meridian-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}

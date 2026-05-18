@@ -1,0 +1,666 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clients-contract";
+import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
+import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
+import type { BudgetInput } from "@/schemas/budget-schema";
+import type { RequirementInput } from "@/schemas/requirement-schema";
+import type { TimeEntryInput } from "@/schemas/time-entry-schema";
+import { calculateDurationMinutes } from "@/lib/calculations/time";
+import type {
+  AppNotification,
+  BudgetAllocation,
+  Client,
+  FinancialReferenceRates,
+  Profile,
+  Requirement,
+  RequirementComment,
+  RequirementStatusHistory,
+  SettingsCatalogEntry,
+  SettingsCatalogKind,
+  TimeEntry,
+  User,
+} from "@/types/domain";
+import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
+import type { CreateAppNotificationInput } from "@/data/contracts/notifications-contract";
+
+type Row = Record<string, unknown>;
+
+function mapClient(r: Row): Client {
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    code: String(r.code),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapProfile(r: Row): Profile {
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    hourlyRate: Number(r.hourly_rate),
+    rateCurrency: String(r.rate_currency),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapUser(r: Row): User {
+  const aliases = Array.isArray(r.aliases) ? (r.aliases as string[]) : JSON.parse(String(r.aliases ?? "[]")) as string[];
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    email: String(r.email),
+    aliases,
+    profileId: String(r.profile_id),
+    active: Boolean(r.active),
+    role: r.role as User["role"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapRequirement(r: Row): Requirement {
+  return {
+    id: String(r.id),
+    projectId: String(r.project_id),
+    clientId: String(r.client_id),
+    origin: String(r.origin),
+    title: String(r.title),
+    description: String(r.description),
+    priority: String(r.priority),
+    ownerId: String(r.owner_id),
+    status: String(r.status),
+    notes: String(r.notes ?? ""),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+    completedAt: r.completed_at ? String(r.completed_at) : null,
+  };
+}
+
+function mapAppNotification(r: Row): AppNotification {
+  return {
+    id: String(r.id),
+    recipientUserId: String(r.recipient_user_id),
+    title: String(r.title),
+    body: String(r.body),
+    href: r.href != null && r.href !== "" ? String(r.href) : null,
+    readAt: r.read_at ? String(r.read_at) : null,
+    createdAt: String(r.created_at),
+  };
+}
+
+function mapTimeEntry(r: Row): TimeEntry {
+  return {
+    id: String(r.id),
+    projectId: String(r.project_id),
+    requirementId: r.requirement_id ? String(r.requirement_id) : null,
+    category: String(r.category),
+    taskDescription: String(r.task_description),
+    date: String(r.date),
+    startTime: String(r.start_time),
+    endTime: String(r.end_time),
+    durationMinutes: Number(r.duration_minutes),
+    userId: String(r.user_id),
+    observations: String(r.observations ?? ""),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapBudget(r: Row): BudgetAllocation {
+  return {
+    id: String(r.id),
+    projectId: String(r.project_id),
+    scope: String(r.scope),
+    profileId: String(r.profile_id),
+    quotedMinutes: Number(r.quoted_minutes),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapCatalog(r: Row): SettingsCatalogEntry {
+  return {
+    id: String(r.id),
+    kind: r.kind as SettingsCatalogKind,
+    code: String(r.code),
+    label: String(r.label),
+    sortOrder: Number(r.sort_order),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapFinancialSettings(r: Row): FinancialReferenceRates {
+  return {
+    id: String(r.id),
+    ufToClp: Number(r.uf_to_clp),
+    usdToClp: Number(r.usd_to_clp),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+export class RmsDataAccess {
+  constructor(private readonly sb: SupabaseClient) {}
+
+  async getClients(): Promise<Client[]> {
+    const { data, error } = await this.sb.from("rms_clients").select("*").order("name");
+    if (error) throw error;
+    return (data as Row[]).map(mapClient);
+  }
+
+  async createClient(input: ClientCreateInput): Promise<Client> {
+    const now = new Date().toISOString();
+    const id = `client-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      name: input.name,
+      code: input.code,
+      active: input.active,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_clients").insert(row).select("*").single();
+    if (error) throw error;
+    return mapClient(data as Row);
+  }
+
+  async updateClient(id: string, input: ClientUpdateInput): Promise<Client | undefined> {
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { updated_at: now };
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.code !== undefined) patch.code = input.code;
+    if (input.active !== undefined) patch.active = input.active;
+    const { data, error } = await this.sb.from("rms_clients").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapClient(data as Row) : undefined;
+  }
+
+  async deleteClient(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_clients").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getProfiles(): Promise<Profile[]> {
+    const { data, error } = await this.sb.from("rms_profiles").select("*").order("name");
+    if (error) throw error;
+    return (data as Row[]).map(mapProfile);
+  }
+
+  async createProfile(input: ProfileCreateInput): Promise<Profile> {
+    const now = new Date().toISOString();
+    const id = `prof-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      name: input.name,
+      hourly_rate: input.hourlyRate,
+      rate_currency: input.rateCurrency,
+      active: input.active,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_profiles").insert(row).select("*").single();
+    if (error) throw error;
+    return mapProfile(data as Row);
+  }
+
+  async updateProfile(id: string, input: ProfileUpdateInput): Promise<Profile | undefined> {
+    const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.hourlyRate !== undefined) patch.hourly_rate = input.hourlyRate;
+    if (input.rateCurrency !== undefined) patch.rate_currency = input.rateCurrency;
+    if (input.active !== undefined) patch.active = input.active;
+    const { data, error } = await this.sb.from("rms_profiles").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapProfile(data as Row) : undefined;
+  }
+
+  async deleteProfile(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_profiles").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getUsers(): Promise<User[]> {
+    const { data, error } = await this.sb.from("rms_directory_users").select("*").order("name");
+    if (error) throw error;
+    return (data as Row[]).map(mapUser);
+  }
+
+  async createUser(input: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+    const now = new Date().toISOString();
+    const id = `user-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      name: input.name,
+      email: input.email,
+      aliases: input.aliases,
+      profile_id: input.profileId,
+      active: input.active,
+      role: input.role,
+      auth_user_id: null,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_directory_users").insert(row).select("*").single();
+    if (error) throw error;
+    return mapUser(data as Row);
+  }
+
+  async updateUser(id: string, input: Partial<User>): Promise<User | undefined> {
+    const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.email !== undefined) patch.email = input.email;
+    if (input.aliases !== undefined) patch.aliases = input.aliases;
+    if (input.profileId !== undefined) patch.profile_id = input.profileId;
+    if (input.active !== undefined) patch.active = input.active;
+    if (input.role !== undefined) patch.role = input.role;
+    const { data, error } = await this.sb.from("rms_directory_users").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapUser(data as Row) : undefined;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_directory_users").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getCatalogByKind(kind: SettingsCatalogKind): Promise<SettingsCatalogEntry[]> {
+    const { data, error } = await this.sb
+      .from("rms_settings_catalog")
+      .select("*")
+      .eq("kind", kind)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map(mapCatalog);
+  }
+
+  async createCatalogEntry(input: CatalogCreateInput): Promise<SettingsCatalogEntry> {
+    const now = new Date().toISOString();
+    const id = `cat-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      kind: input.kind,
+      code: input.code,
+      label: input.label,
+      sort_order: input.sortOrder,
+      active: input.active,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_settings_catalog").insert(row).select("*").single();
+    if (error) throw error;
+    return mapCatalog(data as Row);
+  }
+
+  async updateCatalogEntry(id: string, input: CatalogUpdateInput): Promise<SettingsCatalogEntry | undefined> {
+    const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.code !== undefined) patch.code = input.code;
+    if (input.label !== undefined) patch.label = input.label;
+    if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+    if (input.active !== undefined) patch.active = input.active;
+    const { data, error } = await this.sb.from("rms_settings_catalog").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapCatalog(data as Row) : undefined;
+  }
+
+  async deleteCatalogEntry(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_settings_catalog").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getRequirements(): Promise<Requirement[]> {
+    const { data, error } = await this.sb.from("rms_requirements").select("*").order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data as Row[]).map(mapRequirement);
+  }
+
+  async getRequirementById(id: string): Promise<Requirement | undefined> {
+    const { data, error } = await this.sb.from("rms_requirements").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? mapRequirement(data as Row) : undefined;
+  }
+
+  async createRequirement(input: RequirementInput): Promise<Requirement> {
+    const now = new Date().toISOString();
+    const id = `req-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      project_id: input.projectId,
+      client_id: input.clientId,
+      origin: input.origin,
+      title: input.title,
+      description: input.description,
+      priority: input.priority,
+      owner_id: input.ownerId,
+      status: input.status,
+      notes: input.notes ?? "",
+      created_at: now,
+      updated_at: now,
+      completed_at: input.status === "DONE_PROD" ? now : null,
+    };
+    const { data, error } = await this.sb.from("rms_requirements").insert(row).select("*").single();
+    if (error) throw error;
+    return mapRequirement(data as Row);
+  }
+
+  async updateRequirement(
+    id: string,
+    input: Partial<RequirementInput>,
+    meta?: { changedById?: string },
+  ): Promise<Requirement | undefined> {
+    const current = await this.getRequirementById(id);
+    if (!current) return undefined;
+    const nextStatus = input.status ?? current.status;
+    const now = new Date().toISOString();
+    const patch: Row = {
+      updated_at: now,
+      project_id: input.projectId ?? current.projectId,
+      client_id: input.clientId ?? current.clientId,
+      origin: input.origin ?? current.origin,
+      title: input.title ?? current.title,
+      description: input.description ?? current.description,
+      priority: input.priority ?? current.priority,
+      owner_id: input.ownerId ?? current.ownerId,
+      status: nextStatus,
+      notes: input.notes ?? current.notes,
+      completed_at: nextStatus === "DONE_PROD" ? now : current.completedAt,
+    };
+    const { data, error } = await this.sb.from("rms_requirements").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    const result = data ? mapRequirement(data as Row) : undefined;
+    if (result && meta?.changedById && current.status !== nextStatus) {
+      const hid = `hist-${crypto.randomUUID().slice(0, 10)}`;
+      const { error: hErr } = await this.sb.from("rms_requirement_status_history").insert({
+        id: hid,
+        requirement_id: id,
+        from_status: current.status,
+        to_status: nextStatus,
+        changed_by_id: meta.changedById,
+        changed_at: now,
+      });
+      if (hErr) throw hErr;
+    }
+    return result;
+  }
+
+  async deleteRequirement(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_requirements").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getRequirementComments(requirementId: string): Promise<RequirementComment[]> {
+    const { data, error } = await this.sb
+      .from("rms_requirement_comments")
+      .select("*")
+      .eq("requirement_id", requirementId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map((r) => ({
+      id: String(r.id),
+      requirementId: String(r.requirement_id),
+      userId: String(r.user_id),
+      body: String(r.body),
+      createdAt: String(r.created_at),
+    }));
+  }
+
+  async createRequirementComment(input: {
+    requirementId: string;
+    userId: string;
+    body: string;
+  }): Promise<RequirementComment> {
+    const now = new Date().toISOString();
+    const id = `comment-${crypto.randomUUID().slice(0, 10)}`;
+    const row = {
+      id,
+      requirement_id: input.requirementId,
+      user_id: input.userId,
+      body: input.body,
+      created_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_requirement_comments").insert(row).select("*").single();
+    if (error) throw error;
+    const r = data as Row;
+    return {
+      id: String(r.id),
+      requirementId: String(r.requirement_id),
+      userId: String(r.user_id),
+      body: String(r.body),
+      createdAt: String(r.created_at),
+    };
+  }
+
+  async getRequirementStatusHistory(requirementId: string): Promise<RequirementStatusHistory[]> {
+    const { data, error } = await this.sb
+      .from("rms_requirement_status_history")
+      .select("*")
+      .eq("requirement_id", requirementId)
+      .order("changed_at", { ascending: false });
+    if (error) throw error;
+    return (data as Row[]).map((r) => ({
+      id: String(r.id),
+      requirementId: String(r.requirement_id),
+      fromStatus: String(r.from_status),
+      toStatus: String(r.to_status),
+      changedById: String(r.changed_by_id),
+      changedAt: String(r.changed_at),
+    }));
+  }
+
+  async getTimeEntries(): Promise<TimeEntry[]> {
+    const { data, error } = await this.sb.from("rms_time_entries").select("*").order("date", { ascending: false });
+    if (error) throw error;
+    return (data as Row[]).map(mapTimeEntry);
+  }
+
+  async getTimeEntryById(id: string): Promise<TimeEntry | undefined> {
+    const { data, error } = await this.sb.from("rms_time_entries").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? mapTimeEntry(data as Row) : undefined;
+  }
+
+  async createTimeEntry(input: TimeEntryInput): Promise<TimeEntry> {
+    const now = new Date().toISOString();
+    const id = `time-${crypto.randomUUID().slice(0, 8)}`;
+    const duration = calculateDurationMinutes(input.startTime, input.endTime);
+    const row = {
+      id,
+      project_id: input.projectId,
+      requirement_id: input.requirementId,
+      category: input.category,
+      task_description: input.taskDescription,
+      date: input.date,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      duration_minutes: duration,
+      user_id: input.userId,
+      observations: input.observations ?? "",
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_time_entries").insert(row).select("*").single();
+    if (error) throw error;
+    return mapTimeEntry(data as Row);
+  }
+
+  async updateTimeEntry(id: string, input: Partial<TimeEntryInput>): Promise<TimeEntry | undefined> {
+    const { data: existing, error: e1 } = await this.sb.from("rms_time_entries").select("*").eq("id", id).maybeSingle();
+    if (e1) throw e1;
+    if (!existing) return undefined;
+    const cur = mapTimeEntry(existing as Row);
+    const start = input.startTime ?? cur.startTime;
+    const end = input.endTime ?? cur.endTime;
+    const patch = {
+      project_id: input.projectId ?? cur.projectId,
+      requirement_id: input.requirementId === undefined ? cur.requirementId : input.requirementId,
+      category: input.category ?? cur.category,
+      task_description: input.taskDescription ?? cur.taskDescription,
+      date: input.date ?? cur.date,
+      start_time: start,
+      end_time: end,
+      duration_minutes: calculateDurationMinutes(start, end),
+      user_id: input.userId ?? cur.userId,
+      observations: input.observations ?? cur.observations,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await this.sb.from("rms_time_entries").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapTimeEntry(data as Row) : undefined;
+  }
+
+  async deleteTimeEntry(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_time_entries").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getBudgets(): Promise<BudgetAllocation[]> {
+    const { data, error } = await this.sb.from("rms_budget_allocations").select("*");
+    if (error) throw error;
+    return (data as Row[]).map(mapBudget);
+  }
+
+  async createBudget(input: BudgetInput): Promise<BudgetAllocation> {
+    const now = new Date().toISOString();
+    const id = `budget-${crypto.randomUUID().slice(0, 8)}`;
+    const row = {
+      id,
+      project_id: input.projectId,
+      scope: input.scope,
+      profile_id: input.profileId,
+      quoted_minutes: input.quotedMinutes,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_budget_allocations").insert(row).select("*").single();
+    if (error) throw error;
+    return mapBudget(data as Row);
+  }
+
+  async updateBudget(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined> {
+    const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.projectId !== undefined) patch.project_id = input.projectId;
+    if (input.scope !== undefined) patch.scope = input.scope;
+    if (input.profileId !== undefined) patch.profile_id = input.profileId;
+    if (input.quotedMinutes !== undefined) patch.quoted_minutes = input.quotedMinutes;
+    const { data, error } = await this.sb.from("rms_budget_allocations").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapBudget(data as Row) : undefined;
+  }
+
+  async deleteBudget(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_budget_allocations").delete().eq("id", id);
+    if (error) throw error;
+    return true;
+  }
+
+  async getFinancialReferenceRates(): Promise<FinancialReferenceRates> {
+    const { data, error } = await this.sb.from("rms_financial_settings").select("*").eq("id", "default").maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const now = new Date().toISOString();
+      const seed = { id: "default", uf_to_clp: 39500, usd_to_clp: 950, updated_at: now };
+      const { data: inserted, error: insertError } = await this.sb.from("rms_financial_settings").insert(seed).select("*").single();
+      if (insertError) throw insertError;
+      return mapFinancialSettings(inserted as Row);
+    }
+    return mapFinancialSettings(data as Row);
+  }
+
+  async updateFinancialReferenceRates(input: FinancialReferenceRatesUpdateInput): Promise<FinancialReferenceRates> {
+    const now = new Date().toISOString();
+    const row = {
+      id: "default",
+      uf_to_clp: input.ufToClp,
+      usd_to_clp: input.usdToClp,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_financial_settings").upsert(row, { onConflict: "id" }).select("*").single();
+    if (error) throw error;
+    return mapFinancialSettings(data as Row);
+  }
+
+  async listNotificationsForUser(recipientUserId: string): Promise<AppNotification[]> {
+    const { data, error } = await this.sb
+      .from("rms_notifications")
+      .select("*")
+      .eq("recipient_user_id", recipientUserId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data as Row[]).map(mapAppNotification);
+  }
+
+  async getNotificationsUnreadCount(recipientUserId: string): Promise<number> {
+    const { count, error } = await this.sb
+      .from("rms_notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("recipient_user_id", recipientUserId)
+      .is("read_at", null);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  async createAppNotification(input: CreateAppNotificationInput): Promise<AppNotification> {
+    const now = new Date().toISOString();
+    const id = `notif-${crypto.randomUUID().slice(0, 12)}`;
+    const row = {
+      id,
+      recipient_user_id: input.recipientUserId,
+      title: input.title,
+      body: input.body,
+      href: input.href,
+      read_at: null as string | null,
+      created_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_notifications").insert(row).select("*").single();
+    if (error) throw error;
+    return mapAppNotification(data as Row);
+  }
+
+  async markNotificationReadForUser(notificationId: string, recipientUserId: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    const { data, error } = await this.sb
+      .from("rms_notifications")
+      .update({ read_at: now })
+      .eq("id", notificationId)
+      .eq("recipient_user_id", recipientUserId)
+      .is("read_at", null)
+      .select("id")
+      .maybeSingle();
+    if (error) throw error;
+    return Boolean(data);
+  }
+
+  async appendAudit(entry: {
+    entityType: string;
+    entityId: string;
+    action: string;
+    beforeJson: string;
+    afterJson: string;
+    userId: string;
+  }): Promise<void> {
+    const now = new Date().toISOString();
+    const id = `audit-${crypto.randomUUID().slice(0, 12)}`;
+    const { error } = await this.sb.from("rms_audit_logs").insert({
+      id,
+      entity_type: entry.entityType,
+      entity_id: entry.entityId,
+      action: entry.action,
+      before_json: entry.beforeJson,
+      after_json: entry.afterJson,
+      user_id: entry.userId,
+      created_at: now,
+    });
+    if (error) throw error;
+  }
+}

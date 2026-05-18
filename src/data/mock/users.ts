@@ -1,0 +1,61 @@
+import type { User } from "@/types/domain";
+
+const now = new Date().toISOString();
+
+export const usersMock: User[] = [
+  {
+    id: "user-julio",
+    name: "Julio Soto",
+    email: "julio.soto@interna.local",
+    aliases: ["J. Soto", "Julio Andrés Soto"],
+    profileId: "profile-director",
+    role: "Admin",
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "user-luis",
+    name: "Luis Román",
+    email: "luis.roman@interna.local",
+    aliases: ["Luis Roman"],
+    profileId: "profile-senior",
+    role: "Project Manager",
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "user-veronica",
+    name: "Verónica Reveco",
+    email: "veronica.reveco@interna.local",
+    aliases: ["Veronica Reveco"],
+    profileId: "profile-engineer",
+    role: "Contributor",
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "user-jacklin",
+    name: "Jacklin Bautista",
+    email: "jacklin.bautista@interna.local",
+    aliases: [],
+    profileId: "profile-junior",
+    role: "Contributor",
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "user-joaquin",
+    name: "Joaquin Carcamo",
+    email: "joaquin.carcamo@interna.local",
+    aliases: ["Joaquín Cárcamo"],
+    profileId: "profile-engineer",
+    role: "Viewer",
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+];

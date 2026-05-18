@@ -1,0 +1,164 @@
+export type Role = "Admin" | "Project Manager" | "Contributor" | "Viewer";
+
+export type SettingsCatalogKind =
+  | "requirement_status"
+  | "requirement_priority"
+  | "time_entry_category"
+  | "budget_scope";
+
+export interface SettingsCatalogEntry {
+  id: string;
+  kind: SettingsCatalogKind;
+  code: string;
+  label: string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  code: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  code: string;
+  clientName: string;
+  description: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Requirement {
+  id: string;
+  projectId: string;
+  clientId: string;
+  origin: string;
+  title: string;
+  description: string;
+  /** Código de prioridad configurado en catálogo */
+  priority: string;
+  ownerId: string;
+  /** Código de estado configurado en catálogo */
+  status: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  aliases: string[];
+  profileId: string;
+  active: boolean;
+  role: Role;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  hourlyRate: number;
+  rateCurrency: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Fila única de referencia para lecturas cruzadas (UF y USD en pesos). */
+export interface FinancialReferenceRates {
+  id: string;
+  ufToClp: number;
+  usdToClp: number;
+  updatedAt: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  projectId: string;
+  requirementId: string | null;
+  /** Código de categoría según catálogo */
+  category: string;
+  taskDescription: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  userId: string;
+  observations: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetAllocation {
+  id: string;
+  projectId: string;
+  /** Código de scope según catálogo */
+  scope: string;
+  profileId: string;
+  quotedMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RequirementComment {
+  id: string;
+  requirementId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface RequirementStatusHistory {
+  id: string;
+  requirementId: string;
+  fromStatus: string;
+  toStatus: string;
+  changedById: string;
+  changedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  beforeJson: string;
+  afterJson: string;
+  userId: string;
+  createdAt: string;
+}
+
+/** Aviso in-app dirigido a un usuario del directorio (`rms_directory_users.id`). */
+export interface AppNotification {
+  id: string;
+  recipientUserId: string;
+  title: string;
+  body: string;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface DashboardFilters {
+  projectId?: string;
+  clientId?: string;
+  from?: string;
+  to?: string;
+  ownerId?: string;
+  status?: string;
+  priority?: string;
+  category?: string;
+}
