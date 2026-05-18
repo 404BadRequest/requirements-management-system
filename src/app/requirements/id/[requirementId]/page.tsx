@@ -99,6 +99,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   if (!requirement) {
     notFound();
   }
+  const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
+  if (sessionUser.role === "Contributor" && requirement.ownerId !== currentDirectoryUserId) {
+    notFound();
+  }
 
   const requirementEntries = entries.filter((entry) => entry.requirementId === requirementId);
   const clientName = clients.find((c) => c.id === requirement.clientId)?.name ?? requirement.clientId;
@@ -133,7 +137,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const statusLabel = requirementStatusLabel(requirementStatuses, requirement.status);
   const priorityLabel = catalogLabel(requirementPriorities, requirement.priority);
 
-  const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   const canPostObservations = roleHasPermission(sessionUser.role, "requirements.write");
   const canReassignOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
   const canManageRequirement = canReassignOwner;

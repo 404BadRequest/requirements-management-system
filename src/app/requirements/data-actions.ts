@@ -31,6 +31,9 @@ export async function loadRequirementsPageData(): Promise<{
 }> {
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.read");
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
   const [requirementsData, usersData, clientsData, statuses, priorities] = await Promise.all([
     getRequirements(),
     getUsers(),
@@ -38,9 +41,13 @@ export async function loadRequirementsPageData(): Promise<{
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
   ]);
+  const resolvedUserId = resolveDirectoryUserIdForSession(user, usersData);
+  const ownScope = user.role === "Contributor";
+  const filteredRequirements = ownScope ? requirementsData.filter((r) => r.ownerId === resolvedUserId) : requirementsData;
+  const selectableUsers = ownScope ? usersData.filter((u) => u.id === resolvedUserId) : usersData;
   return {
-    requirements: requirementsData,
-    users: usersData.map((u) => ({ id: u.id, name: u.name })),
+    requirements: filteredRequirements,
+    users: selectableUsers.map((u) => ({ id: u.id, name: u.name })),
     clients: clientsData,
     statusCatalog: statuses,
     priorityCatalog: priorities,
@@ -50,7 +57,13 @@ export async function loadRequirementsPageData(): Promise<{
 export async function createRequirementAction(input: RequirementInput) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.write");
-  const created = await createRequirement(input);
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+  const users = await getUsers();
+  const resolvedUserId = resolveDirectoryUserIdForSession(user, users);
+  const payload = user.role === "Contributor" ? { ...input, ownerId: resolvedUserId } : input;
+  const created = await createRequirement(payload);
   if (user) {
     void recordAuditSafely({
       entityType: "requirement",
@@ -80,8 +93,21 @@ export async function createRequirementAction(input: RequirementInput) {
 export async function updateRequirementAction(id: string, input: Parameters<typeof updateRequirement>[1]) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.write");
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
   const prev = await getRequirementById(id);
-  const next = await updateRequirement(id, input, user ? { changedById: user.id } : undefined);
+  if (!prev) {
+    return undefined;
+  }
+  if (user.role === "Contributor") {
+    const users = await getUsers();
+    const resolvedUserId = resolveDirectoryUserIdForSession(user, users);
+    if (prev.ownerId !== resolvedUserId) {
+      throw new Error("No autorizado para editar requerimientos de otros usuarios.");
+    }
+  }
+  const next = await updateRequirement(id, input, { changedById: user.id });
   if (user && prev && next) {
     void recordAuditSafely({
       entityType: "requirement",
@@ -180,6 +206,13 @@ export async function addRequirementCommentAction(requirementId: string, formDat
   }
   const users = await getUsers();
   const userId = resolveDirectoryUserIdForSession(user, users);
+  const requirement = await getRequirementById(requirementId);
+  if (!requirement) {
+    throw new Error("No se encontró el requerimiento.");
+  }
+  if (user.role === "Contributor" && requirement.ownerId !== userId) {
+    throw new Error("No autorizado para comentar requerimientos de otros usuarios.");
+  }
   await createRequirementComment({ requirementId, userId, body });
   revalidatePath(requirementDetailPath(requirementId));
   void recordAuditSafely({

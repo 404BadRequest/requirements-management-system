@@ -59,6 +59,9 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
   const categoryLabel = catalogLabel(categories, entry.category);
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   const canPickAnyOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
+  if (sessionUser.role === "Contributor" && entry.userId !== currentDirectoryUserId) {
+    notFound();
+  }
   const canEditEntry = canPickAnyOwner || currentDirectoryUserId === entry.userId;
 
   const dateDisplay = (() => {

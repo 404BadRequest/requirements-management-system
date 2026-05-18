@@ -30,6 +30,7 @@ export type RequirementsPageClientProps = {
   canExport: boolean;
   canReassignOwner: boolean;
   canManageRequirement: boolean;
+  canViewSettings?: boolean;
   /** Abre el modal de alta al cargar (p. ej. `?nueva=1`). */
   autoOpenNewModal?: boolean;
   /** Filtro por cliente (query `clientId`). */
@@ -88,6 +89,7 @@ export function RequirementsPageClient({
   canExport,
   canReassignOwner,
   canManageRequirement,
+  canViewSettings = false,
   autoOpenNewModal = false,
   clientId = "",
 }: RequirementsPageClientProps) {
@@ -277,9 +279,11 @@ export function RequirementsPageClient({
         description="Los catálogos de cliente, estado y prioridad se configuran en Configuración."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link href="/settings/clients" className="btn-secondary py-2 text-sm">
-              Configurar datos
-            </Link>
+            {canViewSettings ? (
+              <Link href="/settings/clients" className="btn-secondary py-2 text-sm">
+                Configurar datos
+              </Link>
+            ) : null}
             {canWrite ? (
               <button type="button" className="btn-secondary py-2 text-sm" onClick={() => openNewRequirementModal()}>
                 Nuevo requerimiento

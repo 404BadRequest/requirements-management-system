@@ -15,12 +15,14 @@ export type Permission =
   | "settings.write"
   | "settings.delete"
   | "dashboard.read"
+  | "reports.read"
   | "exports.run"
   | "notifications.read";
 
 const matrix: Record<Role, Permission[]> = {
   Admin: [
     "dashboard.read",
+    "reports.read",
     "requirements.read",
     "requirements.write",
     "requirements.delete",
@@ -39,6 +41,7 @@ const matrix: Record<Role, Permission[]> = {
   ],
   "Project Manager": [
     "dashboard.read",
+    "reports.read",
     "requirements.read",
     "requirements.write",
     "requirements.delete",

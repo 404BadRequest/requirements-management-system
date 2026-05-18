@@ -28,7 +28,7 @@ export const MAIN_NAV_LINK_DEFS: MainNavLinkDef[] = [
   { href: "/dashboard", label: "Dashboard", iconKey: "dashboard", requiredPermission: "dashboard.read" },
   { href: "/requirements", label: "Requerimientos", iconKey: "requirements", requiredPermission: "requirements.read" },
   { href: "/time-entries", label: "Horas", iconKey: "clock", requiredPermission: "time_entries.read" },
-  { href: "/reports", label: "Reportes", iconKey: "report", requiredPermission: "time_entries.read" },
+  { href: "/reports", label: "Reportes", iconKey: "report", requiredPermission: "reports.read" },
   { href: "/budgets", label: "Presupuesto", iconKey: "wallet", requiredPermission: "budgets.read" },
   { href: "/team", label: "Equipo", iconKey: "users", requiredPermission: "team.read" },
   { href: "/notifications", label: "Avisos", iconKey: "bell", requiredPermission: "notifications.read" },

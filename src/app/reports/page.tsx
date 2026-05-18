@@ -12,6 +12,7 @@ import {
   getUsers,
 } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
+import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { buildSpendReport, summarizeSpendReport } from "@/lib/reports/spend-report";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
 
@@ -29,7 +30,8 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ clientId?: string; from?: string; to?: string }>;
 }) {
-  await requirePermission("time_entries.read");
+  const sessionUser = await requirePermission("reports.read");
+  const ownScope = false;
   const sp = await searchParams;
   const defaults = defaultDateRange();
   let from = sp.from?.trim() || defaults.from;
@@ -52,30 +54,35 @@ export default async function ReportsPage({
   ]);
 
   const categoryLabelByCode = new Map(categories.filter((c) => c.active).map((c) => [c.code, c.label]));
-  const activeClients = clients.filter((c) => c.active);
+  const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
+  const scopedRequirements = ownScope ? requirements.filter((requirement) => requirement.ownerId === currentDirectoryUserId) : requirements;
+  const scopedEntries = ownScope ? entries.filter((entry) => entry.userId === currentDirectoryUserId) : entries;
+  const scopedClientIds = new Set(scopedRequirements.map((requirement) => requirement.clientId));
+  const activeClients = clients.filter((c) => c.active && (!ownScope || scopedClientIds.has(c.id)));
+  const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
   const clientNameById = new Map(clients.map((c) => [c.id, c.name]));
   const timeEntriesHref = (() => {
     const q = new URLSearchParams();
-    if (clientId) q.set("clientId", clientId);
+    if (selectedClientId) q.set("clientId", selectedClientId);
     const qs = q.toString();
     return qs ? `/time-entries?${qs}` : "/time-entries";
   })();
-  const hasActiveFilters = clientId !== "";
+  const hasActiveFilters = selectedClientId !== "";
   const activeFilterChips = [
-    clientId ? `Cliente: ${clientNameById.get(clientId) ?? clientId}` : "",
+    selectedClientId ? `Cliente: ${clientNameById.get(selectedClientId) ?? selectedClientId}` : "",
     `Periodo: ${from} → ${to}`,
   ].filter(Boolean);
 
   const rows = buildSpendReport({
-    entries,
-    requirements,
+    entries: scopedEntries,
+    requirements: scopedRequirements,
     users,
     profiles,
     clients,
     categoryLabelByCode,
     fromDate: from,
     toDate: to,
-    clientIdFilter: clientId,
+    clientIdFilter: selectedClientId,
     projectIdFilter: "",
     referenceRates,
   });
@@ -109,7 +116,7 @@ export default async function ReportsPage({
           <label htmlFor="report-client" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Cliente
           </label>
-          <select id="report-client" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
+          <select id="report-client" name="clientId" defaultValue={selectedClientId} className="field-control w-full max-w-md">
             <option value="">Todos los clientes</option>
             {activeClients.map((item) => (
               <option key={item.id} value={item.id}>

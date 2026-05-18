@@ -17,6 +17,7 @@ export default async function TimeEntriesPage({
   const canCreate = roleHasPermission(user.role, "time_entries.write");
   const canEditAnyEntry = user.role === "Admin" || user.role === "Project Manager";
   const canPickAnyOwner = canEditAnyEntry;
+  const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
   const { clientId = "", nueva } = await searchParams;
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
@@ -34,11 +35,20 @@ export default async function TimeEntriesPage({
   const userMap = new Map(users.map((user) => [user.id, user.name]));
   const requirementMap = new Map(requirements.map((requirement) => [requirement.id, requirement]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
-  const activeClients = clients.filter((c) => c.active);
-  const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(user, users);
+  const ownClientIds = ownScope
+    ? new Set(
+        entries
+          .filter((entry) => entry.userId === currentDirectoryUserId)
+          .map((entry) => (entry.requirementId ? requirementMap.get(entry.requirementId)?.clientId : null))
+          .filter((value): value is string => Boolean(value)),
+      )
+    : null;
+  const activeClients = clients.filter((c) => c.active && (!ownClientIds || ownClientIds.has(c.id)));
+  const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
 
   const filteredEntries = entries.filter((entry) => {
+    if (ownScope && entry.userId !== currentDirectoryUserId) return false;
     if (selectedClientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
       if (requirement?.clientId !== selectedClientId) return false;

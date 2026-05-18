@@ -12,6 +12,7 @@ export default async function TeamPage() {
   await requirePermission("team.read");
   const { user } = await getAppSession();
   const canExport = user ? roleHasPermission(user.role, "exports.run") : false;
+  const canViewReports = user ? roleHasPermission(user.role, "reports.read") : false;
 
   const [users, entries, requirements, profiles] = await Promise.all([
     getUsers(),
@@ -22,7 +23,7 @@ export default async function TeamPage() {
   const rows = buildTeamDirectoryRows(users, entries, requirements, profiles);
 
   const exportHref = "/api/export/team";
-  const reportsHref = "/reports";
+  const reportsHref = canViewReports ? "/reports" : "/time-entries";
 
   return (
     <AppShell>
@@ -32,7 +33,7 @@ export default async function TeamPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={reportsHref} className="btn-secondary py-2 text-sm no-underline">
-              Ver reportes del equipo
+              {canViewReports ? "Ver reportes del equipo" : "Ver horas del equipo"}
             </Link>
             {canExport ? (
               <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">

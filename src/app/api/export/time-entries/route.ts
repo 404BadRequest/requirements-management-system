@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { getClients, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
 export async function GET(req: NextRequest) {
@@ -24,8 +25,11 @@ export async function GET(req: NextRequest) {
   const userMap = new Map(users.map((u) => [u.id, u.name]));
   const requirementMap = new Map(requirements.map((r) => [r.id, r]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
+  const ownScope = user?.role === "Contributor";
+  const currentDirectoryUserId = user ? resolveDirectoryUserIdForSession(user, users) : "";
 
   const filtered = entries.filter((entry) => {
+    if (ownScope && entry.userId !== currentDirectoryUserId) return false;
     if (projectId && entry.projectId !== projectId) return false;
     if (clientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;

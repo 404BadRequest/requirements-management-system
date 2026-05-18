@@ -27,6 +27,7 @@ export async function loadNewTimeEntryFormData() {
   const activeUsers = usersData.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
   const pickAny = canPickEncargadoForOthers(user.role);
+  const visibleRequirements = pickAny ? requirementsData : requirementsData.filter((r) => r.ownerId === resolvedId);
   const me = activeUsers.find((u) => u.id === resolvedId);
   const encargadoOptions = pickAny
     ? activeUsers.map((u) => ({ id: u.id, name: u.name }))
@@ -38,7 +39,7 @@ export async function loadNewTimeEntryFormData() {
     users: encargadoOptions,
     encargadoLocked: !pickAny,
     defaultUserId: resolvedId,
-    requirements: requirementsData.map((r) => ({ id: r.id, title: r.title })),
+    requirements: visibleRequirements.map((r) => ({ id: r.id, title: r.title })),
     categories: catRows.filter((r) => r.active).map((r) => ({ code: r.code, label: formatCatalogLabel(r.code, r.label) })),
   };
 }
@@ -52,9 +53,16 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
+  const requirements = await getRequirements();
   const payload = { ...input };
   if (!canPickEncargadoForOthers(user.role)) {
     payload.userId = resolvedId;
+    if (payload.requirementId) {
+      const linkedRequirement = requirements.find((r) => r.id === payload.requirementId);
+      if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
+        throw new Error("Solo puedes asociar horas a requerimientos propios.");
+      }
+    }
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
   }
@@ -82,6 +90,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
+  const requirements = await getRequirements();
   const pickAny = canPickEncargadoForOthers(user.role);
 
   if (!pickAny && current.userId !== resolvedId) {
@@ -91,6 +100,12 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const payload: TimeEntryInput = { ...input };
   if (!pickAny) {
     payload.userId = current.userId;
+    if (payload.requirementId) {
+      const linkedRequirement = requirements.find((r) => r.id === payload.requirementId);
+      if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
+        throw new Error("Solo puedes asociar horas a requerimientos propios.");
+      }
+    }
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
   }

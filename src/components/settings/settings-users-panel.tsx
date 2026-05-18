@@ -15,9 +15,13 @@ const ROLES: Role[] = ["Admin", "Project Manager", "Contributor", "Viewer"];
 export function SettingsUsersPanel({
   users,
   profiles,
+  showCredentialStatus,
+  credentialsByUserId,
 }: {
   users: User[];
   profiles: { id: string; name: string }[];
+  showCredentialStatus: boolean;
+  credentialsByUserId: Record<string, boolean>;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -43,6 +47,25 @@ export function SettingsUsersPanel({
             <span className="rounded-[2px] border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactivo</span>
           ),
       },
+      ...(showCredentialStatus
+        ? ([
+            {
+              id: "credentialStatus",
+              header: "Acceso",
+              accessorFn: (row: User) => (credentialsByUserId[row.id] ? "Configurado" : "Pendiente"),
+              cell: ({ row }) =>
+                credentialsByUserId[row.original.id] ? (
+                  <span className="rounded-[2px] border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    Configurado
+                  </span>
+                ) : (
+                  <span className="rounded-[2px] border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    Pendiente
+                  </span>
+                ),
+            } satisfies ColumnDef<User>,
+          ] as ColumnDef<User>[])
+        : []),
       {
         id: "aliases",
         header: "Alias",
@@ -73,7 +96,7 @@ export function SettingsUsersPanel({
         ),
       },
     ],
-    [profileById],
+    [credentialsByUserId, profileById, showCredentialStatus],
   );
 
   return (
@@ -97,7 +120,7 @@ export function SettingsUsersPanel({
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         title="Nuevo usuario"
-        description="Nombre, correo y perfil son obligatorios. Los alias son opcionales (separados por comas)."
+        description="Nombre, correo, perfil y contraseña son obligatorios para habilitar acceso al sistema."
       >
         <UserForm profiles={profiles} action={createUserAction} submitLabel="Crear usuario" onDone={() => setCreateOpen(false)} />
       </SettingsModal>
@@ -137,6 +160,7 @@ function UserForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const isEditing = Boolean(initial);
   return (
     <form
       className="grid gap-4 md:grid-cols-2"
@@ -153,6 +177,23 @@ function UserForm({
       <label className="grid gap-1.5 md:col-span-2">
         <span className="field-label">Correo</span>
         <input name="email" type="email" required defaultValue={initial?.email} className="field-control text-sm" />
+      </label>
+      <label className="grid gap-1.5 md:col-span-2">
+        <span className="field-label">{isEditing ? "Nueva contraseña (opcional)" : "Contraseña"}</span>
+        <input
+          name="password"
+          type="password"
+          required={!isEditing}
+          minLength={8}
+          autoComplete={isEditing ? "new-password" : "new-password"}
+          placeholder={isEditing ? "Dejar vacío para mantener la contraseña actual" : "Mínimo 8 caracteres"}
+          className="field-control text-sm"
+        />
+        <span className="text-xs text-muted-foreground">
+          {isEditing
+            ? "Si defines una nueva contraseña, se actualizarán las credenciales de acceso."
+            : "El usuario podrá iniciar sesión con su correo y esta contraseña."}
+        </span>
       </label>
       <label className="grid gap-1.5">
         <span className="field-label">Perfil</span>

@@ -15,6 +15,7 @@ export default async function RequirementsPage({
   const canManageRequirement = canReassignOwner;
 
   const canExport = roleHasPermission(user.role, "exports.run");
+  const canViewSettings = roleHasPermission(user.role, "settings.read");
   const { nueva, clientId = "" } = await searchParams;
   const autoOpenNewModal = canWrite && (nueva === "1" || nueva === "true");
 
@@ -26,6 +27,7 @@ export default async function RequirementsPage({
         canExport={canExport}
         canReassignOwner={canReassignOwner}
         canManageRequirement={canManageRequirement}
+        canViewSettings={canViewSettings}
         autoOpenNewModal={autoOpenNewModal}
         clientId={clientId}
       />

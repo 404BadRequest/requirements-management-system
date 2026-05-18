@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getRequirements } from "@/data/repositories/server-db";
+import { getRequirements, getUsers } from "@/data/repositories/server-db";
+import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
 export async function GET(req: NextRequest) {
@@ -14,8 +15,11 @@ export async function GET(req: NextRequest) {
 
   const projectId = req.nextUrl.searchParams.get("projectId")?.trim() ?? "";
   const clientId = req.nextUrl.searchParams.get("clientId")?.trim() ?? "";
-  const all = await getRequirements();
+  const [all, users] = await Promise.all([getRequirements(), getUsers()]);
+  const ownScope = user?.role === "Contributor";
+  const currentDirectoryUserId = user ? resolveDirectoryUserIdForSession(user, users) : "";
   const rows = all.filter((r) => {
+    if (ownScope && r.ownerId !== currentDirectoryUserId) return false;
     if (projectId && r.projectId !== projectId) return false;
     if (clientId && r.clientId !== clientId) return false;
     return true;

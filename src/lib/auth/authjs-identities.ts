@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Role } from "@/types/domain";
 import { queryPg } from "@/lib/postgres/client";
-import { isPostgresConfigured } from "@/lib/postgres/env";
+import { getAuthProviderKind, isPostgresConfigured } from "@/lib/postgres/env";
 import { verifyPassword } from "@/lib/auth/password-hash";
 
 type IdentityRow = {
@@ -19,6 +19,12 @@ export type AuthIdentity = {
   email: string;
   displayName: string;
   role: Role;
+};
+
+type IdentityStatusRow = {
+  user_id: string;
+  password_hash: string;
+  active: boolean;
 };
 
 function normalizeRole(value: string | null | undefined): Role {
@@ -49,4 +55,21 @@ export async function authenticateAuthJsCredentials(email: string, password: str
     displayName: row.display_name?.trim() || row.email,
     role: normalizeRole(row.role),
   };
+}
+
+export async function getAuthCredentialStatusByUserIds(userIds: string[]): Promise<Record<string, boolean>> {
+  const statusByUserId: Record<string, boolean> = {};
+  if (getAuthProviderKind() !== "authjs" || !isPostgresConfigured() || userIds.length === 0) return statusByUserId;
+
+  const { rows } = await queryPg<IdentityStatusRow>(
+    `select user_id, password_hash, active
+       from rms_app_identities
+      where user_id = any($1::text[])`,
+    [userIds],
+  );
+
+  for (const row of rows) {
+    statusByUserId[row.user_id] = Boolean(row.active && row.password_hash?.trim());
+  }
+  return statusByUserId;
 }

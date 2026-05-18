@@ -1,8 +1,9 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { RequirementKanbanBoard } from "@/components/requirements/requirement-kanban-board";
-import { getCatalogByKind, getClients, getRequirements } from "@/data/repositories/server-db";
+import { getCatalogByKind, getClients, getRequirements, getUsers } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
+import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 
 export default async function RequirementsKanbanPage({
@@ -10,19 +11,23 @@ export default async function RequirementsKanbanPage({
 }: {
   searchParams: Promise<{ clientId?: string }>;
 }) {
-  await requirePermission("requirements.read");
+  const user = await requirePermission("requirements.read");
   const { clientId = "" } = await searchParams;
   const clientIdTrim = clientId.trim();
 
-  const [requirements, statusRows, clients] = await Promise.all([
+  const [requirements, statusRows, clients, users] = await Promise.all([
     getRequirements(),
     getCatalogByKind("requirement_status"),
     getClients(),
+    getUsers(),
   ]);
+  const ownScope = user.role === "Contributor";
+  const currentDirectoryUserId = resolveDirectoryUserIdForSession(user, users);
+  const visibleRequirements = ownScope ? requirements.filter((item) => item.ownerId === currentDirectoryUserId) : requirements;
 
   const filteredRequirements = clientIdTrim
-    ? requirements.filter((item) => item.clientId === clientIdTrim)
-    : requirements;
+    ? visibleRequirements.filter((item) => item.clientId === clientIdTrim)
+    : visibleRequirements;
   const activeClients = clients.filter((c) => c.active);
   const tableHref =
     clientIdTrim !== ""

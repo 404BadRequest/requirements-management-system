@@ -26,6 +26,9 @@ import type { Role, SettingsCatalogKind, SettingsCatalogEntry } from "@/types/do
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { recordAuditSafely } from "@/lib/audit/record-audit";
+import { getAuthProviderKind, isPostgresConfigured } from "@/lib/postgres/env";
+import { queryPg } from "@/lib/postgres/client";
+import { hashPassword } from "@/lib/auth/password-hash";
 
 async function requireSettingsWrite() {
   const { user } = await getAppSession();
@@ -255,6 +258,78 @@ function parseRole(value: string): Role {
   return roles.includes(value as Role) ? (value as Role) : "Contributor";
 }
 
+type IdentityRow = {
+  password_hash: string;
+};
+
+function parsePassword(formData: FormData): string {
+  return String(formData.get("password") ?? "").trim();
+}
+
+function assertPasswordStrength(password: string, contextLabel: string) {
+  if (password.length < 8) {
+    redirectSettingsError("/settings/users", `${contextLabel}: la contraseña debe tener al menos 8 caracteres.`);
+  }
+}
+
+async function syncAuthIdentityForUser(input: {
+  userId: string;
+  email: string;
+  role: Role;
+  displayName: string;
+  active: boolean;
+  password?: string;
+  requirePasswordIfMissingIdentity?: boolean;
+}) {
+  if (getAuthProviderKind() !== "authjs") return;
+  if (!isPostgresConfigured()) {
+    redirectSettingsError("/settings/users", "No se pudo sincronizar credenciales: POSTGRES_URL no está configurado.");
+  }
+
+  const { rows } = await queryPg<IdentityRow>("select password_hash from rms_app_identities where user_id = $1 limit 1", [input.userId]);
+  const existingPasswordHash = rows[0]?.password_hash ?? "";
+  const hasIdentity = Boolean(existingPasswordHash);
+  const plainPassword = (input.password ?? "").trim();
+
+  if (!hasIdentity && !plainPassword) {
+    if (input.requirePasswordIfMissingIdentity) {
+      redirectSettingsError(
+        "/settings/users",
+        "Para habilitar acceso de este usuario, define una contraseña de al menos 8 caracteres.",
+      );
+    }
+  } else {
+    const passwordHash = plainPassword ? hashPassword(plainPassword) : existingPasswordHash;
+    const now = new Date().toISOString();
+    await queryPg(
+      `insert into rms_app_identities (user_id, email, password_hash, active, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6)
+       on conflict (user_id) do update
+       set email = excluded.email,
+           password_hash = excluded.password_hash,
+           active = excluded.active,
+           updated_at = excluded.updated_at`,
+      [input.userId, input.email, passwordHash, input.active, now, now],
+    );
+  }
+
+  await queryPg(
+    `insert into rms_auth_profile (user_id, role, display_name)
+     values ($1, $2, $3)
+     on conflict (user_id) do update
+     set role = excluded.role,
+         display_name = excluded.display_name`,
+    [input.userId, input.role, input.displayName],
+  );
+}
+
+async function deleteAuthIdentityForUser(userId: string) {
+  if (getAuthProviderKind() !== "authjs") return;
+  if (!isPostgresConfigured()) return;
+  await queryPg("delete from rms_app_identities where user_id = $1", [userId]);
+  await queryPg("delete from rms_auth_profile where user_id = $1", [userId]);
+}
+
 export async function createUserAction(formData: FormData) {
   await requireSettingsWrite();
   const name = String(formData.get("name") ?? "").trim();
@@ -269,10 +344,23 @@ export async function createUserAction(formData: FormData) {
         .filter(Boolean)
     : [];
   const active = formData.get("active") !== "false";
+  const password = parsePassword(formData);
   if (!name || !email || !profileId) {
     redirectSettingsError("/settings/users", "Nombre, email y perfil requeridos.");
   }
-  await createUser({ name, email, aliases, profileId, active, role });
+  if (getAuthProviderKind() === "authjs") {
+    assertPasswordStrength(password, "No se pudo crear usuario");
+  }
+  const created = await createUser({ name, email, aliases, profileId, active, role });
+  await syncAuthIdentityForUser({
+    userId: created.id,
+    email,
+    role,
+    displayName: name,
+    active,
+    password,
+    requirePasswordIfMissingIdentity: true,
+  });
   refreshDataViews();
 }
 
@@ -290,10 +378,26 @@ export async function updateUserAction(userId: string, formData: FormData) {
         .filter(Boolean)
     : [];
   const active = formData.get("active") !== "false";
+  const password = parsePassword(formData);
   if (!name || !email || !profileId) {
     redirectSettingsError("/settings/users", "Nombre, email y perfil requeridos.");
   }
-  await updateUser(userId, { name, email, aliases, profileId, active, role });
+  if (password) {
+    assertPasswordStrength(password, "No se pudo actualizar usuario");
+  }
+  const updated = await updateUser(userId, { name, email, aliases, profileId, active, role });
+  if (!updated) {
+    redirectSettingsError("/settings/users", "No se encontró el usuario para actualizar.");
+  }
+  await syncAuthIdentityForUser({
+    userId,
+    email,
+    role,
+    displayName: name,
+    active,
+    password,
+    requirePasswordIfMissingIdentity: false,
+  });
   refreshDataViews();
 }
 
@@ -304,6 +408,7 @@ export async function deleteUserAction(userId: string, _formData?: FormData) {
     redirectSettingsError("/settings/users", "No se puede eliminar: el usuario tiene requerimientos asignados.");
   }
   await deleteUser(userId);
+  await deleteAuthIdentityForUser(userId);
   refreshDataViews();
 }
 
