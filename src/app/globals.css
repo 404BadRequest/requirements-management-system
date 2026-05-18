@@ -12,14 +12,14 @@
   --muted-foreground: 0 0% 34%;
   --border: 0 0% 66%;
 
-  --primary: 357 79% 43%;
+  --primary: 214 38% 40%;
   --primary-foreground: 0 0% 100%;
   --accent: 207 53% 51%;
   --accent-foreground: 0 0% 100%;
   --danger: 357 79% 43%;
-  --ring: 357 79% 43%;
+  --ring: 214 38% 40%;
 
-  --chart-1: 357 79% 43%;
+  --chart-1: 214 38% 40%;
   --chart-2: 207 53% 51%;
   --chart-3: 28 90% 60%;
   --chart-4: 170 50% 38%;
@@ -80,12 +80,12 @@ html[data-density="compact"] {
   --muted: 0 0% 90%;
   --muted-foreground: 0 0% 34%;
   --border: 0 0% 66%;
-  --primary: 357 79% 43%;
+  --primary: 214 38% 40%;
   --primary-foreground: 0 0% 100%;
   --accent: 207 53% 51%;
   --accent-foreground: 0 0% 100%;
   --danger: 357 79% 43%;
-  --ring: 357 79% 43%;
+  --ring: 214 38% 40%;
 }
 
 body {
