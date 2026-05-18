@@ -84,11 +84,11 @@ export function TimeEntriesTable({
       columns={columns}
       globalFilterPlaceholder="Buscar por ID, fecha, persona, categoría o cliente…"
       pageSize={20}
-      emptyTitle="Sin imputaciones"
+      emptyTitle="Sin horas"
       emptyDescription="No hay registros de horas con el filtro aplicado."
       emptyAction={
         <Link href="/time-entries/new" className="btn-primary py-2 text-sm no-underline">
-          Registrar primera imputación
+          Registrar primera hora
         </Link>
       }
     />

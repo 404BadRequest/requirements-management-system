@@ -27,7 +27,7 @@ export function RmsLoader({
           <div className="relative flex h-16 w-16 items-center justify-center">
             <span className="absolute inset-0 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-[2px] border border-primary bg-primary text-sm font-semibold text-primary-foreground">
-              M
+              R
             </span>
           </div>
           <div className="space-y-1.5">

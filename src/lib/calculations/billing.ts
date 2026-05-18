@@ -21,7 +21,7 @@ function clientDisplayName(requirement: Requirement | undefined, clientsById: Ma
 }
 
 /**
- * Suma (horas × tarifa del usuario que imputó) por cliente final y por moneda/unidad de tarifa.
+ * Suma (horas × tarifa del usuario que registró la hora) por cliente final y por moneda/unidad de tarifa.
  * `amountClp` usa las tasas de referencia para CLP, UF y USD; otras monedas devuelven `amountClp: null`.
  */
 export function aggregateBillingEstimateByClient(

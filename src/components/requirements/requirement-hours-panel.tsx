@@ -71,9 +71,9 @@ export function RequirementHoursPanel({
   if (rows.length === 0) {
     return (
       <article className="surface-card p-[length:var(--density-inset-pad)]">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">Imputación de horas</h2>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Aún no hay horas registradas vinculadas a este requerimiento. Las imputaciones aparecen cuando en el registro de horas se
+          Aún no hay horas registradas vinculadas a este requerimiento. Las horas aparecen cuando en el registro se
           elige este REQ.
         </p>
       </article>
@@ -84,9 +84,9 @@ export function RequirementHoursPanel({
     <article className="surface-card flex flex-col gap-6 p-[length:var(--density-inset-pad)]">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">Imputación de horas</h2>
+          <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2>
           <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
-            Detalle de cada registro: quién imputó, con qué perfil de tarifa, categoría de tiempo y bloque horario.
+            Detalle de cada registro: quién registró la hora, con qué perfil de tarifa, categoría de tiempo y bloque horario.
           </p>
         </div>
         <div className="flex flex-wrap gap-4 text-right">
@@ -95,7 +95,7 @@ export function RequirementHoursPanel({
             <p className="text-xl font-semibold tabular-nums text-foreground">{totalHoursDisplay}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Imputaciones</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Registros</p>
             <p className="text-xl font-semibold tabular-nums text-foreground">{imputationCount}</p>
           </div>
         </div>
@@ -137,9 +137,9 @@ export function RequirementHoursPanel({
         <DataTable
           data={rows}
           columns={columns}
-          globalFilterPlaceholder="Buscar en imputaciones…"
+          globalFilterPlaceholder="Buscar en horas…"
           pageSize={10}
-          emptyTitle="Sin imputaciones"
+          emptyTitle="Sin horas"
           emptyDescription="No hay registros de horas para este requerimiento."
         />
       </div>

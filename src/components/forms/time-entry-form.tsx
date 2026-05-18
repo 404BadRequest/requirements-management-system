@@ -12,7 +12,7 @@ export const TimeEntryForm = ({
   defaultUserId,
   encargadoLocked = false,
   defaultValues,
-  submitLabel = "Guardar imputación",
+  submitLabel = "Guardar hora",
   onSubmit,
 }: {
   users: { id: string; name: string }[];
@@ -66,7 +66,7 @@ export const TimeEntryForm = ({
               {users[0]?.name ?? "—"}
             </p>
             <p className="text-xs text-muted-foreground">
-              Las horas se registran a tu nombre. Un administrador o project manager puede imputar por otras personas.
+              Las horas se registran a tu nombre. Un administrador o project manager puede registrar horas por otras personas.
             </p>
             <input type="hidden" {...form.register("userId")} />
           </div>

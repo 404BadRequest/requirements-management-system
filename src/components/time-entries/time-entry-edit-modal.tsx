@@ -15,7 +15,7 @@ export function TimeEntryEditModal({
   categories,
   canEdit,
   canPickAnyOwner,
-  triggerLabel = "Editar imputación",
+  triggerLabel = "Editar hora",
   triggerClassName = "btn-secondary py-2 text-sm",
 }: {
   entry: TimeEntry;
@@ -40,7 +40,7 @@ export function TimeEntryEditModal({
       <SettingsModal
         open={open}
         onClose={() => setOpen(false)}
-        title="Editar imputación"
+        title="Editar hora"
         description="Corrige horas, tarea, observaciones y relación con requerimiento."
         dialogClassName="max-w-3xl max-h-[94vh] lg:max-h-none lg:overflow-visible"
         bodyClassName="px-4 py-4 sm:px-5 sm:py-4"
@@ -66,11 +66,11 @@ export function TimeEntryEditModal({
           onSubmit={async (values) => {
             try {
               await updateTimeEntryAction(entry.id, values);
-              toast.success("Imputación actualizada");
+              toast.success("Hora actualizada");
               setOpen(false);
               router.refresh();
             } catch (e) {
-              toast.error(e instanceof Error ? e.message : "No se pudo actualizar la imputación.");
+              toast.error(e instanceof Error ? e.message : "No se pudo actualizar la hora.");
             }
           }}
         />

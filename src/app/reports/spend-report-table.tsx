@@ -38,7 +38,7 @@ export function SpendReportTable({ rows }: { rows: SpendReportRow[] }) {
       globalFilterPlaceholder="Buscar en el reporte…"
       pageSize={25}
       emptyTitle="Sin datos en el periodo"
-      emptyDescription="Prueba ampliar fechas, quitar el filtro de cliente o verifica que existan imputaciones con requerimiento vinculado."
+      emptyDescription="Prueba ampliar fechas, quitar el filtro de cliente o verifica que existan horas con requerimiento vinculado."
       emptyAction={
         <a href="/time-entries?nueva=1" className="btn-primary py-2 text-sm no-underline">
           Registrar horas ahora

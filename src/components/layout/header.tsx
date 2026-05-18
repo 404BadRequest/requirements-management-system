@@ -42,10 +42,10 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }
         <MobileNav links={navLinks} />
         <div className="hidden items-center gap-2 md:flex">
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-[2px] border border-primary bg-primary text-primary-foreground">
-            M
+            R
           </span>
-          <span className="text-sm font-semibold tracking-tight text-foreground">Acme RMS</span>
-          <span className="text-[11px] text-muted-foreground">Workspace</span>
+          <span className="text-sm font-semibold tracking-tight text-foreground">Requirement System TI</span>
+          <span className="text-[11px] text-muted-foreground">Plataforma</span>
         </div>
 
         <div className="min-w-0 w-full max-w-xl md:flex-none">

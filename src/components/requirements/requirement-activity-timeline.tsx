@@ -133,7 +133,7 @@ export function RequirementActivityTimeline({ events }: { events: RequirementAct
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight text-foreground">Actividad del requerimiento</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Timeline combinado de cambios de estado, comentarios e imputaciones.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Timeline combinado de cambios de estado, comentarios y horas.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-[2px] border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">

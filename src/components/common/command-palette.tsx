@@ -43,7 +43,7 @@ export const CommandPalette = ({ items }: CommandPaletteProps) => {
     if (hrefs.has("/time-entries")) {
       entries.push({
         id: "quick-new-time-entry",
-        label: "Nueva imputación",
+        label: "Nueva hora",
         href: "/time-entries?nueva=1",
         hint: "Acción rápida",
       });

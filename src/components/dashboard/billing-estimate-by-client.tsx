@@ -70,7 +70,7 @@ export function BillingEstimateByClientTable({
   if (!rows.length) {
     return (
       <article className="surface-card border-dashed p-6 text-sm leading-relaxed text-muted-foreground">
-        No hay montos estimados con los filtros actuales (por ejemplo, sin imputaciones o sin perfil asignado al usuario).
+        No hay montos estimados con los filtros actuales (por ejemplo, sin horas registradas o sin perfil asignado al usuario).
       </article>
     );
   }
@@ -82,7 +82,7 @@ export function BillingEstimateByClientTable({
           <div className="min-w-0 space-y-1">
             <h3 className="text-base font-semibold tracking-tight text-foreground">Estimado facturable por cliente</h3>
             <p className="max-w-prose text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              Suma de horas imputadas × tarifa del perfil. Cada fila muestra el monto en la moneda del perfil y el equivalente en CLP
+              Suma de horas registradas × tarifa del perfil. Cada fila muestra el monto en la moneda del perfil y el equivalente en CLP
               cuando la moneda es CLP, UF o USD (UF y USD usan las tasas de configuración).
               {referenceFootnote ? (
                 <>

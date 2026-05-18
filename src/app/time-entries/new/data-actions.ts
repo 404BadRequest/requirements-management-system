@@ -84,7 +84,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
 
   const current = await getTimeEntryById(id);
   if (!current) {
-    throw new Error("No se encontró la imputación a editar.");
+    throw new Error("No se encontró la hora a editar.");
   }
 
   const users = await getUsers();
@@ -94,7 +94,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const pickAny = canPickEncargadoForOthers(user.role);
 
   if (!pickAny && current.userId !== resolvedId) {
-    throw new Error("Solo puedes editar imputaciones registradas por ti.");
+    throw new Error("Solo puedes editar horas registradas por ti.");
   }
 
   const payload: TimeEntryInput = { ...input };
@@ -112,7 +112,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
 
   const updated = await updateTimeEntry(id, payload);
   if (!updated) {
-    throw new Error("No se pudo actualizar la imputación.");
+    throw new Error("No se pudo actualizar la hora.");
   }
 
   revalidatePath("/time-entries");

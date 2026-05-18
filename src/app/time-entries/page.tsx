@@ -75,7 +75,7 @@ export default async function TimeEntriesPage({
     <AppShell>
       <PageHeader
         title="Registro de horas"
-        description="Imputaciones por persona, categoría y requerimiento"
+        description="Horas por persona, categoría y requerimiento"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canCreate ? <TimeEntriesNewModal autoOpen={openNewModal} /> : null}

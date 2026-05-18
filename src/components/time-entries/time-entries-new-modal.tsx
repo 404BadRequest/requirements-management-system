@@ -58,7 +58,7 @@ function NewTimeEntryModalForm({
       onSubmit={async (values) => {
         try {
           await createTimeEntryAction(values);
-          toast.success("Imputación registrada");
+          toast.success("Hora registrada");
           await onCreated();
         } catch (e) {
           toast.error(e instanceof Error ? e.message : "No se pudo guardar.");
@@ -97,12 +97,12 @@ export function TimeEntriesNewModal({ autoOpen }: { autoOpen: boolean }) {
   return (
     <>
       <button type="button" className="btn-primary" onClick={() => openFresh()}>
-        Nueva imputación
+        Nueva hora
       </button>
       <SettingsModal
         open={open}
         onClose={handleClose}
-        title="Nueva imputación"
+        title="Nueva hora"
         description="Registra el bloque de horas; la duración se calcula según inicio y término."
       >
         {open ? (

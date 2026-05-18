@@ -7,7 +7,7 @@ export default function RequirementDetailLoading() {
       <main className="mx-auto w-full max-w-[1760px] space-y-4 px-3 py-4 sm:px-4">
         <PageHeader
           title="Detalle de requerimiento"
-          description="Cargando historial, actividad e imputaciones relacionadas…"
+          description="Cargando historial, actividad y horas relacionadas…"
           actions={<span className="skeleton-shimmer h-9 w-44 rounded-[2px]" />}
         />
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">

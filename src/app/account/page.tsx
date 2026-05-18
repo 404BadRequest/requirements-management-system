@@ -11,7 +11,7 @@ export default async function AccountPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Mi cuenta" description="Datos de la sesión actual enlazados con el proveedor de auth activo y el perfil RMS." />
+      <PageHeader title="Mi cuenta" description="Datos de la sesión actual enlazados con el proveedor de auth activo y el perfil del sistema." />
       <dl className="surface-card grid max-w-lg gap-3 p-[length:var(--density-inset-pad)] text-sm sm:grid-cols-2">
         <div>
           <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nombre</dt>

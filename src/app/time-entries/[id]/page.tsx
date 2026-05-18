@@ -80,7 +80,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
   return (
     <AppShell>
       <PageHeader
-        title="Ficha de imputación"
+        title="Ficha de horas"
         description={`${dateDisplay} · ${minutesToHoursDisplay(entry.durationMinutes)} · ${categoryLabel}`}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -155,7 +155,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
           </div>
         ) : (
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Esta imputación no está asociada a un requerimiento (p. ej. horas internas o generales del proyecto).
+            Esta hora no está asociada a un requerimiento (p. ej. horas internas o generales del proyecto).
           </p>
         )}
       </article>

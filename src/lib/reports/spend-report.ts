@@ -29,9 +29,9 @@ export type BuildSpendReportParams = {
   categoryLabelByCode: Map<string, string>;
   fromDate: string;
   toDate: string;
-  /** Vacío: todos los clientes (incluye imputaciones sin REQ como “Sin requerimiento”). */
+  /** Vacío: todos los clientes (incluye horas sin REQ como “Sin requerimiento”). */
   clientIdFilter: string;
-  /** Vacío: todos los proyectos (según `project_id` de la imputación o del requerimiento vinculado). */
+  /** Vacío: todos los proyectos (según `project_id` de la hora o del requerimiento vinculado). */
   projectIdFilter: string;
   referenceRates: FinancialReferenceRates;
 };

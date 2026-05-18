@@ -12,7 +12,7 @@ const fontApp = Oxanium({
 });
 
 export const metadata: Metadata = {
-  title: "Requirements Management System",
+  title: "Requirement System TI",
   description: "Gestión interna de requerimientos, horas y presupuesto",
 };
 

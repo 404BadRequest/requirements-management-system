@@ -169,7 +169,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     ...requirementEntries.map((entry) => ({
       id: `time-${entry.id}`,
       type: "time" as const,
-      title: "Imputación de horas",
+      title: "Registro de horas",
       description: `${userById.get(entry.userId)?.name ?? entry.userId} registró ${minutesToHoursDisplay(entry.durationMinutes)} en ${catLabel(entry.category)}.`,
       at: `${entry.date}T${entry.startTime}:00`,
       href: "#hours-section",
@@ -224,7 +224,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.priority}</p>
         </article>
         <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Horas imputadas (total)</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Horas totales</h3>
           <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(totalMinutes)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
         </article>

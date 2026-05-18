@@ -10,8 +10,8 @@ export default async function SettingsTimeCategoriesPage() {
     <>
       <SettingsPageIntro
         eyebrow="Catálogo"
-        title="Categorías de imputación"
-        description="Tabla de categorías de horas con CRUD completo. La eliminación falla si existen imputaciones con ese código."
+        title="Categorías de horas"
+        description="Tabla de categorías de horas con CRUD completo. La eliminación falla si existen horas con ese código."
       />
       <SettingsCatalogPanel
         kind="time_entry_category"

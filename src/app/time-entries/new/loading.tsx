@@ -6,7 +6,7 @@ export default function NewTimeEntryLoading() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto w-full max-w-[1760px] space-y-4 px-3 py-4 sm:px-4">
         <PageHeader
-          title="Nueva imputación"
+          title="Nueva hora"
           description="Preparando formulario de registro de horas…"
           actions={<span className="skeleton-shimmer h-9 w-32 rounded-[2px]" />}
         />
@@ -24,7 +24,7 @@ export default function NewTimeEntryLoading() {
       </main>
       <RmsLoader
         title="Cargando formulario..."
-        description="Inicializando datos para registrar una nueva imputación."
+        description="Inicializando datos para registrar una nueva hora."
       />
     </div>
   );

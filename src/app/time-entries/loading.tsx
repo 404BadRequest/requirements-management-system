@@ -7,7 +7,7 @@ export default function TimeEntriesLoading() {
       <main className="mx-auto w-full max-w-[1760px] space-y-4 px-3 py-4 sm:px-4">
         <PageHeader
           title="Registro de horas"
-          description="Cargando imputaciones, personas y categorías…"
+          description="Cargando horas, personas y categorías…"
           actions={
             <div className="flex flex-wrap gap-2">
               <span className="skeleton-shimmer h-9 w-36 rounded-[2px]" />
@@ -37,7 +37,7 @@ export default function TimeEntriesLoading() {
       </main>
       <RmsLoader
         title="Cargando horas..."
-        description="Obteniendo imputaciones, categorías y relaciones con requerimientos."
+        description="Obteniendo horas, categorías y relaciones con requerimientos."
       />
     </div>
   );

@@ -34,8 +34,8 @@ export const Sidebar = ({ links, notificationUnread = 0 }: SidebarProps) => {
           <LayoutGrid className="h-4 w-4 text-primary-foreground" aria-hidden />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold leading-tight tracking-tight text-foreground">Meridian RMS</p>
-          <p className="text-[11px] leading-tight text-muted-foreground">Workspace analytics</p>
+          <p className="text-sm font-bold leading-tight tracking-tight text-foreground">Requirement System TI</p>
+          <p className="text-[11px] leading-tight text-muted-foreground">Plataforma de gestión</p>
         </div>
       </div>
 

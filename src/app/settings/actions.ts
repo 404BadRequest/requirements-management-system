@@ -242,7 +242,7 @@ export async function deleteCatalogAction(id: string, _formData?: FormData) {
     redirectSettingsError(returnPath, "No se puede eliminar: hay requerimientos con esta prioridad.");
   }
   if (entry.kind === "time_entry_category" && timeEntries.some((t) => t.category === entry.code)) {
-    redirectSettingsError(returnPath, "No se puede eliminar: hay imputaciones de horas con esta categoría.");
+    redirectSettingsError(returnPath, "No se puede eliminar: hay horas registradas con esta categoría.");
   }
   if (entry.kind === "budget_scope" && budgets.some((b) => b.scope === entry.code)) {
     redirectSettingsError(returnPath, "No se puede eliminar: hay presupuestos con este scope.");

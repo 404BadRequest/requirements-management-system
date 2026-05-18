@@ -13,7 +13,7 @@ export default async function LoginPage({
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="surface-card w-full max-w-md p-8 shadow-soft">
         <h1 className="text-center text-2xl font-semibold tracking-tight text-foreground">Iniciar sesión</h1>
-        <p className="mt-2 text-center text-sm text-muted-foreground">Requirements Management System</p>
+        <p className="mt-2 text-center text-sm text-muted-foreground">Requirement System TI</p>
         {error ? (
           <p className="mt-4 rounded-[2px] border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-foreground" role="alert">
             {decodeURIComponent(error)}

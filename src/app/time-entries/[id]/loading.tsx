@@ -6,8 +6,8 @@ export default function TimeEntryDetailLoading() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto w-full max-w-[1760px] space-y-4 px-3 py-4 sm:px-4">
         <PageHeader
-          title="Ficha de imputación"
-          description="Cargando detalle de la imputación y sus relaciones…"
+          title="Ficha de horas"
+          description="Cargando detalle de la hora y sus relaciones…"
           actions={<span className="skeleton-shimmer h-9 w-32 rounded-[2px]" />}
         />
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -24,7 +24,7 @@ export default function TimeEntryDetailLoading() {
         </section>
       </main>
       <RmsLoader
-        title="Cargando imputación..."
+        title="Cargando horas..."
         description="Preparando horas, categoría, responsable y requerimiento vinculado."
       />
     </div>

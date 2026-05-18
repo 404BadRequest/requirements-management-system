@@ -29,7 +29,7 @@ export default async function TeamPage() {
     <AppShell>
       <PageHeader
         title="Equipo"
-        description="Directorio denso con horas imputadas, tarifas de referencia y carga de requerimientos."
+        description="Directorio denso con horas registradas, tarifas de referencia y carga de requerimientos."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={reportsHref} className="btn-secondary py-2 text-sm no-underline">

@@ -180,7 +180,7 @@ export default async function DashboardPage({
                 title="Evolución de horas cargadas por mes"
                 mode="lineArea"
                 tall
-                emptyHint="Registra imputaciones de tiempo para ver la evolucion mensual."
+                emptyHint="Registra horas para ver la evolución mensual."
                 data={sortedMonthHours(metrics.hoursByMonth)}
               />
             ) : null}
@@ -211,17 +211,17 @@ export default async function DashboardPage({
               <>
                 <DashboardChartCard
                   className="lg:col-span-6"
-                  title="Horas por categoría de imputación"
+                  title="Horas por categoría"
                   mode="bar"
                   barVariant="multiColor"
-                  emptyHint="Asigna categoria al registrar horas para analizar la distribucion de imputaciones."
+                  emptyHint="Asigna una categoría al registrar horas para analizar la distribución."
                   data={categoryHoursChartData}
                 />
                 <DashboardChartCard
                   className="lg:col-span-12"
                   title="Horas por persona"
                   mode="barHorizontal"
-                  emptyHint="Las horas por persona apareceran cuando existan registros de imputacion."
+                  emptyHint="Las horas por persona aparecerán cuando existan registros de horas."
                   data={recordToHoursChartData(metrics.hoursByPerson)}
                 />
               </>

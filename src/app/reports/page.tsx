@@ -93,7 +93,7 @@ export default async function ReportsPage({
     <AppShell>
       <PageHeader
         title="Reportes"
-        description="Horas imputadas y costo por cliente, persona y categoría. Los importes en UF o USD se convierten a CLP con las tasas definidas en Configuración → UF y dólar."
+        description="Horas registradas y costo por cliente, persona y categoría. Los importes en UF o USD se convierten a CLP con las tasas definidas en Configuración → UF y dólar."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={timeEntriesHref} className="btn-secondary py-2 text-sm no-underline">

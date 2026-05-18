@@ -96,8 +96,8 @@ export function MobileNav({ links }: MobileNavProps) {
           >
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Acme</p>
-                <p className="text-base font-bold tracking-tight">Requirements</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Requirement</p>
+                <p className="text-base font-bold tracking-tight">System TI</p>
               </div>
               <button
                 ref={closeButtonRef}
