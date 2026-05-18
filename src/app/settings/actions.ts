@@ -29,6 +29,7 @@ import { recordAuditSafely } from "@/lib/audit/record-audit";
 import { getAuthProviderKind, isPostgresConfigured } from "@/lib/postgres/env";
 import { queryPg } from "@/lib/postgres/client";
 import { hashPassword } from "@/lib/auth/password-hash";
+import { getPasswordStrengthError } from "@/lib/auth/password-policy";
 
 async function requireSettingsWrite() {
   const { user } = await getAppSession();
@@ -267,8 +268,9 @@ function parsePassword(formData: FormData): string {
 }
 
 function assertPasswordStrength(password: string, contextLabel: string) {
-  if (password.length < 8) {
-    redirectSettingsError("/settings/users", `${contextLabel}: la contraseña debe tener al menos 8 caracteres.`);
+  const strengthError = getPasswordStrengthError(password);
+  if (strengthError) {
+    redirectSettingsError("/settings/users", `${contextLabel}: ${strengthError}`);
   }
 }
 
