@@ -9,7 +9,7 @@ export const PageHeader = ({
   description?: string;
   actions?: ReactNode;
 }) => (
-  <div className="density-page-header flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+  <div className="density-page-header surface-card flex flex-col gap-1 p-[length:var(--density-inset-pad)] sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
     <div className="min-w-0 max-w-3xl space-y-1">
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Workspace Overview</p>
       <div className="space-y-1">

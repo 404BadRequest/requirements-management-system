@@ -149,7 +149,7 @@ export default async function DashboardPage({
           />
         ) : null}
 
-        <section aria-labelledby="dash-charts-heading" className="space-y-5">
+        <section aria-labelledby="dash-charts-heading" className="surface-card space-y-5 p-[length:var(--density-inset-pad)]">
           <h2 id="dash-charts-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Análisis visual
           </h2>
