@@ -36,6 +36,18 @@ export const BudgetForm = ({
     return parsed.toISOString().slice(0, 10);
   };
 
+  const parseHoursInput = (raw: string): number => {
+    const normalized = raw.replace(",", ".").trim();
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const formatHoursInput = (minutes: number | undefined): string => {
+    const hours = (minutes ?? 0) / 60;
+    if (!Number.isFinite(hours) || hours <= 0) return "";
+    return hours.toFixed(2).replace(/\.?0+$/, "");
+  };
+
   const form = useForm<BudgetInput>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
@@ -144,14 +156,14 @@ export const BudgetForm = ({
                 ))}
               </select>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 className="field-control w-full"
                 placeholder="Horas"
-                min={0.1}
-                step={0.1}
-                value={((form.watch(`allocations.${index}.quotedMinutes`) ?? 0) / 60).toString()}
+                aria-label="Horas cotizadas"
+                value={formatHoursInput(form.watch(`allocations.${index}.quotedMinutes`))}
                 onChange={(event) => {
-                  const hours = Number(event.target.value);
+                  const hours = parseHoursInput(event.target.value);
                   const minutes = Number.isFinite(hours) ? Math.round(hours * 60) : 0;
                   form.setValue(`allocations.${index}.quotedMinutes`, minutes);
                 }}
