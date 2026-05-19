@@ -2,7 +2,16 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
-import { getCatalogByKind, getClients, getContractBudgets, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import {
+  getCatalogByKind,
+  getClients,
+  getContractBudgets,
+  getContractProfileAllocations,
+  getProfiles,
+  getRequirements,
+  getTimeEntries,
+  getUsers,
+} from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
@@ -11,7 +20,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function TimeEntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; nueva?: string }>;
+  searchParams: Promise<{ clientId?: string; contractStatus?: string; nueva?: string }>;
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
@@ -19,19 +28,31 @@ export default async function TimeEntriesPage({
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
-  const { clientId = "", nueva } = await searchParams;
+  const { clientId = "", contractStatus = "", nueva } = await searchParams;
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
-  const [entries, users, requirements, clients, timeCategories, contracts] = await Promise.all([
+  const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
     getUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
+    getProfiles(),
+    getContractProfileAllocations(),
   ]);
   const categoryLabelByCode = new Map(
     timeCategories.filter((c) => c.active).map((c) => [c.code, formatCatalogLabel(c.code, c.label)]),
   );
+  const profileLabelById = new Map(profiles.map((profile) => [profile.id, profile.name]));
+  const validContractProfileKeys = new Set(contractAllocations.map((allocation) => `${allocation.contractId}::${allocation.profileId}`));
+
+  const resolveContractStatus = (entry: (typeof entries)[number]) => {
+    if (!entry.contractId) return "Sin contrato";
+    if (!entry.contractProfileId) return "Sin asignación contractual";
+    const isProfileQuoted = validContractProfileKeys.has(`${entry.contractId}::${entry.contractProfileId}`);
+    if (!isProfileQuoted) return "Perfil no cotizado en contrato";
+    return profileLabelById.get(entry.contractProfileId) ?? entry.contractProfileId;
+  };
 
   const userMap = new Map(users.map((user) => [user.id, user.name]));
   const requirementMap = new Map(requirements.map((requirement) => [requirement.id, requirement]));
@@ -47,6 +68,7 @@ export default async function TimeEntriesPage({
     : null;
   const activeClients = clients.filter((c) => c.active && (!ownClientIds || ownClientIds.has(c.id)));
   const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
+  const selectedContractStatus = contractStatus === "unassigned" ? "unassigned" : "";
 
   const filteredEntries = entries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
@@ -54,12 +76,19 @@ export default async function TimeEntriesPage({
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
       if (requirement?.clientId !== selectedClientId) return false;
     }
+    if (selectedContractStatus === "unassigned") {
+      if (!entry.contractId) return false;
+      if (!entry.contractProfileId) return true;
+      const isProfileQuoted = validContractProfileKeys.has(`${entry.contractId}::${entry.contractProfileId}`);
+      if (isProfileQuoted) return false;
+    }
     return true;
   });
 
   const exportHref = (() => {
     const q = new URLSearchParams();
     if (selectedClientId) q.set("clientId", selectedClientId);
+    if (selectedContractStatus) q.set("contractStatus", selectedContractStatus);
     const s = q.toString();
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
   })();
@@ -106,6 +135,20 @@ export default async function TimeEntriesPage({
             ))}
           </select>
         </div>
+        <div className="flex min-w-[12rem] flex-col gap-2">
+          <label htmlFor="contract-status-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Estado contractual
+          </label>
+          <select
+            id="contract-status-filter"
+            name="contractStatus"
+            defaultValue={selectedContractStatus}
+            className="field-control w-full max-w-md"
+          >
+            <option value="">Todos</option>
+            <option value="unassigned">Sin asignación contractual</option>
+          </select>
+        </div>
         <button type="submit" className="btn-primary">
           Aplicar filtro
         </button>
@@ -114,6 +157,7 @@ export default async function TimeEntriesPage({
         users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
         requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
         contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
+        contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
         categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
         canPickAnyOwner={canPickAnyOwner}
         rows={filteredEntries.map((entry) => ({
@@ -133,6 +177,7 @@ export default async function TimeEntriesPage({
           durationMinutes: entry.durationMinutes,
           durationLabel: `${(entry.durationMinutes / 60).toFixed(1)} h`,
           clientLabel: clientCell(entry.requirementId),
+          contractStatus: resolveContractStatus(entry),
         }))}
       />
     </AppShell>

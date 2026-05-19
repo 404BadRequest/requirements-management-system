@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -8,9 +9,10 @@ import { DataTable } from "@/components/common/data-table";
 import { SyncStatusBanner } from "@/components/common/sync-status-banner";
 import { BudgetForm } from "@/components/forms/budget-form";
 import { RiskBadge } from "@/components/common/badges";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
-import { loadBudgetsPageData, createBudgetAction } from "@/app/budgets/data-actions";
+import { loadBudgetsPageData, createBudgetAction, deleteBudgetAction, updateBudgetAction } from "@/app/budgets/data-actions";
 import type { Client, ContractBudget, ContractProfileAllocation, Profile, SettingsCatalogEntry } from "@/types/domain";
 
 export type BudgetsPageClientProps = {
@@ -22,7 +24,7 @@ type BudgetRow = {
   id: string;
   code: string;
   name: string;
-  scopeLabel: string;
+  scopeCode: string;
   clientName: string;
   dateRange: string;
   quotedMinutes: number;
@@ -42,10 +44,14 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
   const [scopes, setScopes] = useState<SettingsCatalogEntry[]>([]);
   const [usedMinutes, setUsedMinutes] = useState(0);
   const [quotedMinutes, setQuotedMinutes] = useState(0);
+  const [unallocatedMinutes, setUnallocatedMinutes] = useState(0);
+  const [unallocatedCount, setUnallocatedCount] = useState(0);
   const [consumptionByContract, setConsumptionByContract] = useState<
     { contractId: string; quotedMinutes: number; usedMinutes: number; availableMinutes: number; consumptionPct: number }[]
   >([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ContractBudget | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -63,6 +69,8 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       setScopes(data.scopes);
       setUsedMinutes(data.usedMinutes);
       setQuotedMinutes(data.quotedMinutes);
+      setUnallocatedMinutes(data.unallocatedMinutes ?? 0);
+      setUnallocatedCount(data.unallocatedCount ?? 0);
       setConsumptionByContract(data.consumptionByContract);
       setLastSyncedAt(new Date().toISOString());
     } catch (e) {
@@ -83,16 +91,18 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
     () => scopes.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label })),
     [scopes],
   );
-  const scopeLabel = useMemo(() => {
-    const m = new Map(scopes.map((s) => [s.code, s.label]));
-    return (code: string) => m.get(code) ?? code;
-  }, [scopes]);
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]));
     return (id: string) => m.get(id) ?? id;
   }, [clients]);
 
   const budgetRows = useMemo<BudgetRow[]>(() => {
+    const toDateOnly = (value: string) => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return parsed.toISOString().slice(0, 10);
+    };
     const consumptionByContractId = new Map(consumptionByContract.map((row) => [row.contractId, row]));
     return contracts.map((contract) => {
       const contractAllocations = allocations.filter((allocation) => allocation.contractId === contract.id);
@@ -104,9 +114,9 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         id: contract.id,
         code: contract.code,
         name: contract.name,
-        scopeLabel: scopeLabel(contract.scope),
+        scopeCode: contract.scope,
         clientName: clientName(contract.clientId),
-        dateRange: `${contract.startDate} → ${contract.endDate}`,
+        dateRange: `${toDateOnly(contract.startDate)} → ${toDateOnly(contract.endDate)}`,
         quotedMinutes: quotedByRows,
         usedMinutes: used,
         availableMinutes: available,
@@ -116,13 +126,13 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         risk: budgetRiskLevel(quotedByRows, used),
       };
     });
-  }, [allocations, clientName, consumptionByContract, contracts, scopeLabel]);
+  }, [allocations, clientName, consumptionByContract, contracts]);
 
   const budgetColumns = useMemo<ColumnDef<BudgetRow>[]>(
     () => [
       { accessorKey: "code", header: "Código" },
       { accessorKey: "name", header: "Contrato" },
-      { accessorKey: "scopeLabel", header: "Ámbito" },
+      { accessorKey: "scopeCode", header: "Ámbito" },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "dateRange", header: "Vigencia" },
       {
@@ -144,8 +154,48 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         cell: ({ row }) => row.original.availableHoursDisplay,
       },
       { accessorKey: "risk", header: "Riesgo", cell: ({ row }) => <RiskBadge risk={row.original.risk} /> },
+      {
+        id: "actions",
+        header: "Acciones",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) =>
+          canWrite ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-secondary px-2.5 py-1 text-xs"
+                onClick={() => {
+                  const target = contracts.find((contract) => contract.id === row.original.id) ?? null;
+                  if (!target) return;
+                  setEditTarget(target);
+                  setEditOpen(true);
+                }}
+              >
+                Editar
+              </button>
+              <ConfirmDialog
+                label="Eliminar"
+                title="¿Eliminar contrato?"
+                onConfirm={() => {
+                  void (async () => {
+                    try {
+                      await deleteBudgetAction(row.original.id);
+                      toast.success("Contrato eliminado");
+                      await reload();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "No se pudo eliminar el contrato.");
+                    }
+                  })();
+                }}
+              />
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
     ],
-    [],
+    [canWrite, contracts, reload],
   );
 
   const openCreateModal = () => {
@@ -202,13 +252,26 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
         </article>
       </section>
+      {unallocatedCount > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-[2px] border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <span>
+            Hay {unallocatedCount} hora(s) sin asignación contractual ({(unallocatedMinutes / 60).toFixed(1)} h) para corregir.
+          </span>
+          <Link
+            href="/time-entries?contractStatus=unassigned"
+            className="inline-flex items-center rounded-[2px] border border-amber-500/60 px-2 py-1 font-medium text-amber-900 no-underline hover:bg-amber-100"
+          >
+            Ver listado de horas a corregir
+          </Link>
+        </div>
+      ) : null}
 
       {canWrite ? (
         <SettingsModal
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           title="Nuevo contrato"
-          description="Define vigencia, tarifa UF/hora y bolsa por perfil."
+          description="Define vigencia del contrato y la bolsa de horas por perfil."
         >
           {scopeOptions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Configura ámbitos (scopes) en Configuración antes de crear contratos.</p>
@@ -230,6 +293,56 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
               }}
             />
           )}
+        </SettingsModal>
+      ) : null}
+      {canWrite ? (
+        <SettingsModal
+          open={editOpen && Boolean(editTarget)}
+          onClose={() => {
+            setEditOpen(false);
+            setEditTarget(null);
+          }}
+          title="Editar contrato"
+          description={editTarget ? `Actualiza la configuración de «${editTarget.name}».` : "Edita contrato"}
+        >
+          {editTarget ? (
+            <BudgetForm
+              key={`edit-${editTarget.id}-${formKey}`}
+              clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+              scopes={scopeOptions}
+              profiles={profiles.map((profile) => ({ id: profile.id, name: profile.name }))}
+              submitLabel="Guardar cambios"
+              defaultValues={{
+                projectId: editTarget.projectId,
+                clientId: editTarget.clientId,
+                scope: editTarget.scope,
+                code: editTarget.code,
+                name: editTarget.name,
+                startDate: editTarget.startDate,
+                endDate: editTarget.endDate,
+                rateUfPerHour: editTarget.rateUfPerHour,
+                allocations:
+                  allocations
+                    .filter((allocation) => allocation.contractId === editTarget.id)
+                    .map((allocation) => ({
+                      profileId: allocation.profileId,
+                      quotedMinutes: allocation.quotedMinutes,
+                      rateUfPerHour: allocation.rateUfPerHour,
+                    })) ?? [],
+              }}
+              onSubmit={async (values) => {
+                try {
+                  await updateBudgetAction(editTarget.id, values);
+                  toast.success("Contrato actualizado");
+                  setEditOpen(false);
+                  setEditTarget(null);
+                  await reload();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
+                }
+              }}
+            />
+          ) : null}
         </SettingsModal>
       ) : null}
 

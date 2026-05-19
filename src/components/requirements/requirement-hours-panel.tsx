@@ -20,6 +20,7 @@ export type RequirementHoursRow = {
   durationDisplay: string;
   timeRange: string;
   taskDescription: string;
+  contractStatus: string;
 };
 
 export type HoursBreakdownItem = { label: string; hoursDisplay: string };
@@ -33,6 +34,7 @@ export function RequirementHoursPanel({
   users,
   requirements,
   contracts = [],
+  contractProfiles = [],
   categories,
   canPickAnyOwner,
 }: {
@@ -44,6 +46,7 @@ export function RequirementHoursPanel({
   users: { id: string; name: string }[];
   requirements: { id: string; title: string }[];
   contracts?: { id: string; label: string }[];
+  contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
@@ -62,6 +65,7 @@ export function RequirementHoursPanel({
       { accessorKey: "date", header: "Fecha" },
       { accessorKey: "userName", header: "Persona" },
       { accessorKey: "profileName", header: "Perfil" },
+      { accessorKey: "contractStatus", header: "Perfil contractual" },
       { accessorKey: "categoryLabel", header: "Categoría" },
       {
         accessorKey: "durationDisplay",
@@ -96,6 +100,7 @@ export function RequirementHoursPanel({
                 users={users}
                 requirements={requirements}
                 contracts={contracts}
+                contractProfiles={contractProfiles}
                 categories={categories}
                 canEdit={row.original.canEdit}
                 canPickAnyOwner={canPickAnyOwner}
@@ -108,7 +113,7 @@ export function RequirementHoursPanel({
         },
       },
     ],
-    [canPickAnyOwner, categories, contracts, requirements, users],
+    [canPickAnyOwner, categories, contractProfiles, contracts, requirements, users],
   );
 
   if (rows.length === 0) {

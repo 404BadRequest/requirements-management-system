@@ -94,6 +94,7 @@ function mapTimeEntry(r: Row): TimeEntry {
     projectId: String(r.project_id),
     requirementId: r.requirement_id ? String(r.requirement_id) : null,
     contractId: r.contract_id ? String(r.contract_id) : null,
+    contractProfileId: r.contract_profile_id ? String(r.contract_profile_id) : null,
     category: String(r.category),
     taskDescription: String(r.task_description),
     date: String(r.date),
@@ -477,14 +478,15 @@ export class PostgresDataProvider implements AppDataProvider {
     const duration = calculateDurationMinutes(input.startTime, input.endTime);
     const { rows } = await queryPg<Row>(
       `insert into rms_time_entries
-       (id, project_id, requirement_id, contract_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       (id, project_id, requirement_id, contract_id, contract_profile_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        returning *`,
       [
         id,
         input.projectId,
         input.requirementId,
         input.contractId ?? null,
+        input.contractProfileId ?? null,
         input.category,
         input.taskDescription,
         input.date,
@@ -522,15 +524,16 @@ export class PostgresDataProvider implements AppDataProvider {
        set project_id = $2,
            requirement_id = $3,
            contract_id = $4,
-           category = $5,
-           task_description = $6,
-           date = $7,
-           start_time = $8,
-           end_time = $9,
-           duration_minutes = $10,
-           user_id = $11,
-           observations = $12,
-           updated_at = $13
+           contract_profile_id = $5,
+           category = $6,
+           task_description = $7,
+           date = $8,
+           start_time = $9,
+           end_time = $10,
+           duration_minutes = $11,
+           user_id = $12,
+           observations = $13,
+           updated_at = $14
        where id = $1
        returning *`,
       [
@@ -538,6 +541,7 @@ export class PostgresDataProvider implements AppDataProvider {
         patch.projectId,
         patch.requirementId,
         input.contractId === undefined ? current.contractId : input.contractId,
+        input.contractProfileId === undefined ? current.contractProfileId : input.contractProfileId,
         patch.category,
         patch.taskDescription,
         patch.date,

@@ -19,6 +19,7 @@ export type TimeEntryRow = {
   durationMinutes: number;
   durationLabel: string;
   clientLabel: string;
+  contractStatus: string;
 };
 
 export function TimeEntriesTable({
@@ -26,6 +27,7 @@ export function TimeEntriesTable({
   users,
   requirements,
   contracts = [],
+  contractProfiles = [],
   categories,
   canPickAnyOwner,
 }: {
@@ -33,6 +35,7 @@ export function TimeEntriesTable({
   users: { id: string; name: string }[];
   requirements: { id: string; title: string }[];
   contracts?: { id: string; label: string }[];
+  contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
@@ -50,6 +53,7 @@ export function TimeEntriesTable({
       { accessorKey: "date", header: "Fecha" },
       { accessorKey: "userName", header: "Encargado" },
       { accessorKey: "category", header: "Categoría" },
+      { accessorKey: "contractStatus", header: "Estado contractual" },
       {
         accessorKey: "durationMinutes",
         header: "Duración",
@@ -73,6 +77,7 @@ export function TimeEntriesTable({
                 users={users}
                 requirements={requirements}
                 contracts={contracts}
+                contractProfiles={contractProfiles}
                 categories={categories}
                 canEdit={Boolean(row.original.canEdit)}
                 canPickAnyOwner={canPickAnyOwner}
@@ -85,7 +90,7 @@ export function TimeEntriesTable({
         },
       },
     ],
-    [canPickAnyOwner, categories, contracts, requirements, users],
+    [canPickAnyOwner, categories, contractProfiles, contracts, requirements, users],
   );
 
   return (

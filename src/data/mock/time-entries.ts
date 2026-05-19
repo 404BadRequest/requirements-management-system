@@ -32,6 +32,7 @@ export const timeEntriesMock: TimeEntry[] = Array.from({ length: 210 }, (_, inde
     projectId: "proj-main",
     requirementId: withoutRequirement ? null : requirement.id,
     contractId: null,
+    contractProfileId: null,
     category: timeEntryCategoryCodes[index % timeEntryCategoryCodes.length],
     taskDescription: withoutRequirement ? "Soporte operativo transversal" : `Trabajo sobre ${requirement.title}`,
     date: date.toISOString().slice(0, 10),

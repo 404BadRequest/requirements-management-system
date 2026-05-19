@@ -58,6 +58,8 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
   const requirement = entry.requirementId ? requirements.find((r) => r.id === entry.requirementId) : undefined;
   const client = requirement ? clients.find((c) => c.id === requirement.clientId) : undefined;
   const project = projects.find((p) => p.id === entry.projectId);
+  const contract = entry.contractId ? contracts.find((row) => row.id === entry.contractId) : undefined;
+  const contractProfile = entry.contractProfileId ? profiles.find((row) => row.id === entry.contractProfileId) : undefined;
   const categoryLabel = catalogLabel(categories, entry.category);
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   const canPickAnyOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
@@ -91,6 +93,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
               users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
               requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
               contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
+              contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
               categories={categories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canEdit={canEditEntry}
               canPickAnyOwner={canPickAnyOwner}
@@ -102,7 +105,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Fecha contable</h3>
           <p className="mt-2 font-mono text-sm tabular-nums text-foreground">{entry.date}</p>
@@ -134,6 +137,13 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Perfil de tarifa</h3>
           <p className="mt-2 text-lg font-semibold text-foreground">{profile?.name ?? "—"}</p>
+        </article>
+        <article className="surface-card p-4">
+          <h3 className="text-sm font-medium text-muted-foreground">Perfil contractual</h3>
+          <p className="mt-2 text-lg font-semibold text-foreground">
+            {!entry.contractId ? "Sin contrato" : contractProfile?.name ?? "Sin asignación contractual"}
+          </p>
+          {contract ? <p className="mt-1 text-xs text-muted-foreground">{contract.code} · {contract.name}</p> : null}
         </article>
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Proyecto</h3>

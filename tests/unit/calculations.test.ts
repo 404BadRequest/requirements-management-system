@@ -119,6 +119,7 @@ describe("calculations", () => {
         projectId: "p1",
         requirementId: "r1",
         contractId: null,
+        contractProfileId: null,
         category: "Proyecto",
         taskDescription: "x",
         date: "2026-01-01",

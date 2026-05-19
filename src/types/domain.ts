@@ -91,6 +91,7 @@ export interface TimeEntry {
   projectId: string;
   requirementId: string | null;
   contractId: string | null;
+  contractProfileId: string | null;
   /** Código de categoría según catálogo */
   category: string;
   taskDescription: string;

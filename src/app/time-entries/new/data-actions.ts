@@ -6,6 +6,9 @@ import {
   deleteTimeEntry,
   getCatalogByKind,
   getContractBudgets,
+  getContractProfileAllocations,
+  getFinancialReferenceRates,
+  getProfiles,
   getRequirements,
   getTimeEntryById,
   getUsers,
@@ -46,6 +49,8 @@ export async function loadNewTimeEntryFormData() {
       ? [{ id: me.id, name: me.name }]
       : [{ id: resolvedId, name: user.name || user.email }];
 
+  const profiles = await getProfiles();
+
   return {
     users: encargadoOptions,
     encargadoLocked: !pickAny,
@@ -54,9 +59,76 @@ export async function loadNewTimeEntryFormData() {
     contracts: contracts
       .filter((contract) => contract.active)
       .map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` })),
+    contractProfiles: profiles.map((profile) => ({ id: profile.id, label: profile.name })),
     canOverrideContract: pickAny,
+    canOverrideContractProfile: pickAny,
     categories: catRows.filter((r) => r.active).map((r) => ({ code: r.code, label: formatCatalogLabel(r.code, r.label) })),
   };
+}
+
+function profileHourlyRateInUf(input: {
+  hourlyRate: number;
+  rateCurrency: string;
+  ufToClp: number;
+  usdToClp: number;
+}): number | null {
+  const currency = input.rateCurrency.trim().toUpperCase();
+  if (currency === "UF") return input.hourlyRate;
+  if (currency === "CLP") return input.ufToClp > 0 ? input.hourlyRate / input.ufToClp : null;
+  if (currency === "USD") return input.ufToClp > 0 ? (input.hourlyRate * input.usdToClp) / input.ufToClp : null;
+  return null;
+}
+
+function resolveContractProfileForTimeEntry(input: {
+  contractId: string | null;
+  manualProfileId: string | null;
+  canOverride: boolean;
+  workerUserId: string;
+  users: Awaited<ReturnType<typeof getUsers>>;
+  profiles: Awaited<ReturnType<typeof getProfiles>>;
+  allocations: Awaited<ReturnType<typeof getContractProfileAllocations>>;
+  contracts: Awaited<ReturnType<typeof getContractBudgets>>;
+  ufToClp: number;
+  usdToClp: number;
+}): string | null {
+  if (!input.contractId) return null;
+  const contract = input.contracts.find((row) => row.id === input.contractId);
+  if (!contract) return null;
+  const contractAllocations = input.allocations.filter((row) => row.contractId === input.contractId);
+  if (contractAllocations.length === 0) return null;
+
+  if (input.canOverride && input.manualProfileId) {
+    const found = contractAllocations.some((row) => row.profileId === input.manualProfileId);
+    if (!found) {
+      throw new Error("El perfil contractual seleccionado no está cotizado en este contrato.");
+    }
+    return input.manualProfileId;
+  }
+
+  const worker = input.users.find((row) => row.id === input.workerUserId);
+  if (!worker) return null;
+  const direct = contractAllocations.find((row) => row.profileId === worker.profileId);
+  if (direct) return direct.profileId;
+
+  const workerProfile = input.profiles.find((row) => row.id === worker.profileId);
+  if (!workerProfile) return null;
+  const workerRateUf = profileHourlyRateInUf({
+    hourlyRate: workerProfile.hourlyRate,
+    rateCurrency: workerProfile.rateCurrency,
+    ufToClp: input.ufToClp,
+    usdToClp: input.usdToClp,
+  });
+  if (!workerRateUf || workerRateUf <= 0) return null;
+
+  const nearest = contractAllocations
+    .map((row) => {
+      const targetUf = row.rateUfPerHour ?? contract.rateUfPerHour;
+      if (!targetUf || targetUf <= 0) return null;
+      return { profileId: row.profileId, distance: Math.abs(targetUf - workerRateUf) };
+    })
+    .filter((row): row is { profileId: string; distance: number } => Boolean(row))
+    .sort((a, b) => a.distance - b.distance)[0];
+  return nearest?.profileId ?? null;
 }
 
 export async function createTimeEntryAction(input: TimeEntryInput) {
@@ -68,7 +140,13 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const [requirements, contracts] = await Promise.all([getRequirements(), getContractBudgets()]);
+  const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
+    getRequirements(),
+    getContractBudgets(),
+    getContractProfileAllocations(),
+    getProfiles(),
+    getFinancialReferenceRates(),
+  ]);
   const payload = { ...input };
   if (!canPickEncargadoForOthers(user.role)) {
     payload.userId = resolvedId;
@@ -89,6 +167,18 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
     date: payload.date,
     requirements,
     contracts,
+  });
+  payload.contractProfileId = resolveContractProfileForTimeEntry({
+    contractId: payload.contractId,
+    manualProfileId: canPickEncargadoForOthers(user.role) ? payload.contractProfileId : null,
+    canOverride: canPickEncargadoForOthers(user.role),
+    workerUserId: payload.userId,
+    users: activeUsers,
+    profiles,
+    allocations,
+    contracts,
+    ufToClp: referenceRates.ufToClp,
+    usdToClp: referenceRates.usdToClp,
   });
   const created = await createTimeEntry(payload);
   revalidatePath("/time-entries");
@@ -114,7 +204,13 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const [requirements, contracts] = await Promise.all([getRequirements(), getContractBudgets()]);
+  const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
+    getRequirements(),
+    getContractBudgets(),
+    getContractProfileAllocations(),
+    getProfiles(),
+    getFinancialReferenceRates(),
+  ]);
   const pickAny = canPickEncargadoForOthers(user.role);
 
   if (!pickAny && current.userId !== resolvedId) {
@@ -141,6 +237,18 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
     date: payload.date,
     requirements,
     contracts,
+  });
+  payload.contractProfileId = resolveContractProfileForTimeEntry({
+    contractId: payload.contractId,
+    manualProfileId: pickAny ? payload.contractProfileId : current.contractProfileId,
+    canOverride: pickAny,
+    workerUserId: payload.userId,
+    users: activeUsers,
+    profiles,
+    allocations,
+    contracts,
+    ufToClp: referenceRates.ufToClp,
+    usdToClp: referenceRates.usdToClp,
   });
 
   const updated = await updateTimeEntry(id, payload);

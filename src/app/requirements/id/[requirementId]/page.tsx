@@ -139,6 +139,11 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         date: e.date,
         userName: user?.name ?? e.userId,
         profileName: profile?.name ?? "—",
+        contractStatus: e.contractId
+          ? e.contractProfileId
+            ? profileById.get(e.contractProfileId)?.name ?? e.contractProfileId
+            : "Sin asignación contractual"
+          : "Sin contrato",
         categoryLabel: catLabel(e.category),
         durationDisplay: minutesToHoursDisplay(e.durationMinutes),
         timeRange: `${e.startTime}–${e.endTime}`,
@@ -255,6 +260,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
           requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
           contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
+          contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
           categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
           canPickAnyOwner={canManageAnyTimeEntry}
         />

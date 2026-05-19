@@ -15,10 +15,12 @@ function NewTimeEntryModalForm({
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [requirements, setRequirements] = useState<{ id: string; title: string }[]>([]);
   const [contracts, setContracts] = useState<{ id: string; label: string }[]>([]);
+  const [contractProfiles, setContractProfiles] = useState<{ id: string; label: string }[]>([]);
   const [categories, setCategories] = useState<{ code: string; label: string }[]>([]);
   const [defaultUserId, setDefaultUserId] = useState<string | undefined>();
   const [encargadoLocked, setEncargadoLocked] = useState(false);
   const [canOverrideContract, setCanOverrideContract] = useState(false);
+  const [canOverrideContractProfile, setCanOverrideContractProfile] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,10 +31,12 @@ function NewTimeEntryModalForm({
         setUsers(data.users);
         setRequirements(data.requirements);
         setContracts(data.contracts);
+        setContractProfiles(data.contractProfiles);
         setCategories(data.categories);
         setDefaultUserId(data.defaultUserId);
         setEncargadoLocked(data.encargadoLocked);
         setCanOverrideContract(data.canOverrideContract);
+        setCanOverrideContractProfile(data.canOverrideContractProfile);
         setLoadError(null);
       })
       .catch((e: unknown) => {
@@ -58,7 +62,9 @@ function NewTimeEntryModalForm({
       categories={categories}
       requirements={requirements}
       contracts={contracts}
+      contractProfiles={contractProfiles}
       canOverrideContract={canOverrideContract}
+      canOverrideContractProfile={canOverrideContractProfile}
       defaultUserId={defaultUserId}
       encargadoLocked={encargadoLocked}
       onSubmit={async (values) => {

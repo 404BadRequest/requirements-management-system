@@ -9,25 +9,46 @@ export const BudgetForm = ({
   clients,
   scopes,
   profiles,
+  defaultValues,
+  submitLabel = "Guardar contrato",
   onSubmit,
 }: {
   clients: { id: string; name: string }[];
   scopes: { code: string; label: string }[];
   profiles: { id: string; name: string }[];
+  defaultValues?: Partial<BudgetInput>;
+  submitLabel?: string;
   onSubmit: (values: BudgetInput) => Promise<void> | void;
 }) => {
+  const normalizeDate = (value: string): string => {
+    if (!value?.trim()) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const toDateInputValue = (value: string | undefined): string => {
+    if (!value?.trim()) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toISOString().slice(0, 10);
+  };
+
   const form = useForm<BudgetInput>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       projectId: "proj-main",
       clientId: clients[0]?.id ?? "",
       scope: scopes[0]?.code ?? "Proyecto",
-      code: "",
+      code: "__AUTO__",
       name: "",
       startDate: new Date().toISOString().slice(0, 10),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 12)).toISOString().slice(0, 10),
       rateUfPerHour: 1,
       allocations: [{ profileId: profiles[0]?.id ?? "", quotedMinutes: 600, rateUfPerHour: null }],
+      ...defaultValues,
     },
   });
   const allocations = useFieldArray({
@@ -37,8 +58,23 @@ export const BudgetForm = ({
   const isSubmitting = form.formState.isSubmitting;
 
   return (
-    <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
+    <form
+      className="grid gap-3"
+      onSubmit={form.handleSubmit(async (values) => {
+        await onSubmit({
+          ...values,
+          startDate: normalizeDate(values.startDate),
+          endDate: normalizeDate(values.endDate),
+          allocations: values.allocations.map((allocation) => ({
+            ...allocation,
+            quotedMinutes: Math.max(1, Math.round(allocation.quotedMinutes)),
+          })),
+        });
+      })}
+    >
       <input type="hidden" {...form.register("projectId")} />
+      <input type="hidden" {...form.register("code")} />
+      <input type="hidden" {...form.register("rateUfPerHour", { valueAsNumber: true })} />
       <FormField label="Cliente">
         <select className="field-control w-full" {...form.register("clientId")}>
           {clients.map((client) => (
@@ -52,28 +88,32 @@ export const BudgetForm = ({
         <select className="field-control w-full" {...form.register("scope")}>
           {scopes.map((scope) => (
             <option key={scope.code} value={scope.code}>
-              {scope.label}
+              {scope.code}
             </option>
           ))}
         </select>
       </FormField>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Código contrato">
-          <input type="text" className="field-control w-full" {...form.register("code")} />
-        </FormField>
+      <div className="grid gap-3 sm:grid-cols-1">
         <FormField label="Nombre contrato">
           <input type="text" className="field-control w-full" {...form.register("name")} />
         </FormField>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Inicio vigencia">
-          <input type="date" className="field-control w-full" {...form.register("startDate")} />
+          <input
+            type="date"
+            className="field-control w-full"
+            value={toDateInputValue(form.watch("startDate"))}
+            onChange={(event) => form.setValue("startDate", event.target.value)}
+          />
         </FormField>
         <FormField label="Término vigencia">
-          <input type="date" className="field-control w-full" {...form.register("endDate")} />
-        </FormField>
-        <FormField label="UF por hora">
-          <input type="number" step="0.01" className="field-control w-full" {...form.register("rateUfPerHour", { valueAsNumber: true })} />
+          <input
+            type="date"
+            className="field-control w-full"
+            value={toDateInputValue(form.watch("endDate"))}
+            onChange={(event) => form.setValue("endDate", event.target.value)}
+          />
         </FormField>
       </div>
       <div className="rounded-[2px] border border-border/70 bg-muted/20 p-3">
@@ -95,7 +135,7 @@ export const BudgetForm = ({
         </div>
         <div className="space-y-2">
           {allocations.fields.map((field, index) => (
-            <div key={field.id} className="grid gap-2 sm:grid-cols-[1fr_8rem_8rem_auto]">
+            <div key={field.id} className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]">
               <select className="field-control w-full" {...form.register(`allocations.${index}.profileId`)}>
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
@@ -106,21 +146,15 @@ export const BudgetForm = ({
               <input
                 type="number"
                 className="field-control w-full"
-                placeholder="Min"
-                {...form.register(`allocations.${index}.quotedMinutes`, { valueAsNumber: true })}
-              />
-              <input
-                type="number"
-                step="0.01"
-                className="field-control w-full"
-                placeholder="UF/h"
-                value={form.watch(`allocations.${index}.rateUfPerHour`) ?? ""}
-                onChange={(event) =>
-                  form.setValue(
-                    `allocations.${index}.rateUfPerHour`,
-                    event.target.value === "" ? null : Number(event.target.value),
-                  )
-                }
+                placeholder="Horas"
+                min={0.1}
+                step={0.1}
+                value={((form.watch(`allocations.${index}.quotedMinutes`) ?? 0) / 60).toString()}
+                onChange={(event) => {
+                  const hours = Number(event.target.value);
+                  const minutes = Number.isFinite(hours) ? Math.round(hours * 60) : 0;
+                  form.setValue(`allocations.${index}.quotedMinutes`, minutes);
+                }}
               />
               <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => allocations.remove(index)}>
                 Quitar
@@ -136,7 +170,7 @@ export const BudgetForm = ({
             Guardando...
           </span>
         ) : (
-          "Guardar presupuesto"
+          submitLabel
         )}
       </button>
     </form>

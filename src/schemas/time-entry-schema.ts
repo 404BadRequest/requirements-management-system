@@ -7,6 +7,7 @@ export const timeEntrySchema = z
     projectId: z.string().min(1),
     requirementId: z.string().nullable(),
     contractId: z.string().nullable(),
+    contractProfileId: z.string().nullable(),
     category: z.string().min(1, "Categoría requerida"),
     taskDescription: z.string().min(3, "Tarea requerida"),
     date: z.string().min(1, "Fecha obligatoria"),
