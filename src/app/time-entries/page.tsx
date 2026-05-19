@@ -20,7 +20,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function TimeEntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; contractStatus?: string; nueva?: string }>;
+  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string }>;
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
@@ -28,7 +28,7 @@ export default async function TimeEntriesPage({
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
-  const { clientId = "", contractStatus = "", nueva } = await searchParams;
+  const { clientId = "", contractId = "", contractStatus = "", nueva } = await searchParams;
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
   const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
@@ -66,8 +66,18 @@ export default async function TimeEntriesPage({
           .filter((value): value is string => Boolean(value)),
       )
     : null;
+  const ownContractIds = ownScope
+    ? new Set(
+        entries
+          .filter((entry) => entry.userId === currentDirectoryUserId)
+          .map((entry) => entry.contractId)
+          .filter((value): value is string => Boolean(value)),
+      )
+    : null;
   const activeClients = clients.filter((c) => c.active && (!ownClientIds || ownClientIds.has(c.id)));
+  const activeContracts = contracts.filter((contract) => contract.active && (!ownContractIds || ownContractIds.has(contract.id)));
   const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
+  const selectedContractId = activeContracts.some((c) => c.id === contractId) ? contractId : "";
   const selectedContractStatus = contractStatus === "unassigned" ? "unassigned" : "";
 
   const filteredEntries = entries.filter((entry) => {
@@ -75,6 +85,9 @@ export default async function TimeEntriesPage({
     if (selectedClientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
       if (requirement?.clientId !== selectedClientId) return false;
+    }
+    if (selectedContractId && entry.contractId !== selectedContractId) {
+      return false;
     }
     if (selectedContractStatus === "unassigned") {
       if (!entry.contractId) return false;
@@ -88,6 +101,7 @@ export default async function TimeEntriesPage({
   const exportHref = (() => {
     const q = new URLSearchParams();
     if (selectedClientId) q.set("clientId", selectedClientId);
+    if (selectedContractId) q.set("contractId", selectedContractId);
     if (selectedContractStatus) q.set("contractStatus", selectedContractStatus);
     const s = q.toString();
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
@@ -131,6 +145,19 @@ export default async function TimeEntriesPage({
             {activeClients.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex min-w-[12rem] flex-col gap-2">
+          <label htmlFor="contract-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Filtrar por contrato
+          </label>
+          <select id="contract-filter" name="contractId" defaultValue={selectedContractId} className="field-control w-full max-w-md">
+            <option value="">Todos los contratos</option>
+            {activeContracts.map((contract) => (
+              <option key={contract.id} value={contract.id}>
+                {contract.code} · {contract.name}
               </option>
             ))}
           </select>

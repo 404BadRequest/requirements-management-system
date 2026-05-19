@@ -22,7 +22,7 @@ export function RequirementEditModal({
 }: {
   requirement: Requirement;
   clients: { id: string; name: string }[];
-  contracts: { id: string; label: string }[];
+  contracts: { id: string; clientId: string; label: string }[];
   statusOptions: { code: string; label: string }[];
   priorityOptions: { code: string; label: string }[];
   owners: { id: string; name: string }[];

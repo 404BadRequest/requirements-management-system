@@ -53,7 +53,7 @@ function NewRequirementModalBody({
   statusOpts: { code: string; label: string }[];
   priorityOpts: { code: string; label: string }[];
   owners: { id: string; name: string }[];
-  contracts: { id: string; label: string }[];
+  contracts: { id: string; clientId: string; label: string }[];
   onCreated: () => void;
 }) {
   if (!canShowForm) {
@@ -102,7 +102,7 @@ export function RequirementsPageClient({
   const [clients, setClients] = useState<Client[]>([]);
   const [statusCatalog, setStatusCatalog] = useState<SettingsCatalogEntry[]>([]);
   const [priorityCatalog, setPriorityCatalog] = useState<SettingsCatalogEntry[]>([]);
-  const [contracts, setContracts] = useState<{ id: string; label: string }[]>([]);
+  const [contracts, setContracts] = useState<{ id: string; clientId: string; label: string }[]>([]);
   const [newModalOpen, setNewModalOpen] = useState(Boolean(autoOpenNewModal && canWrite));
   const [newFormKey, setNewFormKey] = useState(0);
   const [listLoading, setListLoading] = useState(true);

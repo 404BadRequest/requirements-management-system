@@ -130,8 +130,24 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
 
   const budgetColumns = useMemo<ColumnDef<BudgetRow>[]>(
     () => [
-      { accessorKey: "code", header: "Código" },
-      { accessorKey: "name", header: "Contrato" },
+      {
+        accessorKey: "code",
+        header: "Código",
+        cell: ({ row }) => (
+          <Link href={`/budgets/${row.original.id}`} className="font-mono text-xs text-primary hover:underline">
+            {row.original.code}
+          </Link>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "Contrato",
+        cell: ({ row }) => (
+          <Link href={`/budgets/${row.original.id}`} className="font-medium text-primary hover:underline">
+            {row.original.name}
+          </Link>
+        ),
+      },
       { accessorKey: "scopeCode", header: "Ámbito" },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "dateRange", header: "Vigencia" },

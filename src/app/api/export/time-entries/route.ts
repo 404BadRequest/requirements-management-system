@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getClients, getContractBudgets, getProfiles, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { getClients, getContractBudgets, getContractProfileAllocations, getProfiles, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
@@ -14,27 +14,38 @@ export async function GET(req: NextRequest) {
   }
 
   const clientId = req.nextUrl.searchParams.get("clientId")?.trim() ?? "";
+  const contractId = req.nextUrl.searchParams.get("contractId")?.trim() ?? "";
+  const contractStatus = req.nextUrl.searchParams.get("contractStatus")?.trim() ?? "";
   const projectId = req.nextUrl.searchParams.get("projectId")?.trim() ?? "";
 
-  const [entries, users, requirements, clients, contracts, profiles] = await Promise.all([
+  const [entries, users, requirements, clients, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
     getUsers(),
     getRequirements(),
     getClients(),
     getContractBudgets(),
     getProfiles(),
+    getContractProfileAllocations(),
   ]);
   const userMap = new Map(users.map((u) => [u.id, u.name]));
   const requirementMap = new Map(requirements.map((r) => [r.id, r]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const contractMap = new Map(contracts.map((contract) => [contract.id, contract]));
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile.name]));
+  const allocationKeySet = new Set(contractAllocations.map((allocation) => `${allocation.contractId}::${allocation.profileId}`));
   const ownScope = user?.role === "Contributor";
   const currentDirectoryUserId = user ? resolveDirectoryUserIdForSession(user, users) : "";
 
   const filtered = entries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
     if (projectId && entry.projectId !== projectId) return false;
+    if (contractId && entry.contractId !== contractId) return false;
+    if (contractStatus === "unassigned") {
+      if (!entry.contractId) return false;
+      if (!entry.contractProfileId) return true;
+      const isProfileQuoted = allocationKeySet.has(`${entry.contractId}::${entry.contractProfileId}`);
+      if (isProfileQuoted) return false;
+    }
     if (clientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
       if (requirement?.clientId !== clientId) return false;

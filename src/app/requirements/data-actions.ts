@@ -28,7 +28,7 @@ export async function loadRequirementsPageData(): Promise<{
   requirements: Requirement[];
   users: { id: string; name: string }[];
   clients: Client[];
-  contracts: { id: string; label: string }[];
+  contracts: { id: string; clientId: string; label: string }[];
   statusCatalog: SettingsCatalogEntry[];
   priorityCatalog: SettingsCatalogEntry[];
 }> {
@@ -55,7 +55,7 @@ export async function loadRequirementsPageData(): Promise<{
     clients: clientsData,
     contracts: contractsData
       .filter((contract) => contract.active)
-      .map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` })),
+      .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` })),
     statusCatalog: statuses,
     priorityCatalog: priorities,
   };

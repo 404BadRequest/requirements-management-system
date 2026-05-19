@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { requirementSchema, type RequirementInput } from "@/schemas/requirement-schema";
 import { FormField } from "@/components/forms/form-field";
@@ -18,7 +19,7 @@ export const RequirementForm = ({
   onSubmit,
 }: {
   clients: { id: string; name: string }[];
-  contracts?: { id: string; label: string }[];
+  contracts?: { id: string; clientId: string; label: string }[];
   statusOptions: { code: string; label: string }[];
   priorityOptions: { code: string; label: string }[];
   defaultValues?: Partial<RequirementInput>;
@@ -44,6 +45,20 @@ export const RequirementForm = ({
     },
   });
   const isSubmitting = form.formState.isSubmitting;
+  const selectedClientId = form.watch("clientId");
+  const selectedContractId = form.watch("contractId");
+  const filteredContracts = useMemo(
+    () => contracts.filter((contract) => contract.clientId === selectedClientId),
+    [contracts, selectedClientId],
+  );
+
+  useEffect(() => {
+    if (!selectedContractId) return;
+    const isValidForClient = filteredContracts.some((contract) => contract.id === selectedContractId);
+    if (!isValidForClient) {
+      form.setValue("contractId", null);
+    }
+  }, [filteredContracts, form, selectedContractId]);
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
@@ -68,16 +83,19 @@ export const RequirementForm = ({
       <FormField label="Contrato (opcional)">
         <select
           className="field-control w-full"
-          value={form.watch("contractId") ?? ""}
+          value={selectedContractId ?? ""}
           onChange={(event) => form.setValue("contractId", event.target.value || null)}
         >
           <option value="">Sin contrato específico</option>
-          {contracts.map((contract) => (
+          {filteredContracts.map((contract) => (
             <option key={contract.id} value={contract.id}>
               {contract.label}
             </option>
           ))}
         </select>
+        {selectedClientId && filteredContracts.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No hay contratos activos para el cliente seleccionado.</p>
+        ) : null}
       </FormField>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Prioridad">

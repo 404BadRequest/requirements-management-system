@@ -206,7 +206,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           <RequirementEditModal
             requirement={requirement}
             clients={clients.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}
-            contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
+            contracts={contracts
+              .filter((contract) => contract.active)
+              .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
             statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
             priorityOptions={requirementPriorities.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label }))}
             owners={users.map((u) => ({ id: u.id, name: u.name }))}
