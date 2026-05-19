@@ -31,6 +31,22 @@ type CorrectionRow = {
   status: string;
 };
 
+type TopRiskProfileRow = {
+  profileId: string;
+  profileName: string;
+  consumptionPct: number;
+  usedMinutes: number;
+  risk: "verde" | "amarillo" | "rojo";
+};
+
+type TopRequirementRow = {
+  requirementId: string | null;
+  requirementTitle: string;
+  equivalentMinutesUsed: number;
+  equivalentHoursLabel: string;
+  pctOfContractUsed: number;
+};
+
 export function ContractDetailPanel({
   quotedMinutes,
   usedMinutes,
@@ -46,6 +62,20 @@ export function ContractDetailPanel({
   categories,
   canPickAnyOwner,
   contractId,
+  elapsedContractPct,
+  expectedMinutesByDate,
+  deviationMinutes,
+  deviationPct,
+  deviationRisk,
+  misallocationPct,
+  misallocationRisk,
+  burnRateMinutesPerWeek,
+  estimatedDepletionDate,
+  daysToDepletion,
+  topRiskProfiles,
+  topRequirementRows,
+  contractHealthScore,
+  contractHealthRisk,
 }: {
   quotedMinutes: number;
   usedMinutes: number;
@@ -61,6 +91,20 @@ export function ContractDetailPanel({
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
   contractId: string;
+  elapsedContractPct: number;
+  expectedMinutesByDate: number;
+  deviationMinutes: number;
+  deviationPct: number;
+  deviationRisk: "verde" | "amarillo" | "rojo";
+  misallocationPct: number;
+  misallocationRisk: "verde" | "amarillo" | "rojo";
+  burnRateMinutesPerWeek: number;
+  estimatedDepletionDate: string | null;
+  daysToDepletion: number | null;
+  topRiskProfiles: TopRiskProfileRow[];
+  topRequirementRows: TopRequirementRow[];
+  contractHealthScore: number;
+  contractHealthRisk: "verde" | "amarillo" | "rojo";
 }) {
   const allocationColumns = useMemo<ColumnDef<ProfileAllocationRow>[]>(
     () => [
@@ -122,8 +166,113 @@ export function ContractDetailPanel({
     [canPickAnyOwner, categories, contractProfiles, contracts, requirements, users],
   );
 
+  const topRequirementColumns = useMemo<ColumnDef<TopRequirementRow>[]>(
+    () => [
+      {
+        accessorKey: "requirementTitle",
+        header: "Requerimiento",
+        cell: ({ row }) =>
+          row.original.requirementId ? (
+            <Link href={`/requirements/id/${row.original.requirementId}`} className="font-medium text-primary hover:underline">
+              {row.original.requirementTitle}
+            </Link>
+          ) : (
+            <span>{row.original.requirementTitle}</span>
+          ),
+      },
+      {
+        accessorKey: "equivalentMinutesUsed",
+        header: "Horas equivalentes",
+        meta: { align: "right" },
+        cell: ({ row }) => row.original.equivalentHoursLabel,
+      },
+      {
+        accessorKey: "pctOfContractUsed",
+        header: "% uso contrato",
+        meta: { align: "right" },
+        cell: ({ row }) => `${row.original.pctOfContractUsed.toFixed(1)}%`,
+      },
+    ],
+    [],
+  );
+
+  const deviationHoursLabel = `${Math.abs(deviationMinutes / 60).toFixed(1)} h`;
+  const deviationDirection = deviationMinutes >= 0 ? "sobreconsumo" : "bajo plan";
+  const elapsedContractLabel = `${(elapsedContractPct * 100).toFixed(1)}% de vigencia`;
+  const projectionLabel =
+    estimatedDepletionDate && daysToDepletion !== null
+      ? `${estimatedDepletionDate} (${daysToDepletion} días)`
+      : "Sin datos suficientes";
+  const topRequirementLead = topRequirementRows[0];
+
   return (
     <div className="space-y-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <p className="text-xs text-primary">Salud del contrato</p>
+          <p className="text-2xl font-semibold">{contractHealthScore}/100</p>
+          <div className="mt-1">
+            <RiskBadge risk={contractHealthRisk} />
+          </div>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">Desviación vs plan</p>
+          <p className="text-2xl font-semibold">{deviationHoursLabel}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {deviationDirection} · {deviationPct.toFixed(1)}% · {elapsedContractLabel}
+          </p>
+          <div className="mt-1">
+            <RiskBadge risk={deviationRisk} />
+          </div>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">Proyección de agotamiento</p>
+          <p className="text-lg font-semibold">{projectionLabel}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Velocidad: {(burnRateMinutesPerWeek / 60).toFixed(1)} h/semana</p>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">Horas mal asignadas</p>
+          <p className="text-2xl font-semibold">{(unallocatedMinutes / 60).toFixed(1)} h</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {unallocatedCount} registro(s) · {misallocationPct.toFixed(1)}% del consumo
+          </p>
+          <div className="mt-1">
+            <RiskBadge risk={misallocationRisk} />
+          </div>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">Cobertura por perfil (top riesgo)</p>
+          {topRiskProfiles.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-sm">
+              {topRiskProfiles.map((row) => (
+                <li key={row.profileId} className="flex items-center justify-between gap-2">
+                  <span className="truncate">{row.profileName}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="tabular-nums text-muted-foreground">{row.consumptionPct.toFixed(1)}%</span>
+                    <RiskBadge risk={row.risk} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">Sin datos de cobertura por perfil.</p>
+          )}
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">Top requerimiento consumidor</p>
+          {topRequirementLead ? (
+            <>
+              <p className="mt-1 line-clamp-2 text-sm font-semibold">{topRequirementLead.requirementTitle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {topRequirementLead.equivalentHoursLabel} · {topRequirementLead.pctOfContractUsed.toFixed(1)}% del uso
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">Sin consumo asociado a requerimientos.</p>
+          )}
+        </article>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-3">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas cotizadas</p>
@@ -137,6 +286,7 @@ export function ContractDetailPanel({
           <p className="text-xs text-muted-foreground">Disponibles</p>
           <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(1)}</p>
           <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
+          <p className="mt-1 text-xs text-muted-foreground">Esperadas a hoy: {(expectedMinutesByDate / 60).toFixed(1)} h</p>
         </article>
       </section>
 
@@ -163,6 +313,21 @@ export function ContractDetailPanel({
           pageSize={10}
           emptyTitle="Sin perfiles cotizados"
           emptyDescription="Este contrato no tiene perfiles asignados."
+        />
+      </article>
+
+      <article className="surface-card p-4">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top requerimientos consumidores</h2>
+          <span className="text-xs text-muted-foreground">{topRequirementRows.length} fila(s)</span>
+        </div>
+        <DataTable
+          data={topRequirementRows}
+          columns={topRequirementColumns}
+          globalFilterPlaceholder="Buscar requerimiento..."
+          pageSize={5}
+          emptyTitle="Sin requerimientos consumidores"
+          emptyDescription="No hay consumo equivalente asociado a requerimientos en este contrato."
         />
       </article>
 

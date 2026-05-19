@@ -52,6 +52,20 @@ export default async function BudgetContractDetailPage({
         contractProfiles={data.contractProfiles}
         categories={data.categories}
         canPickAnyOwner={data.canPickAnyOwner}
+        elapsedContractPct={data.elapsedContractPct}
+        expectedMinutesByDate={data.expectedMinutesByDate}
+        deviationMinutes={data.deviationMinutes}
+        deviationPct={data.deviationPct}
+        deviationRisk={data.deviationRisk}
+        misallocationPct={data.misallocationPct}
+        misallocationRisk={data.misallocationRisk}
+        burnRateMinutesPerWeek={data.burnRateMinutesPerWeek}
+        estimatedDepletionDate={data.estimatedDepletionDate}
+        daysToDepletion={data.daysToDepletion}
+        topRiskProfiles={data.topRiskProfiles}
+        topRequirementRows={data.topRequirementRows}
+        contractHealthScore={data.contractHealthScore}
+        contractHealthRisk={data.contractHealthRisk}
       />
     </AppShell>
   );
