@@ -97,7 +97,7 @@ export interface TimeEntry {
   taskDescription: string;
   date: string;
   startTime: string;
-  endTime: string;
+  endTime: string | null;
   durationMinutes: number;
   userId: string;
   observations: string;

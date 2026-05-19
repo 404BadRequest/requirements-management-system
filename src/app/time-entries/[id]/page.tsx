@@ -87,7 +87,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
     <AppShell>
       <PageHeader
         title="Ficha de horas"
-        description={`${dateDisplay} · ${minutesToHoursDisplay(entry.durationMinutes)} · ${categoryLabel}`}
+        description={`${dateDisplay} · ${entry.endTime ? minutesToHoursDisplay(entry.durationMinutes) : "En curso"} · ${categoryLabel}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <Link href={`/time-entries?nueva=1&duplicateId=${encodeURIComponent(entry.id)}`} className="btn-secondary no-underline">
@@ -121,13 +121,17 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
         </article>
         <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Duración</h3>
-          <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(entry.durationMinutes)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{entry.durationMinutes} minutos</p>
+          <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">
+            {entry.endTime ? minutesToHoursDisplay(entry.durationMinutes) : "En curso"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {entry.endTime ? `${entry.durationMinutes} minutos` : "Falta registrar hora de termino."}
+          </p>
         </article>
         <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Bloque horario</h3>
           <p className="mt-2 font-mono text-lg tabular-nums text-foreground">
-            {entry.startTime} – {entry.endTime}
+            {entry.startTime} – {entry.endTime ?? "Pendiente"}
           </p>
         </article>
         <article className={detailCardClass}>

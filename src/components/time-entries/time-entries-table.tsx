@@ -20,6 +20,7 @@ export type TimeEntryRow = {
   durationLabel: string;
   clientLabel: string;
   contractStatus: string;
+  openEndWarning?: boolean;
 };
 
 export function TimeEntriesTable({
@@ -55,6 +56,18 @@ export function TimeEntriesTable({
       { accessorKey: "date", header: "Fecha" },
       { accessorKey: "userName", header: "Encargado" },
       { accessorKey: "category", header: "Categoría" },
+      {
+        accessorKey: "openEndWarning",
+        header: "Estado registro",
+        cell: ({ row }) =>
+          row.original.openEndWarning ? (
+            <span className="inline-flex rounded-[2px] border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+              Sin hora termino
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Cerrado</span>
+          ),
+      },
       { accessorKey: "contractStatus", header: "Estado contractual" },
       {
         accessorKey: "durationMinutes",

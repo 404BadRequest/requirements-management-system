@@ -82,7 +82,7 @@ export default async function TimeEntriesPage({
   const sourceForDuplicate = duplicateId ? entries.find((entry) => entry.id === duplicateId) : undefined;
   const duplicateDefaultValues = (() => {
     if (!sourceForDuplicate) return undefined;
-    const [endHour, endMinute] = sourceForDuplicate.endTime.split(":").map((value) => Number(value));
+    const [endHour, endMinute] = (sourceForDuplicate.endTime ?? sourceForDuplicate.startTime).split(":").map((value) => Number(value));
     const endTotalMinutes = (Number.isFinite(endHour) ? endHour : 0) * 60 + (Number.isFinite(endMinute) ? endMinute : 0);
     const startSuggestedMinutes = Math.min(23 * 60 + 59, endTotalMinutes + 30);
     const endSuggestedMinutes = Math.min(23 * 60 + 59, startSuggestedMinutes + 60);
@@ -227,9 +227,10 @@ export default async function TimeEntriesPage({
               (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
           category: categoryLabelByCode.get(entry.category) ?? entry.category,
           durationMinutes: entry.durationMinutes,
-          durationLabel: `${(entry.durationMinutes / 60).toFixed(2)} h`,
+          durationLabel: entry.endTime ? `${(entry.durationMinutes / 60).toFixed(2)} h` : "En curso",
           clientLabel: clientCell(entry.requirementId),
           contractStatus: resolveContractStatus(entry),
+          openEndWarning: !entry.endTime,
         }))}
       />
     </AppShell>

@@ -12,11 +12,11 @@ export const timeEntrySchema = z
     taskDescription: z.string().min(3, "Tarea requerida"),
     date: z.string().min(1, "Fecha obligatoria"),
     startTime: z.string().regex(timeRegex, "Hora inicio invalida"),
-    endTime: z.string().regex(timeRegex, "Hora termino invalida"),
+    endTime: z.string().regex(timeRegex, "Hora termino invalida").or(z.literal("")).nullable(),
     userId: z.string().min(1, "Encargado obligatorio"),
     observations: z.string(),
   })
-  .refine((value) => value.endTime > value.startTime, {
+  .refine((value) => !value.endTime || value.endTime > value.startTime, {
     path: ["endTime"],
     message: "Hora termino debe ser posterior a hora inicio",
   });

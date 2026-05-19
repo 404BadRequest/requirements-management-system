@@ -146,7 +146,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           : "Sin contrato",
         categoryLabel: catLabel(e.category),
         durationDisplay: minutesToHoursDisplay(e.durationMinutes),
-        timeRange: `${e.startTime}–${e.endTime}`,
+        timeRange: `${e.startTime}–${e.endTime ?? "Pendiente"}`,
         taskDescription: e.taskDescription,
       };
     });

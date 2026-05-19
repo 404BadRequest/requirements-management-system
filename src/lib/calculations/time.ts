@@ -1,6 +1,7 @@
 import type { TimeEntry } from "@/types/domain";
 
-export const calculateDurationMinutes = (startTime: string, endTime: string): number => {
+export const calculateDurationMinutes = (startTime: string, endTime: string | null): number => {
+  if (!endTime) return 0;
   const [startHour, startMinute] = startTime.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
 

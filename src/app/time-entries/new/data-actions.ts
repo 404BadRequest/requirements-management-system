@@ -150,7 +150,7 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
     getProfiles(),
     getFinancialReferenceRates(),
   ]);
-  const payload = { ...input };
+  const payload = { ...input, endTime: input.endTime ? input.endTime : null };
   if (!canPickEncargadoForOthers(user.role)) {
     payload.userId = resolvedId;
     payload.contractId = null;
@@ -265,7 +265,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
     throw new Error("Solo puedes editar horas registradas por ti.");
   }
 
-  const payload: TimeEntryInput = { ...input };
+  const payload: TimeEntryInput = { ...input, endTime: input.endTime ? input.endTime : null };
   if (!pickAny) {
     payload.userId = current.userId;
     payload.contractId = null;

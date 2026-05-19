@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
         e.taskDescription,
         e.date,
         e.startTime,
-        e.endTime,
+        e.endTime ?? "",
         String(e.durationMinutes),
         e.userId,
         userMap.get(e.userId) ?? e.userId,

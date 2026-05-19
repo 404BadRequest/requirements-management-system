@@ -99,7 +99,7 @@ function mapTimeEntry(r: Row): TimeEntry {
     taskDescription: String(r.task_description),
     date: String(r.date),
     startTime: String(r.start_time),
-    endTime: String(r.end_time),
+    endTime: r.end_time ? String(r.end_time) : null,
     durationMinutes: Number(r.duration_minutes),
     userId: String(r.user_id),
     observations: String(r.observations ?? ""),
@@ -505,7 +505,7 @@ export class PostgresDataProvider implements AppDataProvider {
     const current = await this.getTimeEntryById(id);
     if (!current) return undefined;
     const start = input.startTime ?? current.startTime;
-    const end = input.endTime ?? current.endTime;
+    const end = input.endTime === undefined ? current.endTime : input.endTime;
     const patch = {
       projectId: input.projectId ?? current.projectId,
       requirementId: input.requirementId === undefined ? current.requirementId : input.requirementId,

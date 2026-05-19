@@ -36,7 +36,7 @@ export class MockTimeEntriesRepository implements TimeEntriesRepository {
     if (index === -1) return undefined;
     const current = db[index];
     const start = input.startTime ?? current.startTime;
-    const end = input.endTime ?? current.endTime;
+    const end = input.endTime === undefined ? current.endTime : input.endTime;
     const updated: TimeEntry = {
       ...current,
       ...input,
