@@ -520,9 +520,30 @@ export async function updateBudgetAction(id: string, values: BudgetInput) {
 export async function deleteBudgetAction(id: string) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.write");
-  const ok = await deleteBudget(id);
-  if (!ok) {
-    throw new Error("No se pudo eliminar el contrato.");
+  try {
+    const ok = await deleteBudget(id);
+    if (!ok) {
+      throw new Error("No se pudo eliminar el contrato.");
+    }
+    return ok;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const normalized = message.toLowerCase();
+    if (normalized.includes("rms_requirements_contract_id_fkey")) {
+      throw new Error(
+        "No se puede eliminar el contrato porque está asociado a uno o más requerimientos. Desvincula esos requerimientos o asígnalos a otro contrato antes de eliminar.",
+      );
+    }
+    if (normalized.includes("rms_time_entries_contract_id_fkey")) {
+      throw new Error(
+        "No se puede eliminar el contrato porque tiene horas registradas asociadas. Reasigna o elimina esas horas antes de intentar nuevamente.",
+      );
+    }
+    if (normalized.includes("foreign key") || normalized.includes("violates")) {
+      throw new Error(
+        "No se puede eliminar el contrato porque está siendo usado por otros registros del sistema (requerimientos u horas). Debes desvincularlos primero.",
+      );
+    }
+    throw error instanceof Error ? error : new Error("No se pudo eliminar el contrato.");
   }
-  return ok;
 }
