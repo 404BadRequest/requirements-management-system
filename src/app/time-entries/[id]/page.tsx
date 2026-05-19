@@ -105,21 +105,21 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
           <p className="mt-2 font-mono text-sm tabular-nums text-foreground">{entry.date}</p>
           <p className="mt-1 text-xs capitalize text-muted-foreground">{dateDisplay}</p>
         </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Duración</h3>
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-primary">Duración</h3>
           <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(entry.durationMinutes)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{entry.durationMinutes} minutos</p>
         </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Bloque horario</h3>
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-primary">Bloque horario</h3>
           <p className="mt-2 font-mono text-lg tabular-nums text-foreground">
             {entry.startTime} – {entry.endTime}
           </p>
         </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Categoría</h3>
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-primary">Categoría</h3>
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{categoryLabel}</p>
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.category}</p>
+          <p className="mt-1 font-mono text-[10px] text-primary/90">{entry.category}</p>
         </article>
       </section>
 

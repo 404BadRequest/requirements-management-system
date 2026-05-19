@@ -119,7 +119,14 @@ export default async function TimeEntriesPage({
           entry,
           date: entry.date,
           userName: userMap.get(entry.userId) ?? entry.userId,
-          canEdit: canEditAnyEntry || entry.userId === currentDirectoryUserId,
+          canEdit:
+            canEditAnyEntry ||
+            (entry.userId === currentDirectoryUserId &&
+              (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
+          canDelete:
+            canEditAnyEntry ||
+            (entry.userId === currentDirectoryUserId &&
+              (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
           category: categoryLabelByCode.get(entry.category) ?? entry.category,
           durationMinutes: entry.durationMinutes,
           durationLabel: `${(entry.durationMinutes / 60).toFixed(1)} h`,

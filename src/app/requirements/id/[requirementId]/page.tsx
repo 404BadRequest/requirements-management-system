@@ -6,6 +6,7 @@ import {
   getClients,
   getRequirementById,
   getRequirementComments,
+  getRequirements,
   getRequirementStatusHistory,
   getTimeEntries,
   getUsers,
@@ -77,6 +78,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     comments,
     history,
     entries,
+    requirements,
     clients,
     users,
     profiles,
@@ -88,6 +90,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getRequirementComments(requirementId),
     getRequirementStatusHistory(requirementId),
     getTimeEntries(),
+    getRequirements(),
     getClients(),
     getUsers(),
     getProfiles(),
@@ -113,6 +116,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const totalMinutes = requirementEntries.reduce((acc, item) => acc + item.durationMinutes, 0);
   const { byProfile, byCategory } = buildHoursBreakdown(requirementEntries, userById, profileById, catLabel);
 
+  const canManageAnyTimeEntry = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
   const hourRows = [...requirementEntries]
     .sort((a, b) => {
       const d = b.date.localeCompare(a.date);
@@ -122,8 +126,13 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     .map((e) => {
       const user = userById.get(e.userId);
       const profile = user ? profileById.get(user.profileId) : undefined;
+      const canManageOwnEntryAndRequirement =
+        e.userId === currentDirectoryUserId && requirement.ownerId === currentDirectoryUserId;
       return {
         id: e.id,
+        entry: e,
+        canEdit: canManageAnyTimeEntry || canManageOwnEntryAndRequirement,
+        canDelete: canManageAnyTimeEntry || canManageOwnEntryAndRequirement,
         date: e.date,
         userName: user?.name ?? e.userId,
         profileName: profile?.name ?? "—",
@@ -218,13 +227,13 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{statusLabel}</p>
           <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
         </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Prioridad</h3>
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-primary">Prioridad</h3>
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{priorityLabel}</p>
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.priority}</p>
+          <p className="mt-1 font-mono text-[10px] text-primary/90">{requirement.priority}</p>
         </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Horas totales</h3>
+        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-primary">Horas totales</h3>
           <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(totalMinutes)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
         </article>
@@ -239,6 +248,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
           totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
           imputationCount={requirementEntries.length}
+          users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+          requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
+          categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
+          canPickAnyOwner={canManageAnyTimeEntry}
         />
       </section>
 

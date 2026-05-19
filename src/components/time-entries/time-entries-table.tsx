@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import { TimeEntryDeleteButton } from "@/components/time-entries/time-entry-delete-button";
 import type { TimeEntry } from "@/types/domain";
 
 export type TimeEntryRow = {
@@ -12,6 +13,7 @@ export type TimeEntryRow = {
   date: string;
   userName: string;
   canEdit?: boolean;
+  canDelete?: boolean;
   entry?: TimeEntry;
   category: string;
   durationMinutes: number;
@@ -58,21 +60,26 @@ export function TimeEntriesTable({
         header: "Acciones",
         enableSorting: false,
         enableGlobalFilter: false,
-        cell: ({ row }) =>
-          row.original.canEdit && row.original.entry ? (
-            <TimeEntryEditModal
-              entry={row.original.entry}
-              users={users}
-              requirements={requirements}
-              categories={categories}
-              canEdit
-              canPickAnyOwner={canPickAnyOwner}
-              triggerLabel="Editar"
-              triggerClassName="btn-secondary px-2.5 py-1 text-xs"
-            />
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          ),
+        cell: ({ row }) => {
+          if (!row.original.entry || (!row.original.canEdit && !row.original.canDelete)) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          return (
+            <div className="flex flex-wrap gap-2">
+              <TimeEntryEditModal
+                entry={row.original.entry}
+                users={users}
+                requirements={requirements}
+                categories={categories}
+                canEdit={Boolean(row.original.canEdit)}
+                canPickAnyOwner={canPickAnyOwner}
+                triggerLabel="Editar"
+                triggerClassName="btn-secondary px-2.5 py-1 text-xs"
+              />
+              <TimeEntryDeleteButton entryId={row.original.entry.id} canDelete={Boolean(row.original.canDelete)} />
+            </div>
+          );
+        },
       },
     ],
     [canPickAnyOwner, categories, requirements, users],

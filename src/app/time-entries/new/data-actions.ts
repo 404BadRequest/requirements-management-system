@@ -1,7 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createTimeEntry, getCatalogByKind, getRequirements, getTimeEntryById, getUsers, updateTimeEntry } from "@/data/repositories/server-db";
+import {
+  createTimeEntry,
+  deleteTimeEntry,
+  getCatalogByKind,
+  getRequirements,
+  getTimeEntryById,
+  getUsers,
+  updateTimeEntry,
+} from "@/data/repositories/server-db";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
@@ -122,4 +130,51 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   revalidatePath("/team");
   revalidatePath("/budgets");
   return updated;
+}
+
+export async function deleteTimeEntryAction(id: string) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "time_entries.write");
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+
+  const current = await getTimeEntryById(id);
+  if (!current) {
+    throw new Error("No se encontró la hora a eliminar.");
+  }
+
+  const users = await getUsers();
+  const activeUsers = users.filter((u) => u.active);
+  const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
+  const requirements = await getRequirements();
+  const pickAny = canPickEncargadoForOthers(user.role);
+
+  if (!pickAny) {
+    if (current.userId !== resolvedId) {
+      throw new Error("Solo puedes eliminar horas registradas por ti.");
+    }
+    if (current.requirementId) {
+      const linkedRequirement = requirements.find((r) => r.id === current.requirementId);
+      if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
+        throw new Error("Solo puedes eliminar horas asociadas a requerimientos propios.");
+      }
+    }
+  }
+
+  const deleted = await deleteTimeEntry(id);
+  if (!deleted) {
+    throw new Error("No se pudo eliminar la hora.");
+  }
+
+  revalidatePath("/time-entries");
+  revalidatePath(`/time-entries/${id}`);
+  if (current.requirementId) {
+    revalidatePath(`/requirements/id/${current.requirementId}`);
+  }
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/team");
+  revalidatePath("/budgets");
+  return deleted;
 }

@@ -4,9 +4,15 @@ import Link from "next/link";
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
+import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import { TimeEntryDeleteButton } from "@/components/time-entries/time-entry-delete-button";
+import type { TimeEntry } from "@/types/domain";
 
 export type RequirementHoursRow = {
   id: string;
+  entry: TimeEntry;
+  canEdit: boolean;
+  canDelete: boolean;
   date: string;
   userName: string;
   profileName: string;
@@ -24,12 +30,20 @@ export function RequirementHoursPanel({
   byCategory,
   totalHoursDisplay,
   imputationCount,
+  users,
+  requirements,
+  categories,
+  canPickAnyOwner,
 }: {
   rows: RequirementHoursRow[];
   byProfile: HoursBreakdownItem[];
   byCategory: HoursBreakdownItem[];
   totalHoursDisplay: string;
   imputationCount: number;
+  users: { id: string; name: string }[];
+  requirements: { id: string; title: string }[];
+  categories: { code: string; label: string }[];
+  canPickAnyOwner: boolean;
 }) {
   const columns = useMemo<ColumnDef<RequirementHoursRow>[]>(
     () => [
@@ -64,8 +78,34 @@ export function RequirementHoursPanel({
           <span className="line-clamp-2 max-w-[min(28rem,50vw)] text-muted-foreground">{row.original.taskDescription || "—"}</span>
         ),
       },
+      {
+        id: "actions",
+        header: "Acciones",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => {
+          if (!row.original.canEdit && !row.original.canDelete) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          return (
+            <div className="flex flex-wrap gap-2">
+              <TimeEntryEditModal
+                entry={row.original.entry}
+                users={users}
+                requirements={requirements}
+                categories={categories}
+                canEdit={row.original.canEdit}
+                canPickAnyOwner={canPickAnyOwner}
+                triggerLabel="Editar"
+                triggerClassName="btn-secondary px-2.5 py-1 text-xs"
+              />
+              <TimeEntryDeleteButton entryId={row.original.id} canDelete={row.original.canDelete} />
+            </div>
+          );
+        },
+      },
     ],
-    [],
+    [canPickAnyOwner, categories, requirements, users],
   );
 
   if (rows.length === 0) {
