@@ -20,7 +20,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function TimeEntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string }>;
+  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string; duplicateId?: string }>;
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
@@ -28,7 +28,7 @@ export default async function TimeEntriesPage({
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
-  const { clientId = "", contractId = "", contractStatus = "", nueva } = await searchParams;
+  const { clientId = "", contractId = "", contractStatus = "", nueva, duplicateId = "" } = await searchParams;
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
   const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
@@ -79,6 +79,28 @@ export default async function TimeEntriesPage({
   const selectedClientId = activeClients.some((c) => c.id === clientId) ? clientId : "";
   const selectedContractId = activeContracts.some((c) => c.id === contractId) ? contractId : "";
   const selectedContractStatus = contractStatus === "unassigned" ? "unassigned" : "";
+  const sourceForDuplicate = duplicateId ? entries.find((entry) => entry.id === duplicateId) : undefined;
+  const duplicateDefaultValues = (() => {
+    if (!sourceForDuplicate) return undefined;
+    const [endHour, endMinute] = sourceForDuplicate.endTime.split(":").map((value) => Number(value));
+    const endTotalMinutes = (Number.isFinite(endHour) ? endHour : 0) * 60 + (Number.isFinite(endMinute) ? endMinute : 0);
+    const startSuggestedMinutes = Math.min(23 * 60 + 59, endTotalMinutes + 30);
+    const endSuggestedMinutes = Math.min(23 * 60 + 59, startSuggestedMinutes + 60);
+    const asTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    return {
+      projectId: sourceForDuplicate.projectId,
+      requirementId: sourceForDuplicate.requirementId,
+      contractId: sourceForDuplicate.contractId,
+      contractProfileId: sourceForDuplicate.contractProfileId,
+      category: sourceForDuplicate.category,
+      taskDescription: sourceForDuplicate.taskDescription,
+      observations: sourceForDuplicate.observations,
+      userId: sourceForDuplicate.userId,
+      date: sourceForDuplicate.date,
+      startTime: asTime(startSuggestedMinutes),
+      endTime: asTime(endSuggestedMinutes),
+    };
+  })();
 
   const filteredEntries = entries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
@@ -122,7 +144,7 @@ export default async function TimeEntriesPage({
         description="Horas por persona, categoría y requerimiento"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {canCreate ? <TimeEntriesNewModal autoOpen={openNewModal} /> : null}
+            {canCreate ? <TimeEntriesNewModal autoOpen={openNewModal} defaultValues={duplicateDefaultValues} /> : null}
             {canExport ? (
               <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
                 Exportar CSV

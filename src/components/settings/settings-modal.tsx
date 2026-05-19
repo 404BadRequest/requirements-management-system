@@ -121,7 +121,7 @@ export function SettingsModal({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-[2px] border border-border bg-card shadow-soft outline-none",
+          "w-full max-w-lg overflow-visible rounded-[2px] border border-border bg-card shadow-soft outline-none",
           dialogClassName,
         )}
         onMouseDown={(e) => e.stopPropagation()}

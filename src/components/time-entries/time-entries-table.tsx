@@ -74,6 +74,12 @@ export function TimeEntriesTable({
           }
           return (
             <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/time-entries?nueva=1&duplicateId=${encodeURIComponent(row.original.entry.id)}`}
+                className="btn-secondary px-2.5 py-1 text-xs no-underline"
+              >
+                Duplicar
+              </Link>
               <TimeEntryEditModal
                 entry={row.original.entry}
                 users={users}

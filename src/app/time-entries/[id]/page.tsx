@@ -35,6 +35,8 @@ function formatDateTime(iso: string): string {
   }
 }
 
+const detailCardClass = "surface-card flex h-full flex-col p-4";
+
 export default async function TimeEntryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await requirePermission("time_entries.read");
   const { id } = await params;
@@ -88,6 +90,9 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
         description={`${dateDisplay} · ${minutesToHoursDisplay(entry.durationMinutes)} · ${categoryLabel}`}
         actions={
           <div className="flex flex-wrap gap-2">
+            <Link href={`/time-entries?nueva=1&duplicateId=${encodeURIComponent(entry.id)}`} className="btn-secondary no-underline">
+              Duplicar
+            </Link>
             <TimeEntryEditModal
               entry={entry}
               users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
@@ -108,52 +113,52 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <article className="surface-card p-4">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Fecha contable</h3>
           <p className="mt-2 font-mono text-sm tabular-nums text-foreground">{entry.date}</p>
           <p className="mt-1 text-xs capitalize text-muted-foreground">{dateDisplay}</p>
         </article>
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-primary">Duración</h3>
+        <article className={detailCardClass}>
+          <h3 className="text-sm font-medium text-muted-foreground">Duración</h3>
           <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(entry.durationMinutes)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{entry.durationMinutes} minutos</p>
         </article>
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-primary">Bloque horario</h3>
+        <article className={detailCardClass}>
+          <h3 className="text-sm font-medium text-muted-foreground">Bloque horario</h3>
           <p className="mt-2 font-mono text-lg tabular-nums text-foreground">
             {entry.startTime} – {entry.endTime}
           </p>
         </article>
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-primary">Categoría</h3>
+        <article className={detailCardClass}>
+          <h3 className="text-sm font-medium text-muted-foreground">Categoría</h3>
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{categoryLabel}</p>
-          <p className="mt-1 font-mono text-[10px] text-primary/90">{entry.category}</p>
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.category}</p>
         </article>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <article className="surface-card p-4">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Persona</h3>
           <p className="mt-2 text-lg font-semibold text-foreground">{user?.name ?? entry.userId}</p>
         </article>
-        <article className="surface-card p-4">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Perfil de tarifa</h3>
           <p className="mt-2 text-lg font-semibold text-foreground">{profile?.name ?? "—"}</p>
         </article>
-        <article className="surface-card p-4">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Perfil contractual</h3>
           <p className="mt-2 text-lg font-semibold text-foreground">
             {!entry.contractId ? "Sin contrato" : contractProfile?.name ?? "Sin asignación contractual"}
           </p>
           {contract ? <p className="mt-1 text-xs text-muted-foreground">{contract.code} · {contract.name}</p> : null}
         </article>
-        <article className="surface-card p-4">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Proyecto</h3>
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{project?.name ?? entry.projectId}</p>
           {project?.code ? <p className="mt-1 font-mono text-[10px] text-muted-foreground">{project.code}</p> : null}
         </article>
-        <article className="surface-card p-4">
+        <article className={detailCardClass}>
           <h3 className="text-sm font-medium text-muted-foreground">Cliente</h3>
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{client?.name ?? (requirement ? requirement.clientId : "—")}</p>
           {!requirement ? <p className="mt-1 text-xs text-muted-foreground">Sin requerimiento vinculado: no hay cliente derivado.</p> : null}

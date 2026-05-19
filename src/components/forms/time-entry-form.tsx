@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { timeEntrySchema, type TimeEntryInput } from "@/schemas/time-entry-schema";
+import { timeEntryBatchSchema, timeEntrySchema, type TimeEntryBatchInput, type TimeEntryInput } from "@/schemas/time-entry-schema";
 import { FormField } from "@/components/forms/form-field";
 
 export const TimeEntryForm = ({
@@ -17,8 +17,10 @@ export const TimeEntryForm = ({
   canOverrideContractProfile = false,
   defaultUserId,
   encargadoLocked = false,
+  enableMultiBlock = false,
   defaultValues,
   submitLabel = "Guardar hora",
+  onSubmitBatch,
   onSubmit,
 }: {
   users: { id: string; name: string }[];
@@ -33,8 +35,10 @@ export const TimeEntryForm = ({
   defaultUserId?: string;
   /** Si es true, solo se muestra el encargado vinculado a la sesión (roles sin selector global). */
   encargadoLocked?: boolean;
+  enableMultiBlock?: boolean;
   defaultValues?: Partial<TimeEntryInput>;
   submitLabel?: string;
+  onSubmitBatch?: (values: TimeEntryBatchInput) => Promise<void> | void;
   onSubmit: (values: TimeEntryInput) => Promise<void> | void;
 }) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -58,6 +62,24 @@ export const TimeEntryForm = ({
     },
   });
   const isSubmitting = form.formState.isSubmitting;
+  const [entryMode, setEntryMode] = useState<"single" | "multi">("single");
+  const [batchBlocks, setBatchBlocks] = useState<Array<{ date: string; startTime: string; endTime: string }>>([
+    {
+      date: defaultValues?.date ?? today,
+      startTime: defaultValues?.startTime ?? "09:00",
+      endTime: defaultValues?.endTime ?? "10:00",
+    },
+  ]);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const durationLabel = (startTime: string, endTime: string) => {
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+    if (![startHour, startMinute, endHour, endMinute].every(Number.isFinite)) return "—";
+    const startTotal = startHour * 60 + startMinute;
+    const endTotal = endHour * 60 + endMinute;
+    if (endTotal <= startTotal) return "—";
+    return `${((endTotal - startTotal) / 60).toFixed(2)} h`;
+  };
   const selectedRequirementId = form.watch("requirementId");
   const selectedContractId = form.watch("contractId");
   const selectedRequirement = useMemo(
@@ -100,18 +122,129 @@ export const TimeEntryForm = ({
   }, [filteredContracts, form, selectedContractId]);
 
   return (
-    <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
+    <form
+      className="grid gap-3"
+      onSubmit={form.handleSubmit(async (values) => {
+        if (entryMode === "multi" && enableMultiBlock && onSubmitBatch) {
+          const parsed = timeEntryBatchSchema.safeParse({
+            projectId: values.projectId,
+            requirementId: values.requirementId,
+            contractId: values.contractId,
+            contractProfileId: values.contractProfileId,
+            category: values.category,
+            taskDescription: values.taskDescription,
+            userId: values.userId,
+            observations: values.observations,
+            blocks: batchBlocks,
+          });
+          if (!parsed.success) {
+            const issue = parsed.error.issues[0];
+            setBatchError(issue?.message ?? "Revisa los bloques horarios.");
+            return;
+          }
+          setBatchError(null);
+          await onSubmitBatch(parsed.data);
+          return;
+        }
+        setBatchError(null);
+        await onSubmit(values);
+      })}
+    >
+      {enableMultiBlock ? (
+        <div className="rounded-[2px] border border-border bg-muted/15 p-2">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Modo de registro</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={entryMode === "single" ? "btn-primary px-2.5 py-1 text-xs" : "btn-secondary px-2.5 py-1 text-xs"}
+              onClick={() => setEntryMode("single")}
+            >
+              Bloque único
+            </button>
+            <button
+              type="button"
+              className={entryMode === "multi" ? "btn-primary px-2.5 py-1 text-xs" : "btn-secondary px-2.5 py-1 text-xs"}
+              onClick={() => {
+                setEntryMode("multi");
+                setBatchBlocks((prev) =>
+                  prev.length > 0
+                    ? prev
+                    : [{ date: form.getValues("date"), startTime: form.getValues("startTime"), endTime: form.getValues("endTime") }],
+                );
+              }}
+            >
+              Múltiples bloques
+            </button>
+          </div>
+        </div>
+      ) : null}
       <FormField label="Fecha" error={form.formState.errors.date?.message}>
-        <input type="date" className="field-control w-full" {...form.register("date")} />
+        <input type="date" className="field-control w-full" {...form.register("date")} disabled={entryMode === "multi"} />
       </FormField>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Hora inicio">
-          <input type="time" className="field-control w-full" {...form.register("startTime")} />
+          <input type="time" className="field-control w-full" {...form.register("startTime")} disabled={entryMode === "multi"} />
         </FormField>
         <FormField label="Hora termino" error={form.formState.errors.endTime?.message}>
-          <input type="time" className="field-control w-full" {...form.register("endTime")} />
+          <input type="time" className="field-control w-full" {...form.register("endTime")} disabled={entryMode === "multi"} />
         </FormField>
       </div>
+      {entryMode === "multi" && enableMultiBlock ? (
+        <div className="space-y-2 rounded-[2px] border border-border/70 bg-background p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground">Bloques horarios</p>
+            <button
+              type="button"
+              className="btn-secondary px-2.5 py-1 text-xs"
+              onClick={() =>
+                setBatchBlocks((prev) => [...prev, { date: today, startTime: "09:00", endTime: "10:00" }])
+              }
+            >
+              Agregar bloque
+            </button>
+          </div>
+          {batchBlocks.map((block, index) => (
+            <div key={`block-${index}`} className="grid gap-2 rounded-[2px] border border-border/60 p-2 sm:grid-cols-5">
+              <input
+                type="date"
+                className="field-control w-full"
+                value={block.date}
+                onChange={(event) =>
+                  setBatchBlocks((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, date: event.target.value } : item)))
+                }
+              />
+              <input
+                type="time"
+                className="field-control w-full"
+                value={block.startTime}
+                onChange={(event) =>
+                  setBatchBlocks((prev) =>
+                    prev.map((item, itemIndex) => (itemIndex === index ? { ...item, startTime: event.target.value } : item)),
+                  )
+                }
+              />
+              <input
+                type="time"
+                className="field-control w-full"
+                value={block.endTime}
+                onChange={(event) =>
+                  setBatchBlocks((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, endTime: event.target.value } : item)))
+                }
+              />
+              <button
+                type="button"
+                className="btn-secondary px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => setBatchBlocks((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}
+                disabled={batchBlocks.length <= 1}
+              >
+                Quitar
+              </button>
+              <p className="self-center text-xs tabular-nums text-muted-foreground">{durationLabel(block.startTime, block.endTime)}</p>
+            </div>
+          ))}
+          {batchError ? <p className="text-xs text-destructive">{batchError}</p> : null}
+        </div>
+      ) : null}
       <FormField label="Encargado">
         {encargadoLocked ? (
           <div className="space-y-1">
@@ -219,6 +352,9 @@ export const TimeEntryForm = ({
       </FormField>
       <FormField label="Tarea" error={form.formState.errors.taskDescription?.message}>
         <input className="field-control w-full" {...form.register("taskDescription")} />
+      </FormField>
+      <FormField label="Observaciones (opcional)">
+        <textarea className="field-control min-h-20 w-full" {...form.register("observations")} />
       </FormField>
       <button type="submit" className="btn-primary py-2 text-sm" disabled={isSubmitting}>
         {isSubmitting ? (

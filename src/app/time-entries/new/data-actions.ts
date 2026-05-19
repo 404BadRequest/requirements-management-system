@@ -21,7 +21,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 import { resolveContractIdForTimeEntry } from "@/lib/contracts/resolve-contract";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { Role } from "@/types/domain";
-import type { TimeEntryInput } from "@/schemas/time-entry-schema";
+import { timeEntryBatchSchema, type TimeEntryBatchInput, type TimeEntryInput } from "@/schemas/time-entry-schema";
 
 function canPickEncargadoForOthers(role: Role | undefined): boolean {
   return role === "Admin" || role === "Project Manager";
@@ -190,6 +190,51 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   revalidatePath("/team");
   revalidatePath("/budgets");
   return created;
+}
+
+export async function createTimeEntriesBatchAction(input: TimeEntryBatchInput) {
+  const parsed = timeEntryBatchSchema.safeParse(input);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    throw new Error(firstIssue?.message ?? "Datos inválidos para registrar bloques.");
+  }
+
+  const payload = parsed.data;
+  const rowErrors: Array<{ row: number; message: string; date: string; startTime: string; endTime: string }> = [];
+  let createdCount = 0;
+
+  for (const [index, block] of payload.blocks.entries()) {
+    try {
+      await createTimeEntryAction({
+        projectId: payload.projectId,
+        requirementId: payload.requirementId,
+        contractId: payload.contractId,
+        contractProfileId: payload.contractProfileId,
+        category: payload.category,
+        taskDescription: payload.taskDescription,
+        date: block.date,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        userId: payload.userId,
+        observations: payload.observations,
+      });
+      createdCount += 1;
+    } catch (error) {
+      rowErrors.push({
+        row: index + 1,
+        date: block.date,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        message: error instanceof Error ? error.message : "No se pudo registrar el bloque.",
+      });
+    }
+  }
+
+  return {
+    createdCount,
+    failedCount: rowErrors.length,
+    rowErrors,
+  };
 }
 
 export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {

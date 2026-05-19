@@ -22,3 +22,28 @@ export const timeEntrySchema = z
   });
 
 export type TimeEntryInput = z.infer<typeof timeEntrySchema>;
+
+export const timeEntryBatchBlockSchema = z
+  .object({
+    date: z.string().min(1, "Fecha obligatoria"),
+    startTime: z.string().regex(timeRegex, "Hora inicio invalida"),
+    endTime: z.string().regex(timeRegex, "Hora termino invalida"),
+  })
+  .refine((value) => value.endTime > value.startTime, {
+    path: ["endTime"],
+    message: "Hora termino debe ser posterior a hora inicio",
+  });
+
+export const timeEntryBatchSchema = z.object({
+  projectId: z.string().min(1),
+  requirementId: z.string().nullable(),
+  contractId: z.string().nullable(),
+  contractProfileId: z.string().nullable(),
+  category: z.string().min(1, "Categoría requerida"),
+  taskDescription: z.string().min(3, "Tarea requerida"),
+  userId: z.string().min(1, "Encargado obligatorio"),
+  observations: z.string(),
+  blocks: z.array(timeEntryBatchBlockSchema).min(1, "Debes agregar al menos un bloque horario."),
+});
+
+export type TimeEntryBatchInput = z.infer<typeof timeEntryBatchSchema>;

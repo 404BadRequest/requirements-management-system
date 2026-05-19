@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { TimeEntryForm } from "@/components/forms/time-entry-form";
-import { createTimeEntryAction, loadNewTimeEntryFormData } from "@/app/time-entries/new/data-actions";
+import { createTimeEntriesBatchAction, createTimeEntryAction, loadNewTimeEntryFormData } from "@/app/time-entries/new/data-actions";
+import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 
 function NewTimeEntryModalForm({
   onCreated,
+  defaultValues,
 }: {
   onCreated: () => Promise<void> | void;
+  defaultValues?: Partial<TimeEntryInput>;
 }) {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
@@ -70,6 +73,8 @@ function NewTimeEntryModalForm({
       canOverrideContractProfile={canOverrideContractProfile}
       defaultUserId={defaultUserId}
       encargadoLocked={encargadoLocked}
+      enableMultiBlock
+      defaultValues={defaultValues}
       onSubmit={async (values) => {
         try {
           await createTimeEntryAction(values);
@@ -79,14 +84,48 @@ function NewTimeEntryModalForm({
           toast.error(e instanceof Error ? e.message : "No se pudo guardar.");
         }
       }}
+      onSubmitBatch={async (values) => {
+        try {
+          const result = await createTimeEntriesBatchAction(values);
+          if (result.failedCount > 0) {
+            const failedRows = result.rowErrors.map((row) => `#${row.row}`).join(", ");
+            const message = result.createdCount
+              ? `Se registraron ${result.createdCount} bloque(s). Corrige ${result.failedCount} bloque(s): ${failedRows}.`
+              : `No se pudo registrar ningún bloque. Revisa filas: ${failedRows}.`;
+            toast.error(message);
+            return;
+          }
+          toast.success(`Se registraron ${result.createdCount} bloque(s).`);
+          await onCreated();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "No se pudieron registrar los bloques.");
+        }
+      }}
     />
   );
 }
 
-export function TimeEntriesNewModal({ autoOpen }: { autoOpen: boolean }) {
+export function TimeEntriesNewModal({
+  autoOpen,
+  defaultValues,
+}: {
+  autoOpen: boolean;
+  defaultValues?: Partial<TimeEntryInput>;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(autoOpen);
   const [formKey, setFormKey] = useState(0);
+  const [prefillValues, setPrefillValues] = useState<Partial<TimeEntryInput> | undefined>(defaultValues);
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    setFormKey((k) => k + 1);
+    setOpen(true);
+  }, [autoOpen]);
+
+  useEffect(() => {
+    setPrefillValues(defaultValues);
+  }, [defaultValues]);
 
   useEffect(() => {
     if (!autoOpen) return;
@@ -106,6 +145,7 @@ export function TimeEntriesNewModal({ autoOpen }: { autoOpen: boolean }) {
 
   const openFresh = () => {
     setFormKey((k) => k + 1);
+    setPrefillValues(undefined);
     setOpen(true);
   };
 
@@ -119,10 +159,13 @@ export function TimeEntriesNewModal({ autoOpen }: { autoOpen: boolean }) {
         onClose={handleClose}
         title="Nueva hora"
         description="Registra el bloque de horas; la duración se calcula según inicio y término."
+        dialogClassName="max-w-3xl max-h-none overflow-visible"
+        bodyClassName="px-4 py-4 sm:px-5 sm:py-4"
       >
         {open ? (
           <NewTimeEntryModalForm
             key={formKey}
+            defaultValues={prefillValues}
             onCreated={async () => {
               router.refresh();
               handleClose();

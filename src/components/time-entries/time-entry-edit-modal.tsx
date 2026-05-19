@@ -48,7 +48,7 @@ export function TimeEntryEditModal({
         onClose={() => setOpen(false)}
         title="Editar hora"
         description="Corrige horas, tarea, observaciones y relación con requerimiento."
-        dialogClassName="max-w-3xl max-h-[94vh] lg:max-h-none lg:overflow-visible"
+        dialogClassName="max-w-3xl max-h-none overflow-visible"
         bodyClassName="px-4 py-4 sm:px-5 sm:py-4"
       >
         <TimeEntryForm
