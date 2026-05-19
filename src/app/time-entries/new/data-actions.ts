@@ -359,3 +359,35 @@ export async function deleteTimeEntryAction(id: string) {
   revalidatePath("/budgets");
   return deleted;
 }
+
+export async function completeTimeEntryNowAction(input: { id: string; endTime: string }) {
+  const endTime = input.endTime?.trim();
+  if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
+    throw new Error("La hora de termino es inválida.");
+  }
+
+  const current = await getTimeEntryById(input.id);
+  if (!current) {
+    throw new Error("No se encontró la hora a completar.");
+  }
+  if (current.endTime) {
+    throw new Error("Esta hora ya está cerrada.");
+  }
+  if (endTime <= current.startTime) {
+    throw new Error(`La hora actual (${endTime}) debe ser posterior al inicio (${current.startTime}).`);
+  }
+
+  return updateTimeEntryAction(input.id, {
+    projectId: current.projectId,
+    requirementId: current.requirementId,
+    contractId: current.contractId,
+    contractProfileId: current.contractProfileId,
+    category: current.category,
+    taskDescription: current.taskDescription,
+    date: current.date,
+    startTime: current.startTime,
+    endTime,
+    userId: current.userId,
+    observations: current.observations,
+  });
+}

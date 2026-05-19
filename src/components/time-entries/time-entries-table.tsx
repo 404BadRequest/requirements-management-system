@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import { TimeEntryCompleteNowButton } from "@/components/time-entries/time-entry-complete-now-button";
 import { TimeEntryDeleteButton } from "@/components/time-entries/time-entry-delete-button";
 import type { TimeEntry } from "@/types/domain";
 
@@ -87,6 +88,12 @@ export function TimeEntriesTable({
           }
           return (
             <div className="flex flex-wrap gap-2">
+              <TimeEntryCompleteNowButton
+                entryId={row.original.entry.id}
+                startTime={row.original.entry.startTime}
+                canEdit={Boolean(row.original.canEdit)}
+                isOpenEntry={!row.original.entry.endTime}
+              />
               <Link
                 href={`/time-entries?nueva=1&duplicateId=${encodeURIComponent(row.original.entry.id)}`}
                 className="btn-secondary px-2.5 py-1 text-xs no-underline"
