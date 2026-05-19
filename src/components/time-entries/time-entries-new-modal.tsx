@@ -159,7 +159,7 @@ export function TimeEntriesNewModal({
         onClose={handleClose}
         title="Nueva hora"
         description="Registra el bloque de horas; la duración se calcula según inicio y término."
-        dialogClassName="max-w-3xl max-h-none overflow-visible"
+        dialogClassName="max-w-3xl max-h-[92vh] overflow-y-auto"
         bodyClassName="px-4 py-4 sm:px-5 sm:py-4"
       >
         {open ? (
