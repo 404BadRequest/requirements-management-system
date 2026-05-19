@@ -56,6 +56,7 @@ export function ContractDetailPanel({
   profileAllocationRows,
   correctionRows,
   users,
+  clients,
   requirements,
   contracts,
   contractProfiles,
@@ -85,8 +86,9 @@ export function ContractDetailPanel({
   profileAllocationRows: ProfileAllocationRow[];
   correctionRows: CorrectionRow[];
   users: { id: string; name: string }[];
-  requirements: { id: string; title: string }[];
-  contracts: { id: string; label: string }[];
+  clients: { id: string; name: string }[];
+  requirements: { id: string; title: string; clientId: string }[];
+  contracts: { id: string; clientId: string; label: string }[];
   contractProfiles: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
@@ -149,6 +151,7 @@ export function ContractDetailPanel({
             <TimeEntryEditModal
               entry={row.original.entry}
               users={users}
+              clients={clients}
               requirements={requirements}
               contracts={contracts}
               contractProfiles={contractProfiles}
@@ -163,7 +166,7 @@ export function ContractDetailPanel({
           ),
       },
     ],
-    [canPickAnyOwner, categories, contractProfiles, contracts, requirements, users],
+    [canPickAnyOwner, categories, clients, contractProfiles, contracts, requirements, users],
   );
 
   const topRequirementColumns = useMemo<ColumnDef<TopRequirementRow>[]>(
@@ -196,7 +199,7 @@ export function ContractDetailPanel({
     [],
   );
 
-  const deviationHoursLabel = `${Math.abs(deviationMinutes / 60).toFixed(1)} h`;
+  const deviationHoursLabel = `${Math.abs(deviationMinutes / 60).toFixed(2)} h`;
   const deviationDirection = deviationMinutes >= 0 ? "sobreconsumo" : "bajo plan";
   const elapsedContractLabel = `${(elapsedContractPct * 100).toFixed(1)}% de vigencia`;
   const projectionLabel =
@@ -228,11 +231,11 @@ export function ContractDetailPanel({
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Proyección de agotamiento</p>
           <p className="text-lg font-semibold">{projectionLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Velocidad: {(burnRateMinutesPerWeek / 60).toFixed(1)} h/semana</p>
+          <p className="mt-1 text-xs text-muted-foreground">Velocidad: {(burnRateMinutesPerWeek / 60).toFixed(2)} h/semana</p>
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas mal asignadas</p>
-          <p className="text-2xl font-semibold">{(unallocatedMinutes / 60).toFixed(1)} h</p>
+          <p className="text-2xl font-semibold">{(unallocatedMinutes / 60).toFixed(2)} h</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {unallocatedCount} registro(s) · {misallocationPct.toFixed(1)}% del consumo
           </p>
@@ -276,24 +279,24 @@ export function ContractDetailPanel({
       <section className="grid gap-4 md:grid-cols-3">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas cotizadas</p>
-          <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(2)}</p>
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas usadas</p>
-          <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(2)}</p>
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Disponibles</p>
-          <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(2)}</p>
           <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
-          <p className="mt-1 text-xs text-muted-foreground">Esperadas a hoy: {(expectedMinutesByDate / 60).toFixed(1)} h</p>
+          <p className="mt-1 text-xs text-muted-foreground">Esperadas a hoy: {(expectedMinutesByDate / 60).toFixed(2)} h</p>
         </article>
       </section>
 
       {unallocatedCount > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-[2px] border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <span>
-            Este contrato tiene {unallocatedCount} hora(s) a corregir ({(unallocatedMinutes / 60).toFixed(1)} h).
+            Este contrato tiene {unallocatedCount} hora(s) a corregir ({(unallocatedMinutes / 60).toFixed(2)} h).
           </span>
           <Link
             href={`/time-entries?contractStatus=unassigned&contractId=${contractId}`}

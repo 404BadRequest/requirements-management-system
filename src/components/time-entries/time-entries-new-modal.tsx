@@ -13,8 +13,9 @@ function NewTimeEntryModalForm({
   onCreated: () => Promise<void> | void;
 }) {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
-  const [requirements, setRequirements] = useState<{ id: string; title: string }[]>([]);
-  const [contracts, setContracts] = useState<{ id: string; label: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [requirements, setRequirements] = useState<{ id: string; title: string; clientId: string }[]>([]);
+  const [contracts, setContracts] = useState<{ id: string; clientId: string; label: string }[]>([]);
   const [contractProfiles, setContractProfiles] = useState<{ id: string; label: string }[]>([]);
   const [categories, setCategories] = useState<{ code: string; label: string }[]>([]);
   const [defaultUserId, setDefaultUserId] = useState<string | undefined>();
@@ -29,6 +30,7 @@ function NewTimeEntryModalForm({
       .then((data) => {
         if (cancelled) return;
         setUsers(data.users);
+        setClients(data.clients);
         setRequirements(data.requirements);
         setContracts(data.contracts);
         setContractProfiles(data.contractProfiles);
@@ -59,6 +61,7 @@ function NewTimeEntryModalForm({
   return (
     <TimeEntryForm
       users={users}
+      clients={clients}
       categories={categories}
       requirements={requirements}
       contracts={contracts}

@@ -25,7 +25,7 @@ export function buildTeamDirectoryRows(
       profileLabel: profile?.name ?? user.profileId,
       rateLabel: profile ? formatHourlyRateDisplay(profile.hourlyRate, profile.rateCurrency) : "—",
       hours,
-      hoursDisplay: `${hours.toFixed(1)} h`,
+      hoursDisplay: `${hours.toFixed(2)} h`,
       estimateLabel: profile ? formatBillingLineTotal(estimated, profile.rateCurrency) : "—",
       reqsAssigned,
       activeLabel: user.active ? "Activo" : "Inactivo",

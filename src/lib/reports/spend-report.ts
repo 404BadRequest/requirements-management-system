@@ -141,7 +141,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
       categoryCode,
       categoryLabel,
       hours,
-      hoursDisplay: `${hours.toFixed(1)} h`,
+      hoursDisplay: `${hours.toFixed(2)} h`,
       billable,
       amount,
       currency,

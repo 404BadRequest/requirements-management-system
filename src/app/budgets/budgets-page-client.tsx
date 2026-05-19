@@ -166,9 +166,9 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         quotedMinutes: quotedByRows,
         usedMinutes: used,
         availableMinutes: available,
-        quotedHoursDisplay: `${(quotedByRows / 60).toFixed(1)} h`,
-        usedHoursDisplay: `${(used / 60).toFixed(1)} h`,
-        availableHoursDisplay: `${(available / 60).toFixed(1)} h`,
+        quotedHoursDisplay: `${(quotedByRows / 60).toFixed(2)} h`,
+        usedHoursDisplay: `${(used / 60).toFixed(2)} h`,
+        availableHoursDisplay: `${(available / 60).toFixed(2)} h`,
         risk: budgetRiskLevel(quotedByRows, used),
       };
     });
@@ -309,7 +309,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Mala asignación global</p>
-          <p className="text-2xl font-semibold">{(globalDecisionMetrics.misallocationMinutes / 60).toFixed(1)} h</p>
+          <p className="text-2xl font-semibold">{(globalDecisionMetrics.misallocationMinutes / 60).toFixed(2)} h</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {globalDecisionMetrics.misallocationCount} registros · {globalDecisionMetrics.misallocationPct.toFixed(1)}%
           </p>
@@ -319,7 +319,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Desviación global vs plan</p>
-          <p className="text-2xl font-semibold">{deviationHoursGlobal.toFixed(1)} h</p>
+          <p className="text-2xl font-semibold">{deviationHoursGlobal.toFixed(2)} h</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {deviationDirectionGlobal} · {globalDecisionMetrics.deviationPctGlobal.toFixed(1)}%
           </p>
@@ -329,7 +329,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Velocidad semanal</p>
-          <p className="text-2xl font-semibold">{(globalDecisionMetrics.burnRateMinutesPerWeekGlobal / 60).toFixed(1)} h</p>
+          <p className="text-2xl font-semibold">{(globalDecisionMetrics.burnRateMinutesPerWeekGlobal / 60).toFixed(2)} h</p>
           <p className="mt-1 text-xs text-muted-foreground">Promedio últimas 4 semanas</p>
         </article>
         <article className="surface-card p-4">
@@ -371,22 +371,22 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       <section className="grid gap-4 md:grid-cols-3">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas cotizadas</p>
-          <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(2)}</p>
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas usadas</p>
-          <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(2)}</p>
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Disponibles</p>
-          <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(1)}</p>
+          <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(2)}</p>
           <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
         </article>
       </section>
       {unallocatedCount > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-[2px] border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <span>
-            Hay {unallocatedCount} hora(s) sin asignación contractual ({(unallocatedMinutes / 60).toFixed(1)} h) para corregir.
+            Hay {unallocatedCount} hora(s) sin asignación contractual ({(unallocatedMinutes / 60).toFixed(2)} h) para corregir.
           </span>
           <Link
             href="/time-entries?contractStatus=unassigned"

@@ -182,8 +182,11 @@ export default async function TimeEntriesPage({
       </form>
       <TimeEntriesTable
         users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-        requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
-        contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
+        clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
+        requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
+        contracts={contracts
+          .filter((contract) => contract.active)
+          .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
         contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
         categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
         canPickAnyOwner={canPickAnyOwner}
@@ -202,7 +205,7 @@ export default async function TimeEntriesPage({
               (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
           category: categoryLabelByCode.get(entry.category) ?? entry.category,
           durationMinutes: entry.durationMinutes,
-          durationLabel: `${(entry.durationMinutes / 60).toFixed(1)} h`,
+          durationLabel: `${(entry.durationMinutes / 60).toFixed(2)} h`,
           clientLabel: clientCell(entry.requirementId),
           contractStatus: resolveContractStatus(entry),
         }))}

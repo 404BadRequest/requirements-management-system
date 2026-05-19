@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { budgetSchema, type BudgetInput } from "@/schemas/budget-schema";
 import { FormField } from "@/components/forms/form-field";
@@ -67,6 +68,7 @@ export const BudgetForm = ({
     control: form.control,
     name: "allocations",
   });
+  const [hoursDraftByFieldId, setHoursDraftByFieldId] = useState<Record<string, string>>({});
   const isSubmitting = form.formState.isSubmitting;
 
   return (
@@ -161,11 +163,20 @@ export const BudgetForm = ({
                 className="field-control w-full"
                 placeholder="Horas"
                 aria-label="Horas cotizadas"
-                value={formatHoursInput(form.watch(`allocations.${index}.quotedMinutes`))}
+                value={hoursDraftByFieldId[field.id] ?? formatHoursInput(form.watch(`allocations.${index}.quotedMinutes`))}
                 onChange={(event) => {
+                  const raw = event.target.value;
+                  setHoursDraftByFieldId((prev) => ({ ...prev, [field.id]: raw }));
                   const hours = parseHoursInput(event.target.value);
                   const minutes = Number.isFinite(hours) ? Math.round(hours * 60) : 0;
                   form.setValue(`allocations.${index}.quotedMinutes`, minutes);
+                }}
+                onBlur={() => {
+                  setHoursDraftByFieldId((prev) => {
+                    const next = { ...prev };
+                    delete next[field.id];
+                    return next;
+                  });
                 }}
               />
               <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => allocations.remove(index)}>

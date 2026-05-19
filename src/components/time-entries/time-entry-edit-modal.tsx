@@ -11,6 +11,7 @@ import type { TimeEntry } from "@/types/domain";
 export function TimeEntryEditModal({
   entry,
   users,
+  clients,
   requirements,
   contracts = [],
   contractProfiles = [],
@@ -22,8 +23,9 @@ export function TimeEntryEditModal({
 }: {
   entry: TimeEntry;
   users: { id: string; name: string }[];
-  requirements: { id: string; title: string }[];
-  contracts?: { id: string; label: string }[];
+  clients: { id: string; name: string }[];
+  requirements: { id: string; title: string; clientId: string }[];
+  contracts?: { id: string; clientId: string; label: string }[];
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canEdit: boolean;
@@ -51,6 +53,7 @@ export function TimeEntryEditModal({
       >
         <TimeEntryForm
           users={users}
+          clients={clients}
           requirements={requirements}
           contracts={contracts}
           contractProfiles={contractProfiles}

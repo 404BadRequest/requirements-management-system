@@ -1,12 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { timeEntrySchema, type TimeEntryInput } from "@/schemas/time-entry-schema";
 import { FormField } from "@/components/forms/form-field";
 
 export const TimeEntryForm = ({
   users,
+  clients,
   categories,
   requirements,
   contracts = [],
@@ -20,9 +22,10 @@ export const TimeEntryForm = ({
   onSubmit,
 }: {
   users: { id: string; name: string }[];
+  clients: { id: string; name: string }[];
   categories: { code: string; label: string }[];
-  requirements: { id: string; title: string }[];
-  contracts?: { id: string; label: string }[];
+  requirements: { id: string; title: string; clientId: string }[];
+  contracts?: { id: string; clientId: string; label: string }[];
   contractProfiles?: { id: string; label: string }[];
   canOverrideContract?: boolean;
   canOverrideContractProfile?: boolean;
@@ -55,6 +58,46 @@ export const TimeEntryForm = ({
     },
   });
   const isSubmitting = form.formState.isSubmitting;
+  const selectedRequirementId = form.watch("requirementId");
+  const selectedContractId = form.watch("contractId");
+  const selectedRequirement = useMemo(
+    () => requirements.find((requirement) => requirement.id === selectedRequirementId) ?? null,
+    [requirements, selectedRequirementId],
+  );
+  const initialClientId = selectedRequirement?.clientId ?? contracts.find((contract) => contract.id === selectedContractId)?.clientId ?? clients[0]?.id ?? "";
+  const [selectedClientId, setSelectedClientId] = useState(initialClientId);
+  const filteredRequirements = useMemo(
+    () => requirements.filter((requirement) => requirement.clientId === selectedClientId),
+    [requirements, selectedClientId],
+  );
+  const filteredContracts = useMemo(
+    () => contracts.filter((contract) => contract.clientId === selectedClientId),
+    [contracts, selectedClientId],
+  );
+
+  useEffect(() => {
+    if (!selectedRequirement) return;
+    if (selectedRequirement.clientId !== selectedClientId) {
+      setSelectedClientId(selectedRequirement.clientId);
+    }
+  }, [selectedClientId, selectedRequirement]);
+
+  useEffect(() => {
+    if (!selectedRequirementId) return;
+    const stillVisible = filteredRequirements.some((requirement) => requirement.id === selectedRequirementId);
+    if (!stillVisible) {
+      form.setValue("requirementId", null);
+    }
+  }, [filteredRequirements, form, selectedRequirementId]);
+
+  useEffect(() => {
+    if (!selectedContractId) return;
+    const stillVisible = filteredContracts.some((contract) => contract.id === selectedContractId);
+    if (!stillVisible) {
+      form.setValue("contractId", null);
+      form.setValue("contractProfileId", null);
+    }
+  }, [filteredContracts, form, selectedContractId]);
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
@@ -99,14 +142,35 @@ export const TimeEntryForm = ({
           ))}
         </select>
       </FormField>
+      <FormField label="Cliente">
+        <select
+          className="field-control w-full"
+          value={selectedClientId}
+          onChange={(event) => setSelectedClientId(event.target.value)}
+        >
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </select>
+      </FormField>
       <FormField label="Requerimiento (opcional)">
         <select
           className="field-control w-full"
           value={form.watch("requirementId") ?? ""}
-          onChange={(event) => form.setValue("requirementId", event.target.value || null)}
+          onChange={(event) => {
+            const nextRequirementId = event.target.value || null;
+            form.setValue("requirementId", nextRequirementId);
+            if (!nextRequirementId) return;
+            const nextRequirement = requirements.find((requirement) => requirement.id === nextRequirementId);
+            if (nextRequirement) {
+              setSelectedClientId(nextRequirement.clientId);
+            }
+          }}
         >
           <option value="">Sin requerimiento</option>
-          {requirements.map((requirement) => (
+          {filteredRequirements.map((requirement) => (
             <option key={requirement.id} value={requirement.id}>
               {requirement.title}
             </option>
@@ -121,7 +185,7 @@ export const TimeEntryForm = ({
           disabled={!canOverrideContract}
         >
           <option value="">Asignación automática</option>
-          {contracts.map((contract) => (
+          {filteredContracts.map((contract) => (
             <option key={contract.id} value={contract.id}>
               {contract.label}
             </option>

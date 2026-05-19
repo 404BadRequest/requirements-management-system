@@ -66,6 +66,7 @@ export default async function BudgetContractDetailPage({
         topRequirementRows={data.topRequirementRows}
         contractHealthScore={data.contractHealthScore}
         contractHealthRisk={data.contractHealthRisk}
+        clients={data.clients}
       />
     </AppShell>
   );

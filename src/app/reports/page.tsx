@@ -156,7 +156,7 @@ export default async function ReportsPage({
       <section className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas totales (periodo y filtros)</p>
-          <p className="text-2xl font-semibold tabular-nums">{totalHours.toFixed(1)} h</p>
+          <p className="text-2xl font-semibold tabular-nums">{totalHours.toFixed(2)} h</p>
         </article>
         <article className="surface-card border-primary/20 bg-primary/[0.06] p-4">
           <p className="text-xs text-muted-foreground">Total equivalente CLP</p>

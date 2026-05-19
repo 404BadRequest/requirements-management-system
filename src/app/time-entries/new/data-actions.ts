@@ -5,6 +5,7 @@ import {
   createTimeEntry,
   deleteTimeEntry,
   getCatalogByKind,
+  getClients,
   getContractBudgets,
   getContractProfileAllocations,
   getFinancialReferenceRates,
@@ -32,11 +33,12 @@ export async function loadNewTimeEntryFormData() {
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const [usersData, requirementsData, catRows, contracts] = await Promise.all([
+  const [usersData, requirementsData, catRows, contracts, clientsData] = await Promise.all([
     getUsers(),
     getRequirements(),
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
+    getClients(),
   ]);
   const activeUsers = usersData.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
@@ -55,10 +57,11 @@ export async function loadNewTimeEntryFormData() {
     users: encargadoOptions,
     encargadoLocked: !pickAny,
     defaultUserId: resolvedId,
-    requirements: visibleRequirements.map((r) => ({ id: r.id, title: r.title })),
+    clients: clientsData.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name })),
+    requirements: visibleRequirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId })),
     contracts: contracts
       .filter((contract) => contract.active)
-      .map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` })),
+      .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` })),
     contractProfiles: profiles.map((profile) => ({ id: profile.id, label: profile.name })),
     canOverrideContract: pickAny,
     canOverrideContractProfile: pickAny,

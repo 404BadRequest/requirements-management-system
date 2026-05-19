@@ -181,8 +181,8 @@ export async function loadBudgetsPageData(projectId?: string) {
         clientName: clientById.get(contract.clientId) ?? contract.clientId,
         healthScore: health.score,
         healthRisk: health.risk,
-        usedHoursLabel: `${(usedContractMinutes / 60).toFixed(1)} h`,
-        quotedHoursLabel: `${(quotedContractMinutes / 60).toFixed(1)} h`,
+        usedHoursLabel: `${(usedContractMinutes / 60).toFixed(2)} h`,
+        quotedHoursLabel: `${(quotedContractMinutes / 60).toFixed(2)} h`,
         daysToDepletion: depletion.daysToDepletion,
       };
     })
@@ -392,7 +392,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
         requirementId: requirementId === "__none__" ? null : requirementId,
         requirementTitle: linkedRequirement?.title ?? "Sin requerimiento",
         equivalentMinutesUsed,
-        equivalentHoursLabel: `${(equivalentMinutesUsed / 60).toFixed(1)} h`,
+        equivalentHoursLabel: `${(equivalentMinutesUsed / 60).toFixed(2)} h`,
         pctOfContractUsed,
       };
     })
@@ -429,7 +429,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
           ? (assignedContractProfile?.name ?? entry.contractProfileId)
           : "—",
         durationMinutes: entry.durationMinutes,
-        durationLabel: `${(entry.durationMinutes / 60).toFixed(1)} h`,
+        durationLabel: `${(entry.durationMinutes / 60).toFixed(2)} h`,
         requirementTitle: linkedRequirement?.title ?? "Sin requerimiento",
         status,
       };
@@ -444,9 +444,9 @@ export async function loadBudgetContractDetailData(contractId: string) {
     return {
       id: allocation.id,
       profileName: profile?.name ?? allocation.profileId,
-      quotedLabel: `${(quotedProfileMinutes / 60).toFixed(1)} h`,
-      usedLabel: `${(usedProfileMinutes / 60).toFixed(1)} h`,
-      availableLabel: `${(availableProfileMinutes / 60).toFixed(1)} h`,
+      quotedLabel: `${(quotedProfileMinutes / 60).toFixed(2)} h`,
+      usedLabel: `${(usedProfileMinutes / 60).toFixed(2)} h`,
+      availableLabel: `${(availableProfileMinutes / 60).toFixed(2)} h`,
     };
   });
 
@@ -475,8 +475,11 @@ export async function loadBudgetContractDetailData(contractId: string) {
     contractHealthScore: health.score,
     contractHealthRisk: health.risk,
     users: users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name })),
-    requirements: requirements.map((r) => ({ id: r.id, title: r.title })),
-    contracts: contractsData.filter((c) => c.active).map((c) => ({ id: c.id, label: `${c.code} · ${c.name}` })),
+    clients: clientsData.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name })),
+    requirements: requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId })),
+    contracts: contractsData
+      .filter((c) => c.active)
+      .map((c) => ({ id: c.id, clientId: c.clientId, label: `${c.code} · ${c.name}` })),
     contractProfiles: profilesData.map((p) => ({ id: p.id, label: p.name })),
     categories: timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: formatCatalogLabel(c.code, c.label) })),
     canPickAnyOwner,

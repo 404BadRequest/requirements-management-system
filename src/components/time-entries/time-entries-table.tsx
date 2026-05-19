@@ -25,6 +25,7 @@ export type TimeEntryRow = {
 export function TimeEntriesTable({
   rows,
   users,
+  clients,
   requirements,
   contracts = [],
   contractProfiles = [],
@@ -33,8 +34,9 @@ export function TimeEntriesTable({
 }: {
   rows: TimeEntryRow[];
   users: { id: string; name: string }[];
-  requirements: { id: string; title: string }[];
-  contracts?: { id: string; label: string }[];
+  clients: { id: string; name: string }[];
+  requirements: { id: string; title: string; clientId: string }[];
+  contracts?: { id: string; clientId: string; label: string }[];
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
@@ -75,6 +77,7 @@ export function TimeEntriesTable({
               <TimeEntryEditModal
                 entry={row.original.entry}
                 users={users}
+                clients={clients}
                 requirements={requirements}
                 contracts={contracts}
                 contractProfiles={contractProfiles}
@@ -90,7 +93,7 @@ export function TimeEntriesTable({
         },
       },
     ],
-    [canPickAnyOwner, categories, contractProfiles, contracts, requirements, users],
+    [canPickAnyOwner, categories, clients, contractProfiles, contracts, requirements, users],
   );
 
   return (
