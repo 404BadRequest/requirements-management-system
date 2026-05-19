@@ -1,4 +1,4 @@
-import type { Client, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
+import type { Client, ContractBudget, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
 import { calculateBillingAmount } from "@/lib/calculations/billing";
 import { convertBillingAmountToClp } from "@/lib/calculations/currency-to-clp";
 import { formatBillingLineTotal } from "@/lib/formatting/rates";
@@ -6,6 +6,8 @@ import { formatBillingLineTotal } from "@/lib/formatting/rates";
 export type SpendReportRow = {
   id: string;
   clientName: string;
+  contractId: string | null;
+  contractName: string;
   userName: string;
   categoryCode: string;
   categoryLabel: string;
@@ -26,6 +28,7 @@ export type BuildSpendReportParams = {
   users: User[];
   profiles: Profile[];
   clients: Client[];
+  contracts: ContractBudget[];
   categoryLabelByCode: Map<string, string>;
   fromDate: string;
   toDate: string;
@@ -47,6 +50,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     users,
     profiles,
     clients,
+    contracts,
     categoryLabelByCode,
     fromDate,
     toDate,
@@ -59,6 +63,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
   const userById = new Map(users.map((u) => [u.id, u]));
   const profileById = new Map(profiles.map((p) => [p.id, p]));
   const clientById = new Map(clients.map((c) => [c.id, c]));
+  const contractById = new Map(contracts.map((contract) => [contract.id, contract]));
 
   type Agg = { minutes: number };
   const agg = new Map<string, Agg>();
@@ -88,7 +93,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     const user = userById.get(entry.userId);
     if (!user) continue;
 
-    const composite = `${clientKey}|${entry.userId}|${entry.category}`;
+    const composite = `${clientKey}|${entry.contractId ?? ""}|${entry.userId}|${entry.category}`;
     const prev = agg.get(composite);
     const minutes = entry.durationMinutes;
     if (prev) {
@@ -103,8 +108,9 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
   for (const [key, data] of agg) {
     const parts = key.split("|");
     const clientKeyPart = parts[0] ?? "";
-    const userId = parts[1] ?? "";
-    const categoryCode = parts.slice(2).join("|");
+    const contractId = (parts[1] ?? "") || null;
+    const userId = parts[2] ?? "";
+    const categoryCode = parts.slice(3).join("|");
     const user = userById.get(userId);
     if (!user) continue;
 
@@ -116,6 +122,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
       clientKeyPart === "__no_req__"
         ? "Sin requerimiento asociado"
         : clientById.get(clientKeyPart)?.name ?? clientKeyPart;
+    const contractName = contractId ? (contractById.get(contractId)?.name ?? contractId) : "Sin contrato";
 
     const billable = Boolean(profile);
     const currency = (profile?.rateCurrency ?? "CLP").trim() || "CLP";
@@ -128,6 +135,8 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     rows.push({
       id: key,
       clientName,
+      contractId,
+      contractName,
       userName: user.name,
       categoryCode,
       categoryLabel,

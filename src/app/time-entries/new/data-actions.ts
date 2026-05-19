@@ -5,6 +5,7 @@ import {
   createTimeEntry,
   deleteTimeEntry,
   getCatalogByKind,
+  getContractBudgets,
   getRequirements,
   getTimeEntryById,
   getUsers,
@@ -13,6 +14,7 @@ import {
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
+import { resolveContractIdForTimeEntry } from "@/lib/contracts/resolve-contract";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { Role } from "@/types/domain";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
@@ -27,10 +29,11 @@ export async function loadNewTimeEntryFormData() {
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const [usersData, requirementsData, catRows] = await Promise.all([
+  const [usersData, requirementsData, catRows, contracts] = await Promise.all([
     getUsers(),
     getRequirements(),
     getCatalogByKind("time_entry_category"),
+    getContractBudgets(),
   ]);
   const activeUsers = usersData.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
@@ -48,6 +51,10 @@ export async function loadNewTimeEntryFormData() {
     encargadoLocked: !pickAny,
     defaultUserId: resolvedId,
     requirements: visibleRequirements.map((r) => ({ id: r.id, title: r.title })),
+    contracts: contracts
+      .filter((contract) => contract.active)
+      .map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` })),
+    canOverrideContract: pickAny,
     categories: catRows.filter((r) => r.active).map((r) => ({ code: r.code, label: formatCatalogLabel(r.code, r.label) })),
   };
 }
@@ -61,10 +68,11 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const requirements = await getRequirements();
+  const [requirements, contracts] = await Promise.all([getRequirements(), getContractBudgets()]);
   const payload = { ...input };
   if (!canPickEncargadoForOthers(user.role)) {
     payload.userId = resolvedId;
+    payload.contractId = null;
     if (payload.requirementId) {
       const linkedRequirement = requirements.find((r) => r.id === payload.requirementId);
       if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
@@ -74,6 +82,14 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
   }
+  payload.contractId = resolveContractIdForTimeEntry({
+    contractId: canPickEncargadoForOthers(user.role) ? payload.contractId : null,
+    requirementId: payload.requirementId,
+    projectId: payload.projectId,
+    date: payload.date,
+    requirements,
+    contracts,
+  });
   const created = await createTimeEntry(payload);
   revalidatePath("/time-entries");
   revalidatePath("/dashboard");
@@ -98,7 +114,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const users = await getUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const requirements = await getRequirements();
+  const [requirements, contracts] = await Promise.all([getRequirements(), getContractBudgets()]);
   const pickAny = canPickEncargadoForOthers(user.role);
 
   if (!pickAny && current.userId !== resolvedId) {
@@ -108,6 +124,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const payload: TimeEntryInput = { ...input };
   if (!pickAny) {
     payload.userId = current.userId;
+    payload.contractId = null;
     if (payload.requirementId) {
       const linkedRequirement = requirements.find((r) => r.id === payload.requirementId);
       if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
@@ -117,6 +134,14 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
   }
+  payload.contractId = resolveContractIdForTimeEntry({
+    contractId: pickAny ? payload.contractId : current.contractId,
+    requirementId: payload.requirementId,
+    projectId: payload.projectId,
+    date: payload.date,
+    requirements,
+    contracts,
+  });
 
   const updated = await updateTimeEntry(id, payload);
   if (!updated) {

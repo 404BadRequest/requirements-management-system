@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   getCatalogByKind,
   getClients,
+  getContractBudgets,
   getFinancialReferenceRates,
   getProfiles,
   getRequirements,
@@ -43,7 +44,7 @@ export default async function ReportsPage({
   }
   const clientId = sp.clientId?.trim() ?? "";
 
-  const [entries, requirements, users, clients, profiles, categories, referenceRates] = await Promise.all([
+  const [entries, requirements, users, clients, profiles, categories, referenceRates, contracts] = await Promise.all([
     getTimeEntries(),
     getRequirements(),
     getUsers(),
@@ -51,6 +52,7 @@ export default async function ReportsPage({
     getProfiles(),
     getCatalogByKind("time_entry_category"),
     getFinancialReferenceRates(),
+    getContractBudgets(),
   ]);
 
   const categoryLabelByCode = new Map(categories.filter((c) => c.active).map((c) => [c.code, c.label]));
@@ -79,6 +81,7 @@ export default async function ReportsPage({
     users,
     profiles,
     clients,
+    contracts,
     categoryLabelByCode,
     fromDate: from,
     toDate: to,

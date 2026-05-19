@@ -11,7 +11,7 @@ import { RiskBadge } from "@/components/common/badges";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
 import { loadBudgetsPageData, createBudgetAction } from "@/app/budgets/data-actions";
-import type { BudgetAllocation, Profile, SettingsCatalogEntry } from "@/types/domain";
+import type { Client, ContractBudget, ContractProfileAllocation, Profile, SettingsCatalogEntry } from "@/types/domain";
 
 export type BudgetsPageClientProps = {
   canWrite: boolean;
@@ -20,17 +20,31 @@ export type BudgetsPageClientProps = {
 
 type BudgetRow = {
   id: string;
+  code: string;
+  name: string;
   scopeLabel: string;
-  profileName: string;
+  clientName: string;
+  dateRange: string;
   quotedMinutes: number;
+  usedMinutes: number;
+  availableMinutes: number;
   quotedHoursDisplay: string;
+  usedHoursDisplay: string;
+  availableHoursDisplay: string;
+  risk: "sin presupuesto" | "verde" | "amarillo" | "rojo";
 };
 
 export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProps) {
-  const [budgets, setBudgets] = useState<BudgetAllocation[]>([]);
+  const [contracts, setContracts] = useState<ContractBudget[]>([]);
+  const [allocations, setAllocations] = useState<ContractProfileAllocation[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [scopes, setScopes] = useState<SettingsCatalogEntry[]>([]);
   const [usedMinutes, setUsedMinutes] = useState(0);
+  const [quotedMinutes, setQuotedMinutes] = useState(0);
+  const [consumptionByContract, setConsumptionByContract] = useState<
+    { contractId: string; quotedMinutes: number; usedMinutes: number; availableMinutes: number; consumptionPct: number }[]
+  >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,13 +56,17 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
     setListError(null);
     try {
       const data = await loadBudgetsPageData();
-      setBudgets(data.budgets);
+      setContracts(data.contracts);
+      setAllocations(data.allocations);
       setProfiles(data.profiles);
+      setClients(data.clients);
       setScopes(data.scopes);
       setUsedMinutes(data.usedMinutes);
+      setQuotedMinutes(data.quotedMinutes);
+      setConsumptionByContract(data.consumptionByContract);
       setLastSyncedAt(new Date().toISOString());
     } catch (e) {
-      const message = e instanceof Error ? e.message : "No se pudieron cargar los presupuestos.";
+      const message = e instanceof Error ? e.message : "No se pudieron cargar los contratos.";
       setListError(message);
       toast.error(message);
     } finally {
@@ -60,9 +78,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
     void reload();
   }, [reload]);
 
-  const quotedMinutes = useMemo(() => budgets.reduce((acc, item) => acc + item.quotedMinutes, 0), [budgets]);
   const availableMinutes = quotedMinutes - usedMinutes;
-
   const scopeOptions = useMemo(
     () => scopes.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label })),
     [scopes],
@@ -71,34 +87,63 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
     const m = new Map(scopes.map((s) => [s.code, s.label]));
     return (code: string) => m.get(code) ?? code;
   }, [scopes]);
-
-  const profileName = useMemo(() => {
-    const m = new Map(profiles.map((p) => [p.id, p.name]));
+  const clientName = useMemo(() => {
+    const m = new Map(clients.map((c) => [c.id, c.name]));
     return (id: string) => m.get(id) ?? id;
-  }, [profiles]);
+  }, [clients]);
 
-  const budgetRows = useMemo<BudgetRow[]>(
-    () =>
-      budgets.map((b) => ({
-        id: b.id,
-        scopeLabel: scopeLabel(b.scope),
-        profileName: profileName(b.profileId),
-        quotedMinutes: b.quotedMinutes,
-        quotedHoursDisplay: `${(b.quotedMinutes / 60).toFixed(1)} h`,
-      })),
-    [budgets, scopeLabel, profileName],
-  );
+  const budgetRows = useMemo<BudgetRow[]>(() => {
+    const consumptionByContractId = new Map(consumptionByContract.map((row) => [row.contractId, row]));
+    return contracts.map((contract) => {
+      const contractAllocations = allocations.filter((allocation) => allocation.contractId === contract.id);
+      const quotedByRows = contractAllocations.reduce((acc, allocation) => acc + allocation.quotedMinutes, 0);
+      const contractConsumption = consumptionByContractId.get(contract.id);
+      const used = contractConsumption?.usedMinutes ?? 0;
+      const available = quotedByRows - used;
+      return {
+        id: contract.id,
+        code: contract.code,
+        name: contract.name,
+        scopeLabel: scopeLabel(contract.scope),
+        clientName: clientName(contract.clientId),
+        dateRange: `${contract.startDate} → ${contract.endDate}`,
+        quotedMinutes: quotedByRows,
+        usedMinutes: used,
+        availableMinutes: available,
+        quotedHoursDisplay: `${(quotedByRows / 60).toFixed(1)} h`,
+        usedHoursDisplay: `${(used / 60).toFixed(1)} h`,
+        availableHoursDisplay: `${(available / 60).toFixed(1)} h`,
+        risk: budgetRiskLevel(quotedByRows, used),
+      };
+    });
+  }, [allocations, clientName, consumptionByContract, contracts, scopeLabel]);
 
   const budgetColumns = useMemo<ColumnDef<BudgetRow>[]>(
     () => [
+      { accessorKey: "code", header: "Código" },
+      { accessorKey: "name", header: "Contrato" },
       { accessorKey: "scopeLabel", header: "Ámbito" },
-      { accessorKey: "profileName", header: "Perfil" },
+      { accessorKey: "clientName", header: "Cliente" },
+      { accessorKey: "dateRange", header: "Vigencia" },
       {
         accessorKey: "quotedMinutes",
         header: "Horas cotizadas",
         meta: { align: "right" },
         cell: ({ row }) => row.original.quotedHoursDisplay,
       },
+      {
+        accessorKey: "usedMinutes",
+        header: "Horas usadas",
+        meta: { align: "right" },
+        cell: ({ row }) => row.original.usedHoursDisplay,
+      },
+      {
+        accessorKey: "availableMinutes",
+        header: "Disponibles",
+        meta: { align: "right" },
+        cell: ({ row }) => row.original.availableHoursDisplay,
+      },
+      { accessorKey: "risk", header: "Riesgo", cell: ({ row }) => <RiskBadge risk={row.original.risk} /> },
     ],
     [],
   );
@@ -113,8 +158,8 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
   return (
     <>
       <PageHeader
-        title="Presupuesto y disponibilidad"
-        description="Control de horas cotizadas, usadas y riesgo"
+        title="Contratos y disponibilidad"
+        description="Control contractual de horas cotizadas, usadas y riesgo"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canExport ? (
@@ -124,27 +169,23 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
             ) : null}
             {canWrite ? (
               <button type="button" className="btn-primary py-2 text-sm" onClick={() => openCreateModal()}>
-                Nueva asignación
+                Nuevo contrato
               </button>
             ) : null}
           </div>
         }
       />
       <SyncStatusBanner
-        loading={loading && budgets.length > 0}
+        loading={loading && contracts.length > 0}
         error={listError}
         lastSyncedAt={lastSyncedAt}
         onRetry={() => {
           void reload();
         }}
-        loadingLabel="Actualizando presupuestos…"
+        loadingLabel="Actualizando contratos…"
       />
-      {loading && budgets.length === 0 ? (
-        <div
-          className="skeleton-shimmer h-44 rounded-[2px] border border-border"
-          aria-busy
-          aria-label="Cargando presupuestos"
-        />
+      {loading && contracts.length === 0 ? (
+        <div className="skeleton-shimmer h-44 rounded-[2px] border border-border" aria-busy aria-label="Cargando contratos" />
       ) : null}
       <section className="grid gap-4 md:grid-cols-3">
         <article className="surface-card p-4">
@@ -166,24 +207,25 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         <SettingsModal
           open={createOpen}
           onClose={() => setCreateOpen(false)}
-          title="Nueva asignación de presupuesto"
-          description="Vincula un ámbito de presupuesto con un perfil de tarifa y las horas cotizadas."
+          title="Nuevo contrato"
+          description="Define vigencia, tarifa UF/hora y bolsa por perfil."
         >
           {scopeOptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Configura ámbitos (scopes) en Configuración antes de crear asignaciones.</p>
+            <p className="text-sm text-muted-foreground">Configura ámbitos (scopes) en Configuración antes de crear contratos.</p>
           ) : (
             <BudgetForm
               key={formKey}
+              clients={clients.map((client) => ({ id: client.id, name: client.name }))}
               scopes={scopeOptions}
               profiles={profiles.map((profile) => ({ id: profile.id, name: profile.name }))}
               onSubmit={async (values) => {
                 try {
                   await createBudgetAction(values);
-                  toast.success("Presupuesto registrado");
+                  toast.success("Contrato registrado");
                   setCreateOpen(false);
                   await reload();
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "No se pudo crear la asignación.");
+                  toast.error(e instanceof Error ? e.message : "No se pudo crear el contrato.");
                 }
               }}
             />
@@ -192,18 +234,18 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       ) : null}
 
       <div className="mt-6 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Asignaciones</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contratos</h2>
         <DataTable
           data={budgetRows}
           columns={budgetColumns}
-          globalFilterPlaceholder="Buscar por ámbito o perfil…"
+          globalFilterPlaceholder="Buscar por contrato, ámbito o cliente…"
           pageSize={20}
-          emptyTitle="Sin asignaciones"
-          emptyDescription="Añade líneas de presupuesto con «Nueva asignación»."
+          emptyTitle="Sin contratos"
+          emptyDescription="Añade contratos con «Nuevo contrato»."
           emptyAction={
             canWrite ? (
               <button type="button" className="btn-primary py-2 text-sm" onClick={() => openCreateModal()}>
-                Crear asignación
+                Crear contrato
               </button>
             ) : (
               <a href="/settings/budget-scopes" className="btn-secondary py-2 text-sm no-underline">

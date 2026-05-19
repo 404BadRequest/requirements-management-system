@@ -14,9 +14,11 @@ function NewTimeEntryModalForm({
 }) {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [requirements, setRequirements] = useState<{ id: string; title: string }[]>([]);
+  const [contracts, setContracts] = useState<{ id: string; label: string }[]>([]);
   const [categories, setCategories] = useState<{ code: string; label: string }[]>([]);
   const [defaultUserId, setDefaultUserId] = useState<string | undefined>();
   const [encargadoLocked, setEncargadoLocked] = useState(false);
+  const [canOverrideContract, setCanOverrideContract] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,9 +28,11 @@ function NewTimeEntryModalForm({
         if (cancelled) return;
         setUsers(data.users);
         setRequirements(data.requirements);
+        setContracts(data.contracts);
         setCategories(data.categories);
         setDefaultUserId(data.defaultUserId);
         setEncargadoLocked(data.encargadoLocked);
+        setCanOverrideContract(data.canOverrideContract);
         setLoadError(null);
       })
       .catch((e: unknown) => {
@@ -53,6 +57,8 @@ function NewTimeEntryModalForm({
       users={users}
       categories={categories}
       requirements={requirements}
+      contracts={contracts}
+      canOverrideContract={canOverrideContract}
       defaultUserId={defaultUserId}
       encargadoLocked={encargadoLocked}
       onSubmit={async (values) => {

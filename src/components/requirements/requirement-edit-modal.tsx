@@ -11,6 +11,7 @@ import type { Requirement } from "@/types/domain";
 export function RequirementEditModal({
   requirement,
   clients,
+  contracts,
   statusOptions,
   priorityOptions,
   owners,
@@ -21,6 +22,7 @@ export function RequirementEditModal({
 }: {
   requirement: Requirement;
   clients: { id: string; name: string }[];
+  contracts: { id: string; label: string }[];
   statusOptions: { code: string; label: string }[];
   priorityOptions: { code: string; label: string }[];
   owners: { id: string; name: string }[];
@@ -49,6 +51,7 @@ export function RequirementEditModal({
       >
         <RequirementForm
           clients={clients}
+          contracts={contracts}
           statusOptions={statusOptions}
           priorityOptions={priorityOptions}
           owners={owners}
@@ -57,6 +60,7 @@ export function RequirementEditModal({
           defaultValues={{
             projectId: requirement.projectId,
             clientId: requirement.clientId,
+            contractId: requirement.contractId,
             origin: requirement.origin,
             title: requirement.title,
             description: requirement.description,

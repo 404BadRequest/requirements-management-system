@@ -44,6 +44,7 @@ function NewRequirementModalBody({
   statusOpts,
   priorityOpts,
   owners,
+  contracts,
   onCreated,
 }: {
   formKey: number;
@@ -52,6 +53,7 @@ function NewRequirementModalBody({
   statusOpts: { code: string; label: string }[];
   priorityOpts: { code: string; label: string }[];
   owners: { id: string; name: string }[];
+  contracts: { id: string; label: string }[];
   onCreated: () => void;
 }) {
   if (!canShowForm) {
@@ -69,6 +71,7 @@ function NewRequirementModalBody({
       statusOptions={statusOpts}
       priorityOptions={priorityOpts}
       owners={owners}
+      contracts={contracts}
       compact
       onSubmit={async (values) => {
         try {
@@ -99,6 +102,7 @@ export function RequirementsPageClient({
   const [clients, setClients] = useState<Client[]>([]);
   const [statusCatalog, setStatusCatalog] = useState<SettingsCatalogEntry[]>([]);
   const [priorityCatalog, setPriorityCatalog] = useState<SettingsCatalogEntry[]>([]);
+  const [contracts, setContracts] = useState<{ id: string; label: string }[]>([]);
   const [newModalOpen, setNewModalOpen] = useState(Boolean(autoOpenNewModal && canWrite));
   const [newFormKey, setNewFormKey] = useState(0);
   const [listLoading, setListLoading] = useState(true);
@@ -118,6 +122,7 @@ export function RequirementsPageClient({
       setClients(data.clients);
       setStatusCatalog(data.statusCatalog);
       setPriorityCatalog(data.priorityCatalog);
+      setContracts(data.contracts);
       setLastSyncedAt(new Date().toISOString());
     } catch (e) {
       const message = e instanceof Error ? e.message : "No se pudieron cargar los requerimientos.";
@@ -232,6 +237,7 @@ export function RequirementsPageClient({
                   statusOptions={statusOpts}
                   priorityOptions={priorityOpts}
                   owners={owners}
+                  contracts={contracts}
                   canManageRequirement={canManageRequirement}
                   onUpdated={reload}
                 />
@@ -258,7 +264,7 @@ export function RequirementsPageClient({
         ),
       },
     ];
-  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById, activeClients, statusOpts, priorityOpts, owners, reload]);
+  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById, activeClients, statusOpts, priorityOpts, owners, contracts, reload]);
 
   const openNewRequirementModal = () => {
     setNewFormKey((k) => k + 1);
@@ -327,6 +333,7 @@ export function RequirementsPageClient({
             statusOpts={statusOpts}
             priorityOpts={priorityOpts}
             owners={owners}
+            contracts={contracts}
             onCreated={() => {
               void reload();
               closeNewRequirementModal();

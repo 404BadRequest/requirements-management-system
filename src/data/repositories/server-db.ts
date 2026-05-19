@@ -207,7 +207,24 @@ export const deleteUser = async (id: string) => {
 export const getBudgets = async () => {
   const remote = await rms();
   if (remote) return remote.getBudgets();
-  return budgetsRepository.getAll();
+  const contracts = await budgetsRepository.getAll();
+  return contracts.flatMap((contract) =>
+    contract.allocations.map((allocation) => ({
+      id: allocation.id,
+      projectId: contract.projectId,
+      scope: contract.scope,
+      profileId: allocation.profileId,
+      quotedMinutes: allocation.quotedMinutes,
+      createdAt: allocation.createdAt,
+      updatedAt: allocation.updatedAt,
+    })),
+  );
+};
+export const getContractBudgets = async () => {
+  const remote = await rms();
+  if (remote) return remote.getContractBudgets();
+  const contracts = await budgetsRepository.getAll();
+  return contracts.map(({ allocations: _allocations, ...contract }) => contract);
 };
 export const createBudget = async (input: Parameters<typeof budgetsRepository.create>[0]) => {
   const remote = await rms();
@@ -223,6 +240,14 @@ export const deleteBudget = async (id: string) => {
   const remote = await rms();
   if (remote) return remote.deleteBudget(id);
   return budgetsRepository.delete(id);
+};
+export const getContractProfileAllocations = async (contractId?: string) => {
+  const remote = await rms();
+  if (remote) return remote.getContractProfileAllocations(contractId);
+  const contracts = await budgetsRepository.getAll();
+  const rows = contracts.flatMap((contract) => contract.allocations);
+  if (!contractId) return rows;
+  return rows.filter((row) => row.contractId === contractId);
 };
 
 export const getBudgetSummary = async (projectId: string) => {

@@ -32,6 +32,7 @@ export function RequirementHoursPanel({
   imputationCount,
   users,
   requirements,
+  contracts = [],
   categories,
   canPickAnyOwner,
 }: {
@@ -42,6 +43,7 @@ export function RequirementHoursPanel({
   imputationCount: number;
   users: { id: string; name: string }[];
   requirements: { id: string; title: string }[];
+  contracts?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
@@ -93,6 +95,7 @@ export function RequirementHoursPanel({
                 entry={row.original.entry}
                 users={users}
                 requirements={requirements}
+                contracts={contracts}
                 categories={categories}
                 canEdit={row.original.canEdit}
                 canPickAnyOwner={canPickAnyOwner}
@@ -105,7 +108,7 @@ export function RequirementHoursPanel({
         },
       },
     ],
-    [canPickAnyOwner, categories, requirements, users],
+    [canPickAnyOwner, categories, contracts, requirements, users],
   );
 
   if (rows.length === 0) {

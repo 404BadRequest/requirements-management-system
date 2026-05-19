@@ -8,6 +8,7 @@ import { formatStatusLabel } from "@/lib/formatting/status-label";
 
 export const RequirementForm = ({
   clients,
+  contracts = [],
   statusOptions,
   priorityOptions,
   defaultValues,
@@ -17,6 +18,7 @@ export const RequirementForm = ({
   onSubmit,
 }: {
   clients: { id: string; name: string }[];
+  contracts?: { id: string; label: string }[];
   statusOptions: { code: string; label: string }[];
   priorityOptions: { code: string; label: string }[];
   defaultValues?: Partial<RequirementInput>;
@@ -30,6 +32,7 @@ export const RequirementForm = ({
     defaultValues: {
       projectId: "proj-main",
       clientId: clients[0]?.id ?? "",
+      contractId: null,
       origin: "Cliente",
       title: "",
       description: "",
@@ -58,6 +61,20 @@ export const RequirementForm = ({
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
               {client.name}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Contrato (opcional)">
+        <select
+          className="field-control w-full"
+          value={form.watch("contractId") ?? ""}
+          onChange={(event) => form.setValue("contractId", event.target.value || null)}
+        >
+          <option value="">Sin contrato específico</option>
+          {contracts.map((contract) => (
+            <option key={contract.id} value={contract.id}>
+              {contract.label}
             </option>
           ))}
         </select>

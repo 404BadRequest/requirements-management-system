@@ -9,6 +9,7 @@ export function SpendReportTable({ rows }: { rows: SpendReportRow[] }) {
   const columns = useMemo<ColumnDef<SpendReportRow>[]>(
     () => [
       { accessorKey: "clientName", header: "Cliente" },
+      { accessorKey: "contractName", header: "Contrato" },
       { accessorKey: "userName", header: "Persona" },
       { accessorKey: "categoryLabel", header: "Categoría" },
       {

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clients-contract";
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
-import type { BudgetInput } from "@/schemas/budget-schema";
+import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
 import type { RequirementInput } from "@/schemas/requirement-schema";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 import { calculateDurationMinutes } from "@/lib/calculations/time";
@@ -10,6 +10,8 @@ import type {
   AppNotification,
   BudgetAllocation,
   Client,
+  ContractBudget,
+  ContractProfileAllocation,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -68,6 +70,7 @@ function mapRequirement(r: Row): Requirement {
     id: String(r.id),
     projectId: String(r.project_id),
     clientId: String(r.client_id),
+    contractId: r.contract_id ? String(r.contract_id) : null,
     origin: String(r.origin),
     title: String(r.title),
     description: String(r.description),
@@ -98,6 +101,7 @@ function mapTimeEntry(r: Row): TimeEntry {
     id: String(r.id),
     projectId: String(r.project_id),
     requirementId: r.requirement_id ? String(r.requirement_id) : null,
+    contractId: r.contract_id ? String(r.contract_id) : null,
     category: String(r.category),
     taskDescription: String(r.task_description),
     date: String(r.date),
@@ -118,6 +122,35 @@ function mapBudget(r: Row): BudgetAllocation {
     scope: String(r.scope),
     profileId: String(r.profile_id),
     quotedMinutes: Number(r.quoted_minutes),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapContract(r: Row): ContractBudget {
+  return {
+    id: String(r.id),
+    clientId: String(r.client_id),
+    projectId: String(r.project_id),
+    scope: String(r.scope),
+    code: String(r.code),
+    name: String(r.name),
+    startDate: String(r.start_date),
+    endDate: String(r.end_date),
+    rateUfPerHour: Number(r.rate_uf_per_hour),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapContractAllocation(r: Row): ContractProfileAllocation {
+  return {
+    id: String(r.id),
+    contractId: String(r.contract_id),
+    profileId: String(r.profile_id),
+    quotedMinutes: Number(r.quoted_minutes),
+    rateUfPerHour: r.rate_uf_per_hour === null ? null : Number(r.rate_uf_per_hour),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -336,6 +369,7 @@ export class RmsDataAccess {
       id,
       project_id: input.projectId,
       client_id: input.clientId,
+      contract_id: input.contractId ?? null,
       origin: input.origin,
       title: input.title,
       description: input.description,
@@ -365,6 +399,7 @@ export class RmsDataAccess {
       updated_at: now,
       project_id: input.projectId ?? current.projectId,
       client_id: input.clientId ?? current.clientId,
+      contract_id: input.contractId === undefined ? current.contractId : input.contractId,
       origin: input.origin ?? current.origin,
       title: input.title ?? current.title,
       description: input.description ?? current.description,
@@ -477,6 +512,7 @@ export class RmsDataAccess {
       id,
       project_id: input.projectId,
       requirement_id: input.requirementId,
+      contract_id: input.contractId ?? null,
       category: input.category,
       task_description: input.taskDescription,
       date: input.date,
@@ -503,6 +539,7 @@ export class RmsDataAccess {
     const patch = {
       project_id: input.projectId ?? cur.projectId,
       requirement_id: input.requirementId === undefined ? cur.requirementId : input.requirementId,
+      contract_id: input.contractId === undefined ? cur.contractId : input.contractId,
       category: input.category ?? cur.category,
       task_description: input.taskDescription ?? cur.taskDescription,
       date: input.date ?? cur.date,
@@ -525,43 +562,115 @@ export class RmsDataAccess {
   }
 
   async getBudgets(): Promise<BudgetAllocation[]> {
-    const { data, error } = await this.sb.from("rms_budget_allocations").select("*");
+    const { data, error } = await this.sb
+      .from("rms_contract_profile_allocations")
+      .select("id, profile_id, quoted_minutes, created_at, updated_at, rms_contract_budgets!inner(project_id, scope)")
+      .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data as Row[]).map(mapBudget);
+    return (data as Row[]).map((row) =>
+      mapBudget({
+        id: row.id,
+        profile_id: row.profile_id,
+        quoted_minutes: row.quoted_minutes,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        project_id: (row.rms_contract_budgets as Row).project_id,
+        scope: (row.rms_contract_budgets as Row).scope,
+      }),
+    );
   }
 
-  async createBudget(input: BudgetInput): Promise<BudgetAllocation> {
+  async getContractBudgets(): Promise<ContractBudget[]> {
+    const { data, error } = await this.sb
+      .from("rms_contract_budgets")
+      .select("*")
+      .order("start_date", { ascending: false })
+      .order("name", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map(mapContract);
+  }
+
+  async createBudget(input: BudgetInput): Promise<ContractBudget> {
     const now = new Date().toISOString();
-    const id = `budget-${crypto.randomUUID().slice(0, 8)}`;
-    const row = {
+    const id = `contract-${crypto.randomUUID().slice(0, 8)}`;
+    const row: Row = {
       id,
+      client_id: input.clientId,
       project_id: input.projectId,
       scope: input.scope,
-      profile_id: input.profileId,
-      quoted_minutes: input.quotedMinutes,
+      code: input.code,
+      name: input.name,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      rate_uf_per_hour: input.rateUfPerHour,
+      active: true,
       created_at: now,
       updated_at: now,
     };
-    const { data, error } = await this.sb.from("rms_budget_allocations").insert(row).select("*").single();
+    const { data, error } = await this.sb.from("rms_contract_budgets").insert(row).select("*").single();
     if (error) throw error;
-    return mapBudget(data as Row);
+    const allocationRows = input.allocations.map((allocation) => ({
+      id: `alloc-${crypto.randomUUID().slice(0, 10)}`,
+      contract_id: id,
+      profile_id: allocation.profileId,
+      quoted_minutes: allocation.quotedMinutes,
+      rate_uf_per_hour: allocation.rateUfPerHour,
+      created_at: now,
+      updated_at: now,
+    }));
+    const { error: allocationError } = await this.sb.from("rms_contract_profile_allocations").insert(allocationRows);
+    if (allocationError) throw allocationError;
+    return mapContract(data as Row);
   }
 
-  async updateBudget(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined> {
+  async updateBudget(id: string, input: BudgetPatchInput): Promise<ContractBudget | undefined> {
     const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.clientId !== undefined) patch.client_id = input.clientId;
     if (input.projectId !== undefined) patch.project_id = input.projectId;
     if (input.scope !== undefined) patch.scope = input.scope;
-    if (input.profileId !== undefined) patch.profile_id = input.profileId;
-    if (input.quotedMinutes !== undefined) patch.quoted_minutes = input.quotedMinutes;
-    const { data, error } = await this.sb.from("rms_budget_allocations").update(patch).eq("id", id).select("*").maybeSingle();
+    if (input.code !== undefined) patch.code = input.code;
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.startDate !== undefined) patch.start_date = input.startDate;
+    if (input.endDate !== undefined) patch.end_date = input.endDate;
+    if (input.rateUfPerHour !== undefined) patch.rate_uf_per_hour = input.rateUfPerHour;
+    const { data, error } = await this.sb.from("rms_contract_budgets").update(patch).eq("id", id).select("*").maybeSingle();
     if (error) throw error;
-    return data ? mapBudget(data as Row) : undefined;
+    if (!data) return undefined;
+    if (input.allocations) {
+      const now = new Date().toISOString();
+      const { error: deleteError } = await this.sb.from("rms_contract_profile_allocations").delete().eq("contract_id", id);
+      if (deleteError) throw deleteError;
+      const rows = input.allocations.map((allocation) => ({
+        id: `alloc-${crypto.randomUUID().slice(0, 10)}`,
+        contract_id: id,
+        profile_id: allocation.profileId,
+        quoted_minutes: allocation.quotedMinutes,
+        rate_uf_per_hour: allocation.rateUfPerHour,
+        created_at: now,
+        updated_at: now,
+      }));
+      const { error: insertError } = await this.sb.from("rms_contract_profile_allocations").insert(rows);
+      if (insertError) throw insertError;
+    }
+    return mapContract(data as Row);
   }
 
   async deleteBudget(id: string): Promise<boolean> {
-    const { error } = await this.sb.from("rms_budget_allocations").delete().eq("id", id);
-    if (error) throw error;
+    const { error: deleteAllocationsError } = await this.sb.from("rms_contract_profile_allocations").delete().eq("contract_id", id);
+    if (deleteAllocationsError) throw deleteAllocationsError;
+    const { error: deleteContractError } = await this.sb.from("rms_contract_budgets").delete().eq("id", id);
+    if (deleteContractError) throw deleteContractError;
     return true;
+  }
+
+  async getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]> {
+    let query = this.sb.from("rms_contract_profile_allocations").select("*").order("created_at", { ascending: false });
+    if (contractId) {
+      query = query.eq("contract_id", contractId);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data as Row[]).map(mapContractAllocation);
   }
 
   async getFinancialReferenceRates(): Promise<FinancialReferenceRates> {

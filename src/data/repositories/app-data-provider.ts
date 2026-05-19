@@ -1,4 +1,4 @@
-import type { BudgetInput } from "@/schemas/budget-schema";
+import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
 import type { RequirementInput } from "@/schemas/requirement-schema";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
@@ -10,6 +10,8 @@ import type {
   AppNotification,
   BudgetAllocation,
   Client,
+  ContractBudget,
+  ContractProfileAllocation,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -67,9 +69,11 @@ export interface AppDataProvider {
   deleteTimeEntry(id: string): Promise<boolean>;
 
   getBudgets(): Promise<BudgetAllocation[]>;
-  createBudget(input: BudgetInput): Promise<BudgetAllocation>;
-  updateBudget(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined>;
+  getContractBudgets(): Promise<ContractBudget[]>;
+  createBudget(input: BudgetInput): Promise<ContractBudget>;
+  updateBudget(id: string, input: BudgetPatchInput): Promise<ContractBudget | undefined>;
   deleteBudget(id: string): Promise<boolean>;
+  getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]>;
 
   getFinancialReferenceRates(): Promise<FinancialReferenceRates>;
   updateFinancialReferenceRates(input: FinancialReferenceRatesUpdateInput): Promise<FinancialReferenceRates>;

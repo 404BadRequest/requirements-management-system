@@ -48,9 +48,11 @@ export class SupabaseDataProvider implements AppDataProvider {
   deleteTimeEntry = (id: string) => this.access.deleteTimeEntry(id);
 
   getBudgets = () => this.access.getBudgets();
+  getContractBudgets = () => this.access.getContractBudgets();
   createBudget = (input: Parameters<RmsDataAccess["createBudget"]>[0]) => this.access.createBudget(input);
   updateBudget = (id: string, input: Parameters<RmsDataAccess["updateBudget"]>[1]) => this.access.updateBudget(id, input);
   deleteBudget = (id: string) => this.access.deleteBudget(id);
+  getContractProfileAllocations = (contractId?: string) => this.access.getContractProfileAllocations(contractId);
 
   getFinancialReferenceRates = () => this.access.getFinancialReferenceRates();
   updateFinancialReferenceRates = (input: Parameters<RmsDataAccess["updateFinancialReferenceRates"]>[0]) =>

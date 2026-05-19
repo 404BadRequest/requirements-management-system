@@ -6,6 +6,7 @@ import {
   deleteRequirement,
   getCatalogByKind,
   getClients,
+  getContractBudgets,
   getRequirementById,
   getRequirements,
   getUsers,
@@ -15,6 +16,7 @@ import {
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
+import { resolveContractIdByContext } from "@/lib/contracts/resolve-contract";
 import { recordAuditSafely } from "@/lib/audit/record-audit";
 import { logServerActionEvent } from "@/lib/logging/server-action-log";
 import { requirementDetailPath } from "@/lib/routes/requirements";
@@ -26,6 +28,7 @@ export async function loadRequirementsPageData(): Promise<{
   requirements: Requirement[];
   users: { id: string; name: string }[];
   clients: Client[];
+  contracts: { id: string; label: string }[];
   statusCatalog: SettingsCatalogEntry[];
   priorityCatalog: SettingsCatalogEntry[];
 }> {
@@ -34,12 +37,13 @@ export async function loadRequirementsPageData(): Promise<{
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const [requirementsData, usersData, clientsData, statuses, priorities] = await Promise.all([
+  const [requirementsData, usersData, clientsData, statuses, priorities, contractsData] = await Promise.all([
     getRequirements(),
     getUsers(),
     getClients(),
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
+    getContractBudgets(),
   ]);
   const resolvedUserId = resolveDirectoryUserIdForSession(user, usersData);
   const ownScope = user.role === "Contributor";
@@ -49,6 +53,9 @@ export async function loadRequirementsPageData(): Promise<{
     requirements: filteredRequirements,
     users: selectableUsers.map((u) => ({ id: u.id, name: u.name })),
     clients: clientsData,
+    contracts: contractsData
+      .filter((contract) => contract.active)
+      .map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` })),
     statusCatalog: statuses,
     priorityCatalog: priorities,
   };
@@ -62,7 +69,16 @@ export async function createRequirementAction(input: RequirementInput) {
   }
   const users = await getUsers();
   const resolvedUserId = resolveDirectoryUserIdForSession(user, users);
+  const contracts = await getContractBudgets();
+  const nowDate = new Date().toISOString().slice(0, 10);
   const payload = user.role === "Contributor" ? { ...input, ownerId: resolvedUserId } : input;
+  payload.contractId = resolveContractIdByContext({
+    contractId: payload.contractId,
+    clientId: payload.clientId,
+    projectId: payload.projectId,
+    atDate: nowDate,
+    contracts,
+  });
   const created = await createRequirement(payload);
   if (user) {
     void recordAuditSafely({
@@ -107,7 +123,19 @@ export async function updateRequirementAction(id: string, input: Parameters<type
       throw new Error("No autorizado para editar requerimientos de otros usuarios.");
     }
   }
-  const next = await updateRequirement(id, input, { changedById: user.id });
+  const contracts = await getContractBudgets();
+  const nowDate = new Date().toISOString().slice(0, 10);
+  const nextInput = {
+    ...input,
+    contractId: resolveContractIdByContext({
+      contractId: input.contractId,
+      clientId: input.clientId ?? prev.clientId,
+      projectId: input.projectId ?? prev.projectId,
+      atDate: nowDate,
+      contracts,
+    }),
+  };
+  const next = await updateRequirement(id, nextInput, { changedById: user.id });
   if (user && prev && next) {
     void recordAuditSafely({
       entityType: "requirement",
@@ -144,7 +172,19 @@ export async function updateRequirementFullAction(id: string, input: Requirement
     throw new Error("Solo Admin o Project Manager pueden editar completamente un requerimiento.");
   }
   const prev = await getRequirementById(id);
-  const next = await updateRequirement(id, input, { changedById: user.id });
+  const contracts = await getContractBudgets();
+  const nowDate = new Date().toISOString().slice(0, 10);
+  const nextInput = {
+    ...input,
+    contractId: resolveContractIdByContext({
+      contractId: input.contractId,
+      clientId: input.clientId,
+      projectId: input.projectId,
+      atDate: nowDate,
+      contracts,
+    }),
+  };
+  const next = await updateRequirement(id, nextInput, { changedById: user.id });
   if (prev && next) {
     void recordAuditSafely({
       entityType: "requirement",

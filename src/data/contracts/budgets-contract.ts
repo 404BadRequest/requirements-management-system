@@ -1,9 +1,13 @@
-import type { BudgetAllocation } from "@/types/domain";
-import type { BudgetInput } from "@/schemas/budget-schema";
+import type { ContractBudget, ContractProfileAllocation } from "@/types/domain";
+import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
+
+export type ContractBudgetWithAllocations = ContractBudget & {
+  allocations: ContractProfileAllocation[];
+};
 
 export interface BudgetsRepository {
-  getAll(): Promise<BudgetAllocation[]>;
-  create(input: BudgetInput): Promise<BudgetAllocation>;
-  update(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined>;
+  getAll(): Promise<ContractBudgetWithAllocations[]>;
+  create(input: BudgetInput): Promise<ContractBudgetWithAllocations>;
+  update(id: string, input: BudgetPatchInput): Promise<ContractBudgetWithAllocations | undefined>;
   delete(id: string): Promise<boolean>;
 }

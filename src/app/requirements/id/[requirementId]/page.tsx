@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/common/page-header";
 import {
   getCatalogByKind,
   getClients,
+  getContractBudgets,
   getRequirementById,
   getRequirementComments,
   getRequirements,
@@ -85,6 +86,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     timeCategories,
     requirementStatuses,
     requirementPriorities,
+    contracts,
   ] = await Promise.all([
     getRequirementById(requirementId),
     getRequirementComments(requirementId),
@@ -97,6 +99,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getCatalogByKind("time_entry_category"),
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
+    getContractBudgets(),
   ]);
 
   if (!requirement) {
@@ -198,6 +201,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           <RequirementEditModal
             requirement={requirement}
             clients={clients.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}
+            contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
             statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
             priorityOptions={requirementPriorities.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label }))}
             owners={users.map((u) => ({ id: u.id, name: u.name }))}
@@ -250,6 +254,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           imputationCount={requirementEntries.length}
           users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
           requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
+          contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
           categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
           canPickAnyOwner={canManageAnyTimeEntry}
         />

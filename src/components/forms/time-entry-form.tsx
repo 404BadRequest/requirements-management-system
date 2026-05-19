@@ -9,6 +9,8 @@ export const TimeEntryForm = ({
   users,
   categories,
   requirements,
+  contracts = [],
+  canOverrideContract = false,
   defaultUserId,
   encargadoLocked = false,
   defaultValues,
@@ -18,6 +20,8 @@ export const TimeEntryForm = ({
   users: { id: string; name: string }[];
   categories: { code: string; label: string }[];
   requirements: { id: string; title: string }[];
+  contracts?: { id: string; label: string }[];
+  canOverrideContract?: boolean;
   /** Usuario del directorio asociado a la sesión (inicial en el selector). */
   defaultUserId?: string;
   /** Si es true, solo se muestra el encargado vinculado a la sesión (roles sin selector global). */
@@ -34,6 +38,7 @@ export const TimeEntryForm = ({
     defaultValues: {
       projectId: "proj-main",
       requirementId: null,
+      contractId: null,
       category: categories[0]?.code ?? "Proyecto",
       taskDescription: "",
       date: today,
@@ -102,6 +107,26 @@ export const TimeEntryForm = ({
             </option>
           ))}
         </select>
+      </FormField>
+      <FormField label="Contrato (opcional)">
+        <select
+          className="field-control w-full"
+          value={form.watch("contractId") ?? ""}
+          onChange={(event) => form.setValue("contractId", event.target.value || null)}
+          disabled={!canOverrideContract}
+        >
+          <option value="">Asignación automática</option>
+          {contracts.map((contract) => (
+            <option key={contract.id} value={contract.id}>
+              {contract.label}
+            </option>
+          ))}
+        </select>
+        {!canOverrideContract ? (
+          <p className="text-xs text-muted-foreground">
+            El contrato se asigna automáticamente según requerimiento, proyecto y vigencia.
+          </p>
+        ) : null}
       </FormField>
       <FormField label="Tarea" error={form.formState.errors.taskDescription?.message}>
         <input className="field-control w-full" {...form.register("taskDescription")} />

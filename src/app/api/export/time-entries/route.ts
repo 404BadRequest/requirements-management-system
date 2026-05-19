@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getClients, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { getClients, getContractBudgets, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
@@ -16,15 +16,17 @@ export async function GET(req: NextRequest) {
   const clientId = req.nextUrl.searchParams.get("clientId")?.trim() ?? "";
   const projectId = req.nextUrl.searchParams.get("projectId")?.trim() ?? "";
 
-  const [entries, users, requirements, clients] = await Promise.all([
+  const [entries, users, requirements, clients, contracts] = await Promise.all([
     getTimeEntries(),
     getUsers(),
     getRequirements(),
     getClients(),
+    getContractBudgets(),
   ]);
   const userMap = new Map(users.map((u) => [u.id, u.name]));
   const requirementMap = new Map(requirements.map((r) => [r.id, r]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
+  const contractMap = new Map(contracts.map((contract) => [contract.id, contract]));
   const ownScope = user?.role === "Contributor";
   const currentDirectoryUserId = user ? resolveDirectoryUserIdForSession(user, users) : "";
 
@@ -42,6 +44,9 @@ export async function GET(req: NextRequest) {
     "id",
     "projectId",
     "requirementId",
+    "contractId",
+    "contractCode",
+    "contractName",
     "category",
     "taskDescription",
     "date",
@@ -66,6 +71,9 @@ export async function GET(req: NextRequest) {
         e.id,
         e.projectId,
         e.requirementId ?? "",
+        e.contractId ?? "",
+        e.contractId ? (contractMap.get(e.contractId)?.code ?? "") : "",
+        e.contractId ? (contractMap.get(e.contractId)?.name ?? "") : "",
         e.category,
         e.taskDescription,
         e.date,

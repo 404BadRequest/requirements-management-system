@@ -2,7 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
-import { getCatalogByKind, getClients, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { getCatalogByKind, getClients, getContractBudgets, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
@@ -21,12 +21,13 @@ export default async function TimeEntriesPage({
   const canExport = roleHasPermission(user.role, "exports.run");
   const { clientId = "", nueva } = await searchParams;
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
-  const [entries, users, requirements, clients, timeCategories] = await Promise.all([
+  const [entries, users, requirements, clients, timeCategories, contracts] = await Promise.all([
     getTimeEntries(),
     getUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
+    getContractBudgets(),
   ]);
   const categoryLabelByCode = new Map(
     timeCategories.filter((c) => c.active).map((c) => [c.code, formatCatalogLabel(c.code, c.label)]),
@@ -112,6 +113,7 @@ export default async function TimeEntriesPage({
       <TimeEntriesTable
         users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
         requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
+        contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
         categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
         canPickAnyOwner={canPickAnyOwner}
         rows={filteredEntries.map((entry) => ({

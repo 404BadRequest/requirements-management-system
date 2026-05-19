@@ -1,5 +1,5 @@
 import type { QueryResultRow } from "pg";
-import type { BudgetInput } from "@/schemas/budget-schema";
+import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
 import type { RequirementInput } from "@/schemas/requirement-schema";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
@@ -14,6 +14,8 @@ import type {
   AppNotification,
   BudgetAllocation,
   Client,
+  ContractBudget,
+  ContractProfileAllocation,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -72,6 +74,7 @@ function mapRequirement(r: Row): Requirement {
     id: String(r.id),
     projectId: String(r.project_id),
     clientId: String(r.client_id),
+    contractId: r.contract_id ? String(r.contract_id) : null,
     origin: String(r.origin),
     title: String(r.title),
     description: String(r.description),
@@ -90,6 +93,7 @@ function mapTimeEntry(r: Row): TimeEntry {
     id: String(r.id),
     projectId: String(r.project_id),
     requirementId: r.requirement_id ? String(r.requirement_id) : null,
+    contractId: r.contract_id ? String(r.contract_id) : null,
     category: String(r.category),
     taskDescription: String(r.task_description),
     date: String(r.date),
@@ -110,6 +114,35 @@ function mapBudget(r: Row): BudgetAllocation {
     scope: String(r.scope),
     profileId: String(r.profile_id),
     quotedMinutes: Number(r.quoted_minutes),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapContract(r: Row): ContractBudget {
+  return {
+    id: String(r.id),
+    clientId: String(r.client_id),
+    projectId: String(r.project_id),
+    scope: String(r.scope),
+    code: String(r.code),
+    name: String(r.name),
+    startDate: String(r.start_date),
+    endDate: String(r.end_date),
+    rateUfPerHour: Number(r.rate_uf_per_hour),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapContractAllocation(r: Row): ContractProfileAllocation {
+  return {
+    id: String(r.id),
+    contractId: String(r.contract_id),
+    profileId: String(r.profile_id),
+    quotedMinutes: Number(r.quoted_minutes),
+    rateUfPerHour: r.rate_uf_per_hour === null ? null : Number(r.rate_uf_per_hour),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -306,13 +339,14 @@ export class PostgresDataProvider implements AppDataProvider {
     const completedAt = input.status === "DONE_PROD" ? now : null;
     const { rows } = await queryPg<Row>(
       `insert into rms_requirements
-       (id, project_id, client_id, origin, title, description, priority, owner_id, status, notes, created_at, updated_at, completed_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       (id, project_id, client_id, contract_id, origin, title, description, priority, owner_id, status, notes, created_at, updated_at, completed_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        returning *`,
       [
         id,
         input.projectId,
         input.clientId,
+        input.contractId ?? null,
         input.origin,
         input.title,
         input.description,
@@ -340,21 +374,23 @@ export class PostgresDataProvider implements AppDataProvider {
       `update rms_requirements
        set project_id = $2,
            client_id = $3,
-           origin = $4,
-           title = $5,
-           description = $6,
-           priority = $7,
-           owner_id = $8,
-           status = $9,
-           notes = $10,
-           completed_at = $11,
-           updated_at = $12
+           contract_id = $4,
+           origin = $5,
+           title = $6,
+           description = $7,
+           priority = $8,
+           owner_id = $9,
+           status = $10,
+           notes = $11,
+           completed_at = $12,
+           updated_at = $13
        where id = $1
        returning *`,
       [
         id,
         input.projectId ?? current.projectId,
         input.clientId ?? current.clientId,
+        input.contractId === undefined ? current.contractId : input.contractId,
         input.origin ?? current.origin,
         input.title ?? current.title,
         input.description ?? current.description,
@@ -441,13 +477,14 @@ export class PostgresDataProvider implements AppDataProvider {
     const duration = calculateDurationMinutes(input.startTime, input.endTime);
     const { rows } = await queryPg<Row>(
       `insert into rms_time_entries
-       (id, project_id, requirement_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       (id, project_id, requirement_id, contract_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        returning *`,
       [
         id,
         input.projectId,
         input.requirementId,
+        input.contractId ?? null,
         input.category,
         input.taskDescription,
         input.date,
@@ -484,21 +521,23 @@ export class PostgresDataProvider implements AppDataProvider {
       `update rms_time_entries
        set project_id = $2,
            requirement_id = $3,
-           category = $4,
-           task_description = $5,
-           date = $6,
-           start_time = $7,
-           end_time = $8,
-           duration_minutes = $9,
-           user_id = $10,
-           observations = $11,
-           updated_at = $12
+           contract_id = $4,
+           category = $5,
+           task_description = $6,
+           date = $7,
+           start_time = $8,
+           end_time = $9,
+           duration_minutes = $10,
+           user_id = $11,
+           observations = $12,
+           updated_at = $13
        where id = $1
        returning *`,
       [
         id,
         patch.projectId,
         patch.requirementId,
+        input.contractId === undefined ? current.contractId : input.contractId,
         patch.category,
         patch.taskDescription,
         patch.date,
@@ -518,37 +557,108 @@ export class PostgresDataProvider implements AppDataProvider {
   }
 
   async getBudgets(): Promise<BudgetAllocation[]> {
-    const { rows } = await queryPg<Row>("select * from rms_budget_allocations");
+    const { rows } = await queryPg<Row>(
+      `select a.id, c.project_id, c.scope, a.profile_id, a.quoted_minutes, a.created_at, a.updated_at
+         from rms_contract_profile_allocations a
+         join rms_contract_budgets c on c.id = a.contract_id
+        order by c.start_date desc, c.name asc`,
+    );
     return rows.map(mapBudget);
   }
-  async createBudget(input: BudgetInput): Promise<BudgetAllocation> {
-    const now = new Date().toISOString();
-    const id = `budget-${crypto.randomUUID().slice(0, 8)}`;
-    const { rows } = await queryPg<Row>(
-      `insert into rms_budget_allocations (id, project_id, scope, profile_id, quoted_minutes, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7)
-       returning *`,
-      [id, input.projectId, input.scope, input.profileId, input.quotedMinutes, now, now],
-    );
-    return mapBudget(rows[0]);
+  async getContractBudgets(): Promise<ContractBudget[]> {
+    const { rows } = await queryPg<Row>("select * from rms_contract_budgets order by start_date desc, name asc");
+    return rows.map(mapContract);
   }
-  async updateBudget(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined> {
+  async createBudget(input: BudgetInput): Promise<ContractBudget> {
+    const now = new Date().toISOString();
+    const id = `contract-${crypto.randomUUID().slice(0, 8)}`;
     const { rows } = await queryPg<Row>(
-      `update rms_budget_allocations
-       set project_id = coalesce($2, project_id),
-           scope = coalesce($3, scope),
-           profile_id = coalesce($4, profile_id),
-           quoted_minutes = coalesce($5, quoted_minutes),
-           updated_at = $6
+      `insert into rms_contract_budgets
+       (id, client_id, project_id, scope, code, name, start_date, end_date, rate_uf_per_hour, active, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,$10,$11)
+       returning *`,
+      [id, input.clientId, input.projectId, input.scope, input.code, input.name, input.startDate, input.endDate, input.rateUfPerHour, now, now],
+    );
+    for (const allocation of input.allocations) {
+      await queryPg(
+        `insert into rms_contract_profile_allocations
+         (id, contract_id, profile_id, quoted_minutes, rate_uf_per_hour, created_at, updated_at)
+         values ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          `alloc-${crypto.randomUUID().slice(0, 10)}`,
+          id,
+          allocation.profileId,
+          allocation.quotedMinutes,
+          allocation.rateUfPerHour,
+          now,
+          now,
+        ],
+      );
+    }
+    return mapContract(rows[0]);
+  }
+  async updateBudget(id: string, input: BudgetPatchInput): Promise<ContractBudget | undefined> {
+    const now = new Date().toISOString();
+    const currentRows = await queryPg<Row>("select * from rms_contract_budgets where id = $1", [id]);
+    if (!currentRows.rows[0]) return undefined;
+    const { rows } = await queryPg<Row>(
+      `update rms_contract_budgets
+       set client_id = coalesce($2, client_id),
+           project_id = coalesce($3, project_id),
+           scope = coalesce($4, scope),
+           code = coalesce($5, code),
+           name = coalesce($6, name),
+           start_date = coalesce($7, start_date),
+           end_date = coalesce($8, end_date),
+           rate_uf_per_hour = coalesce($9, rate_uf_per_hour),
+           updated_at = $10
        where id = $1
        returning *`,
-      [id, input.projectId ?? null, input.scope ?? null, input.profileId ?? null, input.quotedMinutes ?? null, new Date().toISOString()],
+      [
+        id,
+        input.clientId ?? null,
+        input.projectId ?? null,
+        input.scope ?? null,
+        input.code ?? null,
+        input.name ?? null,
+        input.startDate ?? null,
+        input.endDate ?? null,
+        input.rateUfPerHour ?? null,
+        now,
+      ],
     );
-    return rows[0] ? mapBudget(rows[0]) : undefined;
+    if (!rows[0]) return undefined;
+    if (input.allocations) {
+      await queryPg("delete from rms_contract_profile_allocations where contract_id = $1", [id]);
+      for (const allocation of input.allocations) {
+        await queryPg(
+          `insert into rms_contract_profile_allocations
+           (id, contract_id, profile_id, quoted_minutes, rate_uf_per_hour, created_at, updated_at)
+           values ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            `alloc-${crypto.randomUUID().slice(0, 10)}`,
+            id,
+            allocation.profileId,
+            allocation.quotedMinutes,
+            allocation.rateUfPerHour,
+            now,
+            now,
+          ],
+        );
+      }
+    }
+    return mapContract(rows[0]);
   }
   async deleteBudget(id: string): Promise<boolean> {
-    const { rowCount } = await queryPg("delete from rms_budget_allocations where id = $1", [id]);
+    await queryPg("delete from rms_contract_profile_allocations where contract_id = $1", [id]);
+    const { rowCount } = await queryPg("delete from rms_contract_budgets where id = $1", [id]);
     return (rowCount ?? 0) > 0;
+  }
+  async getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]> {
+    const { rows } = contractId
+      ? await queryPg<Row>("select * from rms_contract_profile_allocations where contract_id = $1 order by created_at asc", [contractId])
+      : await queryPg<Row>("select * from rms_contract_profile_allocations order by created_at asc");
+    return rows.map(mapContractAllocation);
   }
 
   async getFinancialReferenceRates(): Promise<FinancialReferenceRates> {

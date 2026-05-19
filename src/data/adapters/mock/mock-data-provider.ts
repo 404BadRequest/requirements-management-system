@@ -1,4 +1,4 @@
-import type { BudgetInput } from "@/schemas/budget-schema";
+import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
 import type { RequirementInput } from "@/schemas/requirement-schema";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
@@ -21,6 +21,8 @@ import type {
   AppNotification,
   BudgetAllocation,
   Client,
+  ContractBudget,
+  ContractProfileAllocation,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -154,16 +156,42 @@ export class MockDataProvider implements AppDataProvider {
   }
 
   async getBudgets(): Promise<BudgetAllocation[]> {
-    return this.budgetsRepository.getAll();
+    const contracts = await this.budgetsRepository.getAll();
+    return contracts.flatMap((contract) =>
+      contract.allocations.map((allocation) => ({
+        id: allocation.id,
+        projectId: contract.projectId,
+        scope: contract.scope,
+        profileId: allocation.profileId,
+        quotedMinutes: allocation.quotedMinutes,
+        createdAt: allocation.createdAt,
+        updatedAt: allocation.updatedAt,
+      })),
+    );
   }
-  async createBudget(input: BudgetInput): Promise<BudgetAllocation> {
-    return this.budgetsRepository.create(input);
+  async getContractBudgets(): Promise<ContractBudget[]> {
+    const contracts = await this.budgetsRepository.getAll();
+    return contracts.map(({ allocations: _allocations, ...contract }) => contract);
   }
-  async updateBudget(id: string, input: Partial<BudgetInput>): Promise<BudgetAllocation | undefined> {
-    return this.budgetsRepository.update(id, input);
+  async createBudget(input: BudgetInput): Promise<ContractBudget> {
+    const created = await this.budgetsRepository.create(input);
+    const { allocations: _allocations, ...contract } = created;
+    return contract;
+  }
+  async updateBudget(id: string, input: BudgetPatchInput): Promise<ContractBudget | undefined> {
+    const updated = await this.budgetsRepository.update(id, input);
+    if (!updated) return undefined;
+    const { allocations: _allocations, ...contract } = updated;
+    return contract;
   }
   async deleteBudget(id: string): Promise<boolean> {
     return this.budgetsRepository.delete(id);
+  }
+  async getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]> {
+    const contracts = await this.budgetsRepository.getAll();
+    const rows = contracts.flatMap((contract) => contract.allocations);
+    if (!contractId) return rows;
+    return rows.filter((row) => row.contractId === contractId);
   }
 
   async getFinancialReferenceRates(): Promise<FinancialReferenceRates> {

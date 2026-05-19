@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/common/page-header";
 import {
   getCatalogByKind,
   getClients,
+  getContractBudgets,
   getProfiles,
   getProjects,
   getRequirements,
@@ -37,7 +38,7 @@ function formatDateTime(iso: string): string {
 export default async function TimeEntryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await requirePermission("time_entries.read");
   const { id } = await params;
-  const [entry, users, profiles, requirements, clients, projects, categories] = await Promise.all([
+  const [entry, users, profiles, requirements, clients, projects, categories, contracts] = await Promise.all([
     getTimeEntryById(id),
     getUsers(),
     getProfiles(),
@@ -45,6 +46,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
     getClients(),
     getProjects(),
     getCatalogByKind("time_entry_category"),
+    getContractBudgets(),
   ]);
 
   if (!entry) {
@@ -88,6 +90,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
               entry={entry}
               users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
               requirements={requirements.map((r) => ({ id: r.id, title: r.title }))}
+              contracts={contracts.filter((contract) => contract.active).map((contract) => ({ id: contract.id, label: `${contract.code} · ${contract.name}` }))}
               categories={categories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canEdit={canEditEntry}
               canPickAnyOwner={canPickAnyOwner}

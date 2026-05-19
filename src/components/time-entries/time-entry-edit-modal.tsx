@@ -12,6 +12,7 @@ export function TimeEntryEditModal({
   entry,
   users,
   requirements,
+  contracts = [],
   categories,
   canEdit,
   canPickAnyOwner,
@@ -21,6 +22,7 @@ export function TimeEntryEditModal({
   entry: TimeEntry;
   users: { id: string; name: string }[];
   requirements: { id: string; title: string }[];
+  contracts?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canEdit: boolean;
   canPickAnyOwner: boolean;
@@ -48,6 +50,8 @@ export function TimeEntryEditModal({
         <TimeEntryForm
           users={users}
           requirements={requirements}
+          contracts={contracts}
+          canOverrideContract={canPickAnyOwner}
           categories={categories}
           defaultUserId={entry.userId}
           encargadoLocked={!canPickAnyOwner}
@@ -55,6 +59,7 @@ export function TimeEntryEditModal({
           defaultValues={{
             projectId: entry.projectId,
             requirementId: entry.requirementId,
+            contractId: entry.contractId,
             category: entry.category,
             taskDescription: entry.taskDescription,
             date: entry.date,

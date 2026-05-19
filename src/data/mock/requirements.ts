@@ -24,6 +24,7 @@ export const requirementsMock: Requirement[] = Array.from({ length: 60 }, (_, in
     id: `req-${String(index + 1).padStart(3, "0")}`,
     projectId: "proj-main",
     clientId: clientIds[index % clientIds.length],
+    contractId: null,
     origin: origins[index % origins.length],
     title: `Requerimiento ${index + 1}: mejora operativa`,
     description: `Descripción detallada del requerimiento ${index + 1} para mejorar trazabilidad del equipo.`,

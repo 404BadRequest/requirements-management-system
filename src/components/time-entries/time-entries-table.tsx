@@ -25,12 +25,14 @@ export function TimeEntriesTable({
   rows,
   users,
   requirements,
+  contracts = [],
   categories,
   canPickAnyOwner,
 }: {
   rows: TimeEntryRow[];
   users: { id: string; name: string }[];
   requirements: { id: string; title: string }[];
+  contracts?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
@@ -70,6 +72,7 @@ export function TimeEntriesTable({
                 entry={row.original.entry}
                 users={users}
                 requirements={requirements}
+                contracts={contracts}
                 categories={categories}
                 canEdit={Boolean(row.original.canEdit)}
                 canPickAnyOwner={canPickAnyOwner}
@@ -82,7 +85,7 @@ export function TimeEntriesTable({
         },
       },
     ],
-    [canPickAnyOwner, categories, requirements, users],
+    [canPickAnyOwner, categories, contracts, requirements, users],
   );
 
   return (

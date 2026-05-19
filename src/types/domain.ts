@@ -41,6 +41,7 @@ export interface Requirement {
   id: string;
   projectId: string;
   clientId: string;
+  contractId: string | null;
   origin: string;
   title: string;
   description: string;
@@ -89,6 +90,7 @@ export interface TimeEntry {
   id: string;
   projectId: string;
   requirementId: string | null;
+  contractId: string | null;
   /** Código de categoría según catálogo */
   category: string;
   taskDescription: string;
@@ -109,6 +111,31 @@ export interface BudgetAllocation {
   scope: string;
   profileId: string;
   quotedMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContractBudget {
+  id: string;
+  clientId: string;
+  projectId: string;
+  scope: string;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  rateUfPerHour: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContractProfileAllocation {
+  id: string;
+  contractId: string;
+  profileId: string;
+  quotedMinutes: number;
+  rateUfPerHour: number | null;
   createdAt: string;
   updatedAt: string;
 }
