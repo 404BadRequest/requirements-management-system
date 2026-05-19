@@ -31,51 +31,53 @@ export default async function AccountPage() {
         title="Mi cuenta"
         description="Datos de la sesión actual y gestión de tu acceso al sistema."
       />
-      <dl className="surface-card grid max-w-lg gap-3 p-[length:var(--density-inset-pad)] text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nombre</dt>
-          <dd className="mt-1 font-medium text-foreground">{user.name}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rol</dt>
-          <dd className="mt-1 font-medium text-foreground">{user.role}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Correo</dt>
-          <dd className="mt-1 font-medium text-foreground">{user.email || "—"}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Identificador</dt>
-          <dd className="mt-1 break-all font-mono text-xs text-foreground">{user.id}</dd>
-        </div>
-      </dl>
+      <div className="grid items-start gap-6 md:grid-cols-2 max-w-5xl">
+        <dl className="surface-card grid gap-3 p-[length:var(--density-inset-pad)] text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nombre</dt>
+            <dd className="mt-1 font-medium text-foreground">{user.name}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rol</dt>
+            <dd className="mt-1 font-medium text-foreground">{user.role}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Correo</dt>
+            <dd className="mt-1 font-medium text-foreground">{user.email || "—"}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Identificador</dt>
+            <dd className="mt-1 break-all font-mono text-xs text-foreground">{user.id}</dd>
+          </div>
+        </dl>
 
-      {canChangePassword ? (
-        <section className="surface-card mt-6 max-w-lg p-[length:var(--density-inset-pad)]">
-          <h2 className="text-base font-semibold text-foreground">Cambiar contraseña</h2>
-          {hasCredentials ? (
-            <>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Actualiza la contraseña con la que inicias sesión en Requirement System TI.
+        {canChangePassword ? (
+          <section className="surface-card p-[length:var(--density-inset-pad)]">
+            <h2 className="text-base font-semibold text-foreground">Cambiar contraseña</h2>
+            {hasCredentials ? (
+              <>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Actualiza la contraseña con la que inicias sesión en Requirement System TI.
+                </p>
+                <div className="mt-4">
+                  <ChangePasswordForm />
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Tu acceso aún no tiene contraseña configurada. Un administrador debe definirla desde Configuración → Usuarios.
               </p>
-              <div className="mt-4">
-                <ChangePasswordForm />
-              </div>
-            </>
-          ) : (
+            )}
+          </section>
+        ) : (
+          <section className="surface-card p-[length:var(--density-inset-pad)]">
+            <h2 className="text-base font-semibold text-foreground">Contraseña</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Tu acceso aún no tiene contraseña configurada. Un administrador debe definirla desde Configuración → Usuarios.
+              El cambio de contraseña desde esta pantalla solo está disponible con acceso por credenciales del sistema.
             </p>
-          )}
-        </section>
-      ) : (
-        <section className="surface-card mt-6 max-w-lg p-[length:var(--density-inset-pad)]">
-          <h2 className="text-base font-semibold text-foreground">Contraseña</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            El cambio de contraseña desde esta pantalla solo está disponible con acceso por credenciales del sistema.
-          </p>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
     </AppShell>
   );
 }

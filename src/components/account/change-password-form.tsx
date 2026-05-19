@@ -20,7 +20,7 @@ export function ChangePasswordForm() {
 
   return (
     <form
-      className="grid max-w-md gap-4"
+      className="grid gap-4"
       onSubmit={form.handleSubmit(async (values) => {
         try {
           await changePasswordAction(values);
