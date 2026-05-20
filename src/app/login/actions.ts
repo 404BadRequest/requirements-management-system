@@ -1,6 +1,6 @@
 "use server";
 
-import AuthError from "next-auth";
+import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { getAuthProviderKind } from "@/lib/postgres/env";
@@ -23,7 +23,10 @@ export async function loginAction(formData: FormData) {
       });
     } catch (error) {
       if (error instanceof AuthError) {
-        redirect(`/login?error=${encodeURIComponent("Credenciales inválidas.")}`);
+        if (error.type === "CredentialsSignin") {
+          redirect(`/login?error=${encodeURIComponent("Credenciales inválidas.")}`);
+        }
+        redirect(`/login?error=${encodeURIComponent("No fue posible iniciar sesión. Intenta nuevamente.")}`);
       }
       throw error;
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
@@ -41,9 +42,9 @@ export function SpendReportTable({ rows }: { rows: SpendReportRow[] }) {
       emptyTitle="Sin datos en el periodo"
       emptyDescription="Prueba ampliar fechas, quitar el filtro de cliente o verifica que existan horas con requerimiento vinculado."
       emptyAction={
-        <a href="/time-entries?nueva=1" className="btn-primary py-2 text-sm no-underline">
+        <Link href="/time-entries?nueva=1" className="btn-primary py-2 text-sm no-underline">
           Registrar horas ahora
-        </a>
+        </Link>
       }
     />
   );

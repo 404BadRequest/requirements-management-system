@@ -4,7 +4,8 @@ import { KpiCard } from "@/components/common/kpi-card";
 import { PageHeader } from "@/components/common/page-header";
 import { RiskBadge } from "@/components/common/badges";
 import { AppShell } from "@/components/layout/app-shell";
-import { CheckCircle2, CircleDot, Clock, PieChart, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { CircleDot, Clock, PieChart, AlertCircle, Users, AlertTriangle, Timer, CalendarClock, CheckCircle2 } from "lucide-react";
 import { getCatalogByKind, getClients, getDashboardMetrics, getFinancialReferenceRates, getUsers } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
@@ -31,14 +32,14 @@ function mapRecordKeysToLabels(
 function recordToHoursChartData(record: Record<string, number>): { name: string; value: number }[] {
   return Object.entries(record).map(([name, minutes]) => ({
     name,
-    value: Math.round(minutes / 60),
+    value: Number((minutes / 60).toFixed(2)),
   }));
 }
 
 function sortedMonthHours(record: Record<string, number>): { name: string; value: number }[] {
   return Object.entries(record)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, minutes]) => ({ name, value: Math.round(minutes / 60) }));
+    .map(([name, minutes]) => ({ name, value: Number((minutes / 60).toFixed(2)) }));
 }
 
 export default async function DashboardPage({
@@ -48,6 +49,8 @@ export default async function DashboardPage({
 }) {
   const sessionUser = await requirePermission("dashboard.read");
   const isContributor = sessionUser.role === "Contributor";
+  const isProjectManager = sessionUser.role === "Project Manager";
+  const isAdminLike = sessionUser.role === "Admin" || sessionUser.role === "Viewer";
   const { clientId = "" } = await searchParams;
   const [clientList, referenceRates, requirementStatuses, requirementPriorities, timeEntryCategories, users] = await Promise.all([
     getClients(),
@@ -68,26 +71,29 @@ export default async function DashboardPage({
   const priorityChartData = mapRecordKeysToLabels(metrics.byPriority, requirementPriorities);
   const categoryHoursChartData = Object.entries(metrics.hoursByCategory).map(([code, minutes]) => ({
     name: catalogLabelByCode(timeEntryCategories, code),
-    value: Math.round(minutes / 60),
+    value: Number((minutes / 60).toFixed(2)),
   }));
-  const allChartsEmpty = isContributor
-    ? priorityChartData.every((item) => item.value <= 0) && statusChartData.every((item) => item.value <= 0)
-    : sortedMonthHours(metrics.hoursByMonth).every((item) => item.value <= 0) &&
-      priorityChartData.every((item) => item.value <= 0) &&
-      recordToHoursChartData(metrics.hoursByClient).every((item) => item.value <= 0) &&
-      statusChartData.every((item) => item.value <= 0) &&
-      categoryHoursChartData.every((item) => item.value <= 0) &&
-      recordToHoursChartData(metrics.hoursByPerson).every((item) => item.value <= 0);
+  const monthHours = sortedMonthHours(metrics.hoursByMonth);
+  const byClientHours = recordToHoursChartData(metrics.hoursByClient);
+  const byPersonHours = recordToHoursChartData(metrics.hoursByPerson);
+  const roleChartSets = isContributor
+    ? [monthHours, categoryHoursChartData, priorityChartData]
+    : isProjectManager
+      ? [monthHours, byPersonHours, statusChartData]
+      : [monthHours, byClientHours, statusChartData];
+  const allChartsEmpty = roleChartSets.every((set) => set.every((item) => item.value <= 0));
 
   return (
     <AppShell>
       <div className="space-y-6">
         <PageHeader
-          title={isContributor ? "Mi dashboard" : "Dashboard general"}
+          title={isContributor ? "Mi dashboard" : isProjectManager ? "Dashboard de operación" : "Dashboard general"}
           description={
             isContributor
-              ? "Vista personalizada de tus requerimientos asignados."
-              : "Visión consolidada de requerimientos, horas y presupuesto"
+              ? "Seguimiento personal de carga, pendientes y foco semanal."
+              : isProjectManager
+                ? "Control operativo del equipo: avance, carga y alertas de ejecución."
+                : "Visión ejecutiva de cartera: avance global, consumo y riesgo."
           }
         />
         {!isContributor ? (
@@ -126,18 +132,90 @@ export default async function DashboardPage({
               </p>
             ) : null}
           </div>
-          <div className={`grid gap-4 sm:grid-cols-2 ${isContributor ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
-            <KpiCard label="Total requerimientos" value={String(metrics.totalRequirements)} icon={PieChart} variant="default" />
-            <KpiCard label="Abiertos" value={String(metrics.openRequirements)} icon={CircleDot} variant="info" />
-            <KpiCard label="Finalizados" value={String(metrics.completedRequirements)} icon={CheckCircle2} variant="success" />
-            {!isContributor ? (
-              <KpiCard
-                label="Consumo presupuesto"
-                value={`${metrics.consumptionPercentage.toFixed(1)}%`}
-                helper="Frente al presupuesto cotizado"
-                icon={Clock}
-                variant={metrics.consumptionPercentage >= 90 ? "danger" : metrics.consumptionPercentage >= 70 ? "warning" : "default"}
-              />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {isAdminLike ? (
+              <>
+                <KpiCard label="Total requerimientos" value={String(metrics.roleViews.adminView.kpis.totalRequirements)} icon={PieChart} variant="default" />
+                <KpiCard label="Abiertos" value={String(metrics.roleViews.adminView.kpis.openRequirements)} icon={CircleDot} variant="info" />
+                <KpiCard
+                  label="Horas registradas"
+                  value={`${metrics.roleViews.adminView.kpis.totalHours.toFixed(2)} h`}
+                  helper="Acumulado según filtros activos"
+                  icon={Users}
+                  variant="default"
+                />
+                <KpiCard
+                  label="Consumo presupuesto"
+                  value={`${metrics.roleViews.adminView.kpis.consumptionPercentage.toFixed(1)}%`}
+                  helper="Frente al presupuesto cotizado"
+                  icon={Clock}
+                  variant={
+                    metrics.roleViews.adminView.kpis.consumptionPercentage >= 90
+                      ? "danger"
+                      : metrics.roleViews.adminView.kpis.consumptionPercentage >= 70
+                        ? "warning"
+                        : "default"
+                  }
+                />
+              </>
+            ) : null}
+            {isProjectManager ? (
+              <>
+                <KpiCard label="Requerimientos abiertos" value={String(metrics.roleViews.pmView.kpis.openRequirements)} icon={CircleDot} variant="info" />
+                <KpiCard
+                  label="Finalizados (7 días)"
+                  value={String(metrics.roleViews.pmView.kpis.completedLast7Days)}
+                  helper="Throughput semanal"
+                  icon={CheckCircle2}
+                  variant="success"
+                />
+                <KpiCard
+                  label="Horas en curso"
+                  value={String(metrics.roleViews.pmView.kpis.openTimeEntriesCount)}
+                  helper="Registros sin hora de término"
+                  icon={Timer}
+                  variant={metrics.roleViews.pmView.kpis.openTimeEntriesCount > 0 ? "warning" : "default"}
+                />
+                <KpiCard
+                  label="Horas sin requerimiento"
+                  value={`${metrics.roleViews.pmView.kpis.hoursWithoutRequirement.toFixed(2)} h`}
+                  helper="Tiempo no vinculado"
+                  icon={AlertTriangle}
+                  variant={metrics.roleViews.pmView.kpis.hoursWithoutRequirement > 0 ? "warning" : "default"}
+                />
+              </>
+            ) : null}
+            {isContributor ? (
+              <>
+                <KpiCard
+                  label="Horas esta semana"
+                  value={`${metrics.roleViews.contributorView.kpis.hoursThisWeek.toFixed(2)} h`}
+                  helper="Últimos 7 días"
+                  icon={CalendarClock}
+                  variant="default"
+                />
+                <KpiCard
+                  label="Horas en curso"
+                  value={String(metrics.roleViews.contributorView.kpis.openTimeEntriesCount)}
+                  helper="Cierra estas horas para consolidar tu reporte"
+                  icon={Timer}
+                  variant={metrics.roleViews.contributorView.kpis.openTimeEntriesCount > 0 ? "warning" : "default"}
+                />
+                <KpiCard
+                  label="Requerimientos activos"
+                  value={String(metrics.roleViews.contributorView.kpis.activeRequirements)}
+                  helper="Pendientes asignados"
+                  icon={CircleDot}
+                  variant="info"
+                />
+                <KpiCard
+                  label="Horas sin requerimiento"
+                  value={`${metrics.roleViews.contributorView.kpis.hoursWithoutRequirement.toFixed(2)} h`}
+                  helper="Tiempo que debes asociar a tickets"
+                  icon={AlertTriangle}
+                  variant={metrics.roleViews.contributorView.kpis.hoursWithoutRequirement > 0 ? "warning" : "default"}
+                />
+              </>
             ) : null}
           </div>
         </section>
@@ -155,8 +233,10 @@ export default async function DashboardPage({
           </h2>
           <p className="max-w-prose text-sm text-muted-foreground">
             {isContributor
-              ? "Visualización de tus requerimientos asignados por prioridad y estado."
-              : "Gráficos combinados (línea, roseta, dona, barras verticales y horizontales) según los mismos filtros. Las horas se muestran redondeadas en unidades de hora."}
+              ? "Tendencia y distribución personal para priorizar tu carga y cerrar pendientes."
+              : isProjectManager
+                ? "Panel operativo del equipo: tendencia, carga por persona y estado de requerimientos."
+                : "Vista ejecutiva con tendencia global, consumo por cliente y estado de cartera."}
           </p>
           {allChartsEmpty ? (
             <div className="surface-card flex items-start gap-3 border-dashed p-4">
@@ -167,64 +247,77 @@ export default async function DashboardPage({
                 <p className="text-sm font-medium text-foreground">Panel sin datos para los filtros actuales</p>
                 <p className="text-sm text-muted-foreground">
                   {isContributor
-                    ? "Aún no tienes requerimientos asignados con datos suficientes para mostrar distribución."
-                    : "Crea requerimientos, registra horas y asignaciones de presupuesto, o ajusta cliente para ver tendencia y distribuciones."}
+                    ? "Registra tu primera hora y clasifícala para activar tus indicadores personales."
+                    : isProjectManager
+                      ? "Registra horas y actualiza estados para activar el panel operativo por equipo."
+                      : "Crea requerimientos y registra horas para activar la lectura ejecutiva de cartera."}
                 </p>
+                <div className="pt-1">
+                  <Link href={isContributor ? "/time-entries/new" : "/requirements/new"} className="btn-secondary text-xs">
+                    {isContributor ? "Registrar mi primera hora" : "Crear requerimiento"}
+                  </Link>
+                </div>
               </div>
             </div>
           ) : null}
           <div className="grid gap-6 lg:grid-cols-12">
-            {!isContributor ? (
+            {(isAdminLike || isProjectManager) ? (
               <DashboardChartCard
                 className="lg:col-span-12"
                 title="Evolución de horas cargadas por mes"
                 mode="lineArea"
                 tall
                 emptyHint="Registra horas para ver la evolución mensual."
-                data={sortedMonthHours(metrics.hoursByMonth)}
+                data={monthHours}
               />
             ) : null}
-            <DashboardChartCard
-              className={isContributor ? "lg:col-span-6" : "lg:col-span-5"}
-              title="Requerimientos por prioridad"
-              mode="rose"
-              emptyHint="Crea requerimientos para visualizar la distribucion por prioridad."
-              data={priorityChartData}
-            />
-            {!isContributor ? (
+            {isContributor ? (
+              <DashboardChartCard
+                className="lg:col-span-7"
+                title="Evolución personal de horas"
+                mode="lineArea"
+                tall
+                emptyHint="Registra horas para visualizar tu tendencia semanal."
+                data={monthHours}
+              />
+            ) : null}
+            {isAdminLike ? (
               <DashboardChartCard
                 className="lg:col-span-7"
                 title="Horas por cliente"
                 mode="barHorizontal"
                 emptyHint="Registra horas asociadas a requerimientos para mostrar clientes con consumo."
-                data={recordToHoursChartData(metrics.hoursByClient)}
+                data={byClientHours}
+              />
+            ) : null}
+            {isProjectManager ? (
+              <DashboardChartCard
+                className="lg:col-span-7"
+                title="Carga por persona"
+                mode="barHorizontal"
+                emptyHint="Las horas por persona aparecerán cuando existan registros."
+                data={byPersonHours}
               />
             ) : null}
             <DashboardChartCard
-              className={isContributor ? "lg:col-span-6" : "lg:col-span-6"}
-              title="Requerimientos por estado"
+              className="lg:col-span-5"
+              title={isContributor ? "Horas por categoría" : "Requerimientos por estado"}
               mode="pie"
-              emptyHint="Cuando existan requerimientos, aqui se mostrara la proporcion por estado."
-              data={statusChartData}
+              emptyHint={
+                isContributor
+                  ? "Categoriza tus horas para ver en qué inviertes más tiempo."
+                  : "Cuando existan requerimientos, aquí se mostrará la proporción por estado."
+              }
+              data={isContributor ? categoryHoursChartData : statusChartData}
             />
-            {!isContributor ? (
-              <>
-                <DashboardChartCard
-                  className="lg:col-span-6"
-                  title="Horas por categoría"
-                  mode="bar"
-                  barVariant="multiColor"
-                  emptyHint="Asigna una categoría al registrar horas para analizar la distribución."
-                  data={categoryHoursChartData}
-                />
-                <DashboardChartCard
-                  className="lg:col-span-12"
-                  title="Horas por persona"
-                  mode="barHorizontal"
-                  emptyHint="Las horas por persona aparecerán cuando existan registros de horas."
-                  data={recordToHoursChartData(metrics.hoursByPerson)}
-                />
-              </>
+            {isContributor ? (
+              <DashboardChartCard
+                className="lg:col-span-12"
+                title="Requerimientos por prioridad"
+                mode="barHorizontal"
+                emptyHint="Actualiza o crea requerimientos para visualizar prioridades activas."
+                data={priorityChartData}
+              />
             ) : null}
           </div>
         </section>

@@ -49,6 +49,24 @@ export const calculateDashboardMetrics = (
   const quotedMinutes = calculateBudgetQuotedMinutes(budgets);
   const availableMinutes = calculateBudgetAvailableMinutes(quotedMinutes, usedMinutes);
   const consumptionPercentage = calculateConsumptionPercentage(quotedMinutes, usedMinutes);
+  const openTimeEntriesCount = entries.filter((entry) => !entry.endTime).length;
+  const hoursWithoutRequirementMinutes = entries
+    .filter((entry) => !entry.requirementId)
+    .reduce((acc, entry) => acc + entry.durationMinutes, 0);
+
+  const today = new Date();
+  const todayDate = today.toISOString().slice(0, 10);
+  const weekStart = new Date(`${todayDate}T12:00:00.000Z`);
+  weekStart.setDate(weekStart.getDate() - 6);
+  const weekStartDate = weekStart.toISOString().slice(0, 10);
+  const hoursThisWeekMinutes = entries
+    .filter((entry) => entry.date >= weekStartDate && entry.date <= todayDate)
+    .reduce((acc, entry) => acc + entry.durationMinutes, 0);
+  const completedLast7Days = requirements.filter((item) => {
+    if (item.status !== "DONE_PROD" || !item.completedAt) return false;
+    const completedDate = item.completedAt.slice(0, 10);
+    return completedDate >= weekStartDate && completedDate <= todayDate;
+  }).length;
   const hoursByClient = entries.reduce<Record<string, number>>((acc, entry) => {
     if (!entry.requirementId) {
       acc["Sin cliente asignado"] = (acc["Sin cliente asignado"] ?? 0) + entry.durationMinutes;
@@ -102,5 +120,35 @@ export const calculateDashboardMetrics = (
     hoursByCategory: groupHoursByCategory(entries),
     hoursByClient,
     billingEstimateByClient,
+    roleViews: {
+      adminView: {
+        kpis: {
+          totalRequirements,
+          openRequirements,
+          totalHours: usedMinutes / 60,
+          consumptionPercentage,
+        },
+      },
+      pmView: {
+        kpis: {
+          openRequirements,
+          completedLast7Days,
+          openTimeEntriesCount,
+          hoursWithoutRequirement: hoursWithoutRequirementMinutes / 60,
+        },
+      },
+      contributorView: {
+        kpis: {
+          hoursThisWeek: hoursThisWeekMinutes / 60,
+          openTimeEntriesCount,
+          activeRequirements: openRequirements,
+          hoursWithoutRequirement: hoursWithoutRequirementMinutes / 60,
+        },
+      },
+    },
+    openTimeEntriesCount,
+    hoursWithoutRequirement: hoursWithoutRequirementMinutes / 60,
+    hoursThisWeek: hoursThisWeekMinutes / 60,
+    completedLast7Days,
   };
 };
