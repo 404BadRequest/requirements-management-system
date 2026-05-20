@@ -68,6 +68,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       clientName: string;
       healthScore: number;
       healthRisk: "verde" | "amarillo" | "rojo";
+      healthFormulaLabel: string;
       usedHoursLabel: string;
       quotedHoursLabel: string;
       daysToDepletion: number | null;
@@ -361,6 +362,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
                   <span className="font-medium">{item.healthScore}/100</span>
                   <RiskBadge risk={item.healthRisk} />
                 </div>
+                <p className="w-full text-[11px] text-muted-foreground">{item.healthFormulaLabel}</p>
               </li>
             ))}
           </ul>

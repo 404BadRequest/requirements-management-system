@@ -33,14 +33,22 @@ export function calculateDeviationMetrics(params: {
   expectedMinutesByDate: number;
   deviationMinutes: number;
   deviationPct: number;
+  deviationPctBasis: "expected" | "quoted";
   risk: TrafficRisk;
 } {
   const expectedMinutesByDate = params.quotedMinutes * clamp(params.elapsedPct, 0, 1);
   const deviationMinutes = params.usedMinutes - expectedMinutesByDate;
-  const denominator = Math.max(expectedMinutesByDate, 1);
+  const useQuotedBasis = expectedMinutesByDate < 1;
+  const denominator = Math.max(useQuotedBasis ? params.quotedMinutes : expectedMinutesByDate, 1);
   const deviationPct = Math.abs(deviationMinutes / denominator) * 100;
   const risk = deviationPct <= 10 ? "verde" : deviationPct <= 20 ? "amarillo" : "rojo";
-  return { expectedMinutesByDate, deviationMinutes, deviationPct, risk };
+  return {
+    expectedMinutesByDate,
+    deviationMinutes,
+    deviationPct,
+    deviationPctBasis: useQuotedBasis ? "quoted" : "expected",
+    risk,
+  };
 }
 
 export function calculateMisallocationMetrics(params: {
@@ -87,12 +95,18 @@ export function calculateContractHealthScore(params: {
   deviationPct: number;
   misallocationPct: number;
   worstProfileCoveragePct: number;
-}): { score: number; risk: TrafficRisk } {
+}): {
+  score: number;
+  risk: TrafficRisk;
+  deviationPenalty: number;
+  misallocationPenalty: number;
+  profilePenalty: number;
+} {
   const deviationPenalty = clamp(params.deviationPct * 2.5, 0, 100);
   const misallocationPenalty = clamp(params.misallocationPct * 12.5, 0, 100);
   const profilePenalty = clamp((params.worstProfileCoveragePct - 60) * 2.5, 0, 100);
   const weightedPenalty = deviationPenalty * 0.4 + misallocationPenalty * 0.3 + profilePenalty * 0.3;
   const score = Math.round(clamp(100 - weightedPenalty, 0, 100));
   const risk = score >= 80 ? "verde" : score >= 60 ? "amarillo" : "rojo";
-  return { score, risk };
+  return { score, risk, deviationPenalty, misallocationPenalty, profilePenalty };
 }

@@ -181,6 +181,7 @@ export async function loadBudgetsPageData(projectId?: string) {
         clientName: clientById.get(contract.clientId) ?? contract.clientId,
         healthScore: health.score,
         healthRisk: health.risk,
+        healthFormulaLabel: "Score = 40% desviación + 30% mala asignación + 30% cobertura por perfil",
         usedHoursLabel: `${(usedContractMinutes / 60).toFixed(2)} h`,
         quotedHoursLabel: `${(quotedContractMinutes / 60).toFixed(2)} h`,
         daysToDepletion: depletion.daysToDepletion,
@@ -195,7 +196,12 @@ export async function loadBudgetsPageData(projectId?: string) {
     .slice(0, 5);
 
   const deviationMinutesGlobal = consumption.totalUsedMinutes - expectedMinutesByDateGlobal;
-  const deviationPctGlobal = Math.abs(deviationMinutesGlobal / Math.max(expectedMinutesByDateGlobal, 1)) * 100;
+  const globalDeviationUseQuotedBasis = expectedMinutesByDateGlobal < 1;
+  const globalDeviationDenominator = Math.max(
+    globalDeviationUseQuotedBasis ? consumption.totalQuotedMinutes : expectedMinutesByDateGlobal,
+    1,
+  );
+  const deviationPctGlobal = Math.abs(deviationMinutesGlobal / globalDeviationDenominator) * 100;
   const deviationRiskGlobal: TrafficRisk =
     deviationPctGlobal <= 10 ? "verde" : deviationPctGlobal <= 20 ? "amarillo" : "rojo";
   const misallocation = calculateMisallocationMetrics({
@@ -464,6 +470,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
     expectedMinutesByDate: deviation.expectedMinutesByDate,
     deviationMinutes: deviation.deviationMinutes,
     deviationPct: deviation.deviationPct,
+    deviationPctBasis: deviation.deviationPctBasis,
     deviationRisk: deviation.risk,
     misallocationPct: misallocation.misallocationPct,
     misallocationRisk: misallocation.risk,
@@ -474,6 +481,12 @@ export async function loadBudgetContractDetailData(contractId: string) {
     topRequirementRows,
     contractHealthScore: health.score,
     contractHealthRisk: health.risk,
+    healthFormula: {
+      deviationPenalty: health.deviationPenalty,
+      misallocationPenalty: health.misallocationPenalty,
+      profilePenalty: health.profilePenalty,
+      description: "Score = 40% desviación + 30% mala asignación + 30% cobertura por perfil",
+    },
     users: users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name })),
     clients: clientsData.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name })),
     requirements: requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId })),

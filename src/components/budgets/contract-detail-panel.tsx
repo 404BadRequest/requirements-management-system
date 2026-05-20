@@ -63,20 +63,11 @@ export function ContractDetailPanel({
   categories,
   canPickAnyOwner,
   contractId,
-  elapsedContractPct,
   expectedMinutesByDate,
-  deviationMinutes,
-  deviationPct,
-  deviationRisk,
   misallocationPct,
   misallocationRisk,
-  burnRateMinutesPerWeek,
-  estimatedDepletionDate,
-  daysToDepletion,
   topRiskProfiles,
   topRequirementRows,
-  contractHealthScore,
-  contractHealthRisk,
 }: {
   quotedMinutes: number;
   usedMinutes: number;
@@ -93,20 +84,11 @@ export function ContractDetailPanel({
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
   contractId: string;
-  elapsedContractPct: number;
   expectedMinutesByDate: number;
-  deviationMinutes: number;
-  deviationPct: number;
-  deviationRisk: "verde" | "amarillo" | "rojo";
   misallocationPct: number;
   misallocationRisk: "verde" | "amarillo" | "rojo";
-  burnRateMinutesPerWeek: number;
-  estimatedDepletionDate: string | null;
-  daysToDepletion: number | null;
   topRiskProfiles: TopRiskProfileRow[];
   topRequirementRows: TopRequirementRow[];
-  contractHealthScore: number;
-  contractHealthRisk: "verde" | "amarillo" | "rojo";
 }) {
   const allocationColumns = useMemo<ColumnDef<ProfileAllocationRow>[]>(
     () => [
@@ -199,40 +181,11 @@ export function ContractDetailPanel({
     [],
   );
 
-  const deviationHoursLabel = `${Math.abs(deviationMinutes / 60).toFixed(2)} h`;
-  const deviationDirection = deviationMinutes >= 0 ? "sobreconsumo" : "bajo plan";
-  const elapsedContractLabel = `${(elapsedContractPct * 100).toFixed(1)}% de vigencia`;
-  const projectionLabel =
-    estimatedDepletionDate && daysToDepletion !== null
-      ? `${estimatedDepletionDate} (${daysToDepletion} días)`
-      : "Sin datos suficientes";
   const topRequirementLead = topRequirementRows[0];
 
   return (
     <div className="space-y-4">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <p className="text-xs text-primary">Salud del contrato</p>
-          <p className="text-2xl font-semibold">{contractHealthScore}/100</p>
-          <div className="mt-1">
-            <RiskBadge risk={contractHealthRisk} />
-          </div>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Desviación vs plan</p>
-          <p className="text-2xl font-semibold">{deviationHoursLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {deviationDirection} · {deviationPct.toFixed(1)}% · {elapsedContractLabel}
-          </p>
-          <div className="mt-1">
-            <RiskBadge risk={deviationRisk} />
-          </div>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Proyección de agotamiento</p>
-          <p className="text-lg font-semibold">{projectionLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Velocidad: {(burnRateMinutesPerWeek / 60).toFixed(2)} h/semana</p>
-        </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas mal asignadas</p>
           <p className="text-2xl font-semibold">{(unallocatedMinutes / 60).toFixed(2)} h</p>

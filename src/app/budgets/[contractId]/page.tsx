@@ -5,6 +5,13 @@ import { PageHeader } from "@/components/common/page-header";
 import { ContractDetailPanel } from "@/components/budgets/contract-detail-panel";
 import { loadBudgetContractDetailData } from "@/app/budgets/data-actions";
 
+function toDateOnly(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString().slice(0, 10);
+}
+
 export default async function BudgetContractDetailPage({
   params,
 }: {
@@ -27,7 +34,7 @@ export default async function BudgetContractDetailPage({
     <AppShell>
       <PageHeader
         title={`Ficha de contrato · ${data.contract.code}`}
-        description={`${data.contract.name} · ${data.client?.name ?? data.contract.clientId} · ${data.contract.startDate} a ${data.contract.endDate}`}
+        description={`${data.contract.name} · ${data.client?.name ?? data.contract.clientId} · Inicio ${toDateOnly(data.contract.startDate)} · Fin ${toDateOnly(data.contract.endDate)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/budgets" className="btn-secondary py-2 text-sm no-underline">
@@ -52,20 +59,11 @@ export default async function BudgetContractDetailPage({
         contractProfiles={data.contractProfiles}
         categories={data.categories}
         canPickAnyOwner={data.canPickAnyOwner}
-        elapsedContractPct={data.elapsedContractPct}
         expectedMinutesByDate={data.expectedMinutesByDate}
-        deviationMinutes={data.deviationMinutes}
-        deviationPct={data.deviationPct}
-        deviationRisk={data.deviationRisk}
         misallocationPct={data.misallocationPct}
         misallocationRisk={data.misallocationRisk}
-        burnRateMinutesPerWeek={data.burnRateMinutesPerWeek}
-        estimatedDepletionDate={data.estimatedDepletionDate}
-        daysToDepletion={data.daysToDepletion}
         topRiskProfiles={data.topRiskProfiles}
         topRequirementRows={data.topRequirementRows}
-        contractHealthScore={data.contractHealthScore}
-        contractHealthRisk={data.contractHealthRisk}
         clients={data.clients}
       />
     </AppShell>
