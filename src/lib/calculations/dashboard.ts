@@ -7,21 +7,33 @@ import {
 } from "@/lib/calculations/budget";
 import { aggregateBillingEstimateByClient } from "@/lib/calculations/billing";
 import { groupHoursByCategory, groupHoursByMonth, groupHoursByPerson } from "@/lib/calculations/time";
-import type { BudgetAllocation, Client, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
+import type { BudgetAllocation, Client, ContractBudget, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
 
 export type DashboardMetricsContext = {
   users?: User[];
   profiles?: Profile[];
   clients?: Client[];
+  contracts?: ContractBudget[];
   referenceRates?: FinancialReferenceRates;
 };
 
-function clientLabelForRequirement(
-  requirement: Requirement | undefined,
-  clientsById: Map<string, Client>,
-): string {
-  if (!requirement?.clientId) return "Sin cliente asignado";
-  return clientsById.get(requirement.clientId)?.name ?? requirement.clientId;
+function resolveClientLabel(input: {
+  entry: TimeEntry;
+  requirementById: Map<string, Requirement>;
+  clientsById: Map<string, Client>;
+  contractById?: Map<string, ContractBudget>;
+}): string {
+  const requirementClientId = input.entry.requirementId ? input.requirementById.get(input.entry.requirementId)?.clientId : null;
+  if (requirementClientId) {
+    return input.clientsById.get(requirementClientId)?.name ?? requirementClientId;
+  }
+
+  const contractClientId = input.entry.contractId ? input.contractById?.get(input.entry.contractId)?.clientId : null;
+  if (contractClientId) {
+    return input.clientsById.get(contractClientId)?.name ?? contractClientId;
+  }
+
+  return "Sin cliente asignado";
 }
 
 export const calculateDashboardMetrics = (
@@ -32,6 +44,7 @@ export const calculateDashboardMetrics = (
 ) => {
   const requirementById = new Map(requirements.map((item) => [item.id, item]));
   const clientsById = new Map((context?.clients ?? []).map((c) => [c.id, c]));
+  const contractById = context?.contracts?.length ? new Map(context.contracts.map((c) => [c.id, c])) : undefined;
 
   const totalRequirements = requirements.length;
   const openRequirements = requirements.filter((item) => item.status !== "DONE_PROD").length;
@@ -68,13 +81,7 @@ export const calculateDashboardMetrics = (
     return completedDate >= weekStartDate && completedDate <= todayDate;
   }).length;
   const hoursByClient = entries.reduce<Record<string, number>>((acc, entry) => {
-    if (!entry.requirementId) {
-      acc["Sin cliente asignado"] = (acc["Sin cliente asignado"] ?? 0) + entry.durationMinutes;
-      return acc;
-    }
-
-    const requirement = requirementById.get(entry.requirementId);
-    const label = clientLabelForRequirement(requirement, clientsById);
+    const label = resolveClientLabel({ entry, requirementById, clientsById, contractById });
     acc[label] = (acc[label] ?? 0) + entry.durationMinutes;
     return acc;
   }, {});
@@ -90,6 +97,7 @@ export const calculateDashboardMetrics = (
       profileById,
       clientsById,
       context.referenceRates,
+      contractById,
     );
   }
 

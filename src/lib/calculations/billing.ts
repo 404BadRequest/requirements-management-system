@@ -1,4 +1,4 @@
-import type { Client, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
+import type { Client, ContractBudget, FinancialReferenceRates, Profile, Requirement, TimeEntry, User } from "@/types/domain";
 import { convertBillingAmountToClp } from "@/lib/calculations/currency-to-clp";
 
 /**
@@ -15,9 +15,23 @@ export interface BillingEstimateRow {
   amountClp: number | null;
 }
 
-function clientDisplayName(requirement: Requirement | undefined, clientsById: Map<string, Client>): string {
-  if (!requirement?.clientId) return "Sin cliente asignado";
-  return clientsById.get(requirement.clientId)?.name ?? requirement.clientId;
+function resolveClientLabel(input: {
+  entry: TimeEntry;
+  requirementById: Map<string, Requirement>;
+  contractById?: Map<string, ContractBudget>;
+  clientsById: Map<string, Client>;
+}): string {
+  const requirementClientId = input.entry.requirementId ? input.requirementById.get(input.entry.requirementId)?.clientId : null;
+  if (requirementClientId) {
+    return input.clientsById.get(requirementClientId)?.name ?? requirementClientId;
+  }
+
+  const contractClientId = input.entry.contractId ? input.contractById?.get(input.entry.contractId)?.clientId : null;
+  if (contractClientId) {
+    return input.clientsById.get(contractClientId)?.name ?? contractClientId;
+  }
+
+  return "Sin cliente asignado";
 }
 
 /**
@@ -31,6 +45,7 @@ export function aggregateBillingEstimateByClient(
   profileById: Map<string, Profile>,
   clientsById: Map<string, Client>,
   referenceRates: FinancialReferenceRates,
+  contractById?: Map<string, ContractBudget>,
 ): BillingEstimateRow[] {
   const acc = new Map<string, Map<string, number>>();
 
@@ -44,9 +59,12 @@ export function aggregateBillingEstimateByClient(
     const hours = entry.durationMinutes / 60;
     const line = calculateBillingAmount(hours, profile.hourlyRate);
 
-    const clientLabel = entry.requirementId
-      ? clientDisplayName(requirementById.get(entry.requirementId), clientsById)
-      : "Sin cliente asignado";
+    const clientLabel = resolveClientLabel({
+      entry,
+      requirementById,
+      contractById,
+      clientsById,
+    });
 
     const currency = (profile.rateCurrency ?? "CLP").trim() || "CLP";
 

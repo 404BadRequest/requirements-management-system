@@ -259,13 +259,14 @@ export const getBudgetSummary = async (projectId: string) => {
 };
 
 export const getDashboardMetrics = async (filters?: DashboardFilters) => {
-  const [requirements, entries, budgets, users, profiles, clients] = await Promise.all([
+  const [requirements, entries, budgets, users, profiles, clients, contracts] = await Promise.all([
     getRequirements(),
     getTimeEntries(),
     getBudgets(),
     getUsers(),
     getProfiles(),
     getClients(),
+    getContractBudgets(),
   ]);
 
   const filteredRequirements = requirements.filter((item) => {
@@ -280,8 +281,12 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
   const filteredEntries = entries.filter((item) => {
     if (filters?.projectId && item.projectId !== filters.projectId) return false;
     if (filters?.clientId) {
-      const requirement = requirements.find((requirementItem) => requirementItem.id === item.requirementId);
-      if (requirement?.clientId !== filters.clientId) return false;
+      const requirementClientId = item.requirementId
+        ? requirements.find((requirementItem) => requirementItem.id === item.requirementId)?.clientId
+        : null;
+      const contractClientId = item.contractId ? contracts.find((contractItem) => contractItem.id === item.contractId)?.clientId : null;
+      const resolvedClientId = requirementClientId ?? contractClientId ?? null;
+      if (resolvedClientId !== filters.clientId) return false;
     }
     if (filters?.ownerId && item.userId !== filters.ownerId) return false;
     if (filters?.category && item.category !== filters.category) return false;
@@ -296,6 +301,7 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
     users,
     profiles,
     clients,
+    contracts,
     referenceRates: await getFinancialReferenceRates(),
   });
 };
