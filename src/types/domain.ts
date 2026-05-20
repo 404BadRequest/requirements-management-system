@@ -180,6 +180,49 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export type ChatThreadType = "direct" | "channel";
+export type ChatPresenceStatus = "online" | "away" | "dnd" | "offline";
+
+export interface ChatThread {
+  id: string;
+  type: ChatThreadType;
+  name: string | null;
+  directKey: string | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+}
+
+export interface ChatThreadMember {
+  threadId: string;
+  userId: string;
+  role: "member" | "owner";
+  mutedUntil: string | null;
+  joinedAt: string;
+  lastReadMessageId: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  senderUserId: string;
+  body: string;
+  kind: "text";
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+}
+
+export interface ChatPresencePreference {
+  userId: string;
+  status: ChatPresenceStatus;
+  dndUntil: string | null;
+  customStatus: string | null;
+  lastSeenAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardFilters {
   projectId?: string;
   clientId?: string;

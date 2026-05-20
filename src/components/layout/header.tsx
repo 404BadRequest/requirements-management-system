@@ -18,14 +18,22 @@ type HeaderProps = {
   commandItems: CommandNavItem[];
   navLinks: MainNavClientLink[];
   notificationUnread?: number;
+  chatUnread?: number;
 };
 
-export const Header = ({ sessionUser, commandItems, navLinks, notificationUnread = 0 }: HeaderProps) => (
-  <HeaderInner sessionUser={sessionUser} commandItems={commandItems} navLinks={navLinks} notificationUnread={notificationUnread} />
+export const Header = ({ sessionUser, commandItems, navLinks, notificationUnread = 0, chatUnread = 0 }: HeaderProps) => (
+  <HeaderInner
+    sessionUser={sessionUser}
+    commandItems={commandItems}
+    navLinks={navLinks}
+    notificationUnread={notificationUnread}
+    chatUnread={chatUnread}
+  />
 );
 
-function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }: HeaderProps) {
+function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, chatUnread }: HeaderProps) {
   const unread = notificationUnread ?? 0;
+  const chatUnreadCount = chatUnread ?? 0;
   const [lastUpdated, setLastUpdated] = useState("--:--");
   useEffect(() => {
     const value = new Intl.DateTimeFormat("es-CL", {
@@ -40,7 +48,7 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card shadow-soft menu-fade-in">
       <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between gap-3 px-3 py-2.5 md:justify-center sm:px-4">
-        <MobileNav links={navLinks} />
+        <MobileNav links={navLinks} notificationUnread={unread} chatUnread={chatUnreadCount} />
         <div className="hidden items-center md:flex">
           <div className="flex min-w-[21rem] items-center gap-2.5 rounded-[2px] border border-primary/25 bg-background/85 px-2.5 py-1.5 shadow-soft">
             <Image
@@ -77,7 +85,8 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }
         <div className="flex items-center justify-center gap-1.5 overflow-x-auto rounded-[2px] border border-border bg-muted/40 px-2 py-1.5 [scrollbar-width:thin]">
           {navLinks.map((link) => {
             const active = isNavActive(pathname, link.href);
-            const showBadge = link.href === "/notifications" && unread > 0;
+            const showNotificationBadge = link.href === "/notifications" && unread > 0;
+            const showChatBadge = link.href === "/chat" && chatUnreadCount > 0;
             return (
               <Link
                 key={link.href}
@@ -91,9 +100,14 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }
               >
                 <MainNavIcon iconKey={link.iconKey} className="h-3.5 w-3.5 shrink-0 opacity-90" />
                 <span>{link.label}</span>
-                {showBadge ? (
+                {showNotificationBadge ? (
                   <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
                     {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+                {showChatBadge ? (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
                   </span>
                 ) : null}
               </Link>

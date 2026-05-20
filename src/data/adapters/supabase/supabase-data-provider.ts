@@ -64,5 +64,17 @@ export class SupabaseDataProvider implements AppDataProvider {
   markNotificationReadForUser = (notificationId: string, recipientUserId: string) =>
     this.access.markNotificationReadForUser(notificationId, recipientUserId);
 
+  getChatThreadsForUser = (userId: string) => this.access.getChatThreadsForUser(userId);
+  getChatThreadMembers = (threadId: string) => this.access.getChatThreadMembers(threadId);
+  getChatMessages = (threadId: string, limit?: number) => this.access.getChatMessages(threadId, limit);
+  createDirectChatThread = (input: Parameters<RmsDataAccess["createDirectChatThread"]>[0]) => this.access.createDirectChatThread(input);
+  createChatChannel = (input: Parameters<RmsDataAccess["createChatChannel"]>[0]) => this.access.createChatChannel(input);
+  sendChatMessage = (input: Parameters<RmsDataAccess["sendChatMessage"]>[0]) => this.access.sendChatMessage(input);
+  markChatThreadRead = (input: Parameters<RmsDataAccess["markChatThreadRead"]>[0]) => this.access.markChatThreadRead(input);
+  getChatPresencePreferences = (userIds: string[]) => this.access.getChatPresencePreferences(userIds);
+  upsertChatPresencePreference = (input: Parameters<RmsDataAccess["upsertChatPresencePreference"]>[0]) =>
+    this.access.upsertChatPresencePreference(input);
+  touchChatPresenceHeartbeat = (userId: string) => this.access.touchChatPresenceHeartbeat(userId);
+
   appendAudit = (entry: AuditEntryInput) => this.access.appendAudit(entry);
 }

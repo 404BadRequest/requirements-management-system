@@ -13,6 +13,11 @@ import type { AppDataProvider, AuditEntryInput } from "@/data/repositories/app-d
 import type {
   AppNotification,
   BudgetAllocation,
+  ChatMessage,
+  ChatPresencePreference,
+  ChatPresenceStatus,
+  ChatThread,
+  ChatThreadMember,
   Client,
   ContractBudget,
   ContractProfileAllocation,
@@ -180,6 +185,54 @@ function mapNotification(r: Row): AppNotification {
     href: r.href ? String(r.href) : null,
     readAt: r.read_at ? String(r.read_at) : null,
     createdAt: String(r.created_at),
+  };
+}
+
+function mapChatThread(r: Row): ChatThread {
+  return {
+    id: String(r.id),
+    type: String(r.type) as ChatThread["type"],
+    name: r.name ? String(r.name) : null,
+    directKey: r.direct_key ? String(r.direct_key) : null,
+    createdByUserId: String(r.created_by_user_id),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+    lastMessageAt: r.last_message_at ? String(r.last_message_at) : null,
+  };
+}
+
+function mapChatThreadMember(r: Row): ChatThreadMember {
+  return {
+    threadId: String(r.thread_id),
+    userId: String(r.user_id),
+    role: String(r.role) as ChatThreadMember["role"],
+    mutedUntil: r.muted_until ? String(r.muted_until) : null,
+    joinedAt: String(r.joined_at),
+    lastReadMessageId: r.last_read_message_id ? String(r.last_read_message_id) : null,
+  };
+}
+
+function mapChatMessage(r: Row): ChatMessage {
+  return {
+    id: String(r.id),
+    threadId: String(r.thread_id),
+    senderUserId: String(r.sender_user_id),
+    body: String(r.body),
+    kind: "text",
+    createdAt: String(r.created_at),
+    editedAt: r.edited_at ? String(r.edited_at) : null,
+    deletedAt: r.deleted_at ? String(r.deleted_at) : null,
+  };
+}
+
+function mapChatPresence(r: Row): ChatPresencePreference {
+  return {
+    userId: String(r.user_id),
+    status: String(r.status) as ChatPresenceStatus,
+    dndUntil: r.dnd_until ? String(r.dnd_until) : null,
+    customStatus: r.custom_status ? String(r.custom_status) : null,
+    lastSeenAt: String(r.last_seen_at),
+    updatedAt: String(r.updated_at),
   };
 }
 
@@ -725,6 +778,149 @@ export class PostgresDataProvider implements AppDataProvider {
       [notificationId, recipientUserId, new Date().toISOString()],
     );
     return (rowCount ?? 0) > 0;
+  }
+
+  async getChatThreadsForUser(userId: string): Promise<ChatThread[]> {
+    const { rows } = await queryPg<Row>(
+      `select t.*
+         from rms_chat_threads t
+         join rms_chat_thread_members m on m.thread_id = t.id
+        where m.user_id = $1
+        order by t.last_message_at desc nulls last, t.updated_at desc`,
+      [userId],
+    );
+    return rows.map(mapChatThread);
+  }
+
+  async getChatThreadMembers(threadId: string): Promise<ChatThreadMember[]> {
+    const { rows } = await queryPg<Row>(
+      "select * from rms_chat_thread_members where thread_id = $1 order by joined_at asc",
+      [threadId],
+    );
+    return rows.map(mapChatThreadMember);
+  }
+
+  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+    const { rows } = await queryPg<Row>(
+      `select *
+         from rms_chat_messages
+        where thread_id = $1
+        order by created_at desc
+        limit $2`,
+      [threadId, Math.max(1, limit)],
+    );
+    return rows.map(mapChatMessage).reverse();
+  }
+
+  async createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> {
+    const directKey = [input.createdByUserId, input.peerUserId].sort().join(":");
+    const existing = await queryPg<Row>("select * from rms_chat_threads where type = 'direct' and direct_key = $1", [directKey]);
+    if (existing.rows[0]) return mapChatThread(existing.rows[0]);
+    const now = new Date().toISOString();
+    const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
+    const { rows } = await queryPg<Row>(
+      `insert into rms_chat_threads (id, type, name, direct_key, created_by_user_id, created_at, updated_at, last_message_at)
+       values ($1, 'direct', null, $2, $3, $4, $4, null)
+       returning *`,
+      [threadId, directKey, input.createdByUserId, now],
+    );
+    await queryPg(
+      `insert into rms_chat_thread_members (thread_id, user_id, role, muted_until, joined_at, last_read_message_id)
+       values ($1, $2, $3, null, $4, null), ($1, $5, 'member', null, $4, null)`,
+      [threadId, input.createdByUserId, "owner", now, input.peerUserId],
+    );
+    return mapChatThread(rows[0]);
+  }
+
+  async createChatChannel(input: { createdByUserId: string; name: string; memberUserIds: string[] }): Promise<ChatThread> {
+    const now = new Date().toISOString();
+    const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
+    const { rows } = await queryPg<Row>(
+      `insert into rms_chat_threads (id, type, name, direct_key, created_by_user_id, created_at, updated_at, last_message_at)
+       values ($1, 'channel', $2, null, $3, $4, $4, null)
+       returning *`,
+      [threadId, input.name, input.createdByUserId, now],
+    );
+    const users = [...new Set([input.createdByUserId, ...input.memberUserIds])];
+    for (const userId of users) {
+      await queryPg(
+        `insert into rms_chat_thread_members (thread_id, user_id, role, muted_until, joined_at, last_read_message_id)
+         values ($1, $2, $3, null, $4, null)
+         on conflict (thread_id, user_id) do nothing`,
+        [threadId, userId, userId === input.createdByUserId ? "owner" : "member", now],
+      );
+    }
+    return mapChatThread(rows[0]);
+  }
+
+  async sendChatMessage(input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage> {
+    const now = new Date().toISOString();
+    const messageId = `msg-${crypto.randomUUID().slice(0, 12)}`;
+    const { rows } = await queryPg<Row>(
+      `insert into rms_chat_messages (id, thread_id, sender_user_id, body, kind, created_at, edited_at, deleted_at)
+       values ($1, $2, $3, $4, 'text', $5, null, null)
+       returning *`,
+      [messageId, input.threadId, input.senderUserId, input.body, now],
+    );
+    await queryPg(
+      `update rms_chat_threads
+          set last_message_at = $2,
+              updated_at = $2
+        where id = $1`,
+      [input.threadId, now],
+    );
+    return mapChatMessage(rows[0]);
+  }
+
+  async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {
+    await queryPg(
+      `update rms_chat_thread_members
+          set last_read_message_id = $3
+        where thread_id = $1 and user_id = $2`,
+      [input.threadId, input.userId, input.lastReadMessageId],
+    );
+  }
+
+  async getChatPresencePreferences(userIds: string[]): Promise<ChatPresencePreference[]> {
+    if (userIds.length === 0) return [];
+    const { rows } = await queryPg<Row>(
+      `select *
+         from rms_chat_presence_preferences
+        where user_id = any($1::text[])`,
+      [userIds],
+    );
+    return rows.map(mapChatPresence);
+  }
+
+  async upsertChatPresencePreference(input: {
+    userId: string;
+    status: ChatPresenceStatus;
+    dndUntil: string | null;
+    customStatus: string | null;
+  }): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const { rows } = await queryPg<Row>(
+      `insert into rms_chat_presence_preferences (user_id, status, dnd_until, custom_status, last_seen_at, updated_at)
+       values ($1, $2, $3, $4, $5, $5)
+       on conflict (user_id)
+       do update set status = excluded.status, dnd_until = excluded.dnd_until, custom_status = excluded.custom_status, updated_at = excluded.updated_at
+       returning *`,
+      [input.userId, input.status, input.dndUntil, input.customStatus, now],
+    );
+    return mapChatPresence(rows[0]);
+  }
+
+  async touchChatPresenceHeartbeat(userId: string): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const { rows } = await queryPg<Row>(
+      `insert into rms_chat_presence_preferences (user_id, status, dnd_until, custom_status, last_seen_at, updated_at)
+       values ($1, 'online', null, null, $2, $2)
+       on conflict (user_id)
+       do update set last_seen_at = excluded.last_seen_at, updated_at = excluded.updated_at
+       returning *`,
+      [userId, now],
+    );
+    return mapChatPresence(rows[0]);
   }
 
   async appendAudit(entry: AuditEntryInput): Promise<void> {

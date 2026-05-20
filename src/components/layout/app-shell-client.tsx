@@ -10,6 +10,9 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { DensityMain } from "@/components/layout/density-main";
 import { FilterStatePersistence } from "@/components/layout/filter-state-persistence";
 import { RouteProgressBar } from "@/components/layout/route-progress-bar";
+import { ChatInboxNotifier } from "@/components/chat/chat-inbox-notifier";
+import { useState } from "react";
+import { ChatDockAssistant } from "@/components/chat/chat-dock-assistant";
 
 type AppShellClientProps = {
   children: ReactNode;
@@ -17,6 +20,7 @@ type AppShellClientProps = {
   commandItems: CommandNavItem[];
   sessionUser: AppSessionUser | null;
   notificationUnread?: number;
+  chatUnread?: number;
 };
 
 export function AppShellClient({
@@ -25,10 +29,15 @@ export function AppShellClient({
   commandItems,
   sessionUser,
   notificationUnread = 0,
+  chatUnread = 0,
 }: AppShellClientProps) {
+  const [chatUnreadState, setChatUnreadState] = useState(chatUnread);
+  const canReadChat = navLinks.some((link) => link.href === "/chat");
   return (
     <div className="min-h-screen bg-background">
       <RouteProgressBar />
+      <ChatInboxNotifier enabled={canReadChat} onUnreadCountChange={setChatUnreadState} />
+      <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadState} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Suspense fallback={null}>
           <FilterStatePersistence />
@@ -38,6 +47,7 @@ export function AppShellClient({
           commandItems={commandItems}
           navLinks={navLinks}
           notificationUnread={notificationUnread}
+          chatUnread={chatUnreadState}
         />
         <DensityMain>
           <Breadcrumbs />

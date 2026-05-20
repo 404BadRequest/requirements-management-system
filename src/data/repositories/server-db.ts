@@ -17,7 +17,19 @@ import type { CreateAppNotificationInput } from "@/data/contracts/notifications-
 import { projectsMock } from "@/data/mock/projects";
 import { getServerDataProvider } from "@/data/repositories/server-provider";
 import { calculateDashboardMetrics } from "@/lib/calculations/dashboard";
-import type { DashboardFilters, Profile, Project, RequirementStatusHistory, SettingsCatalogKind, AppNotification } from "@/types/domain";
+import type {
+  AppNotification,
+  ChatMessage,
+  ChatPresencePreference,
+  ChatPresenceStatus,
+  ChatThread,
+  ChatThreadMember,
+  DashboardFilters,
+  Profile,
+  Project,
+  RequirementStatusHistory,
+  SettingsCatalogKind,
+} from "@/types/domain";
 
 const requirementsRepository = new MockRequirementsRepository();
 const timeEntriesRepository = new MockTimeEntriesRepository();
@@ -340,4 +352,67 @@ export const markNotificationReadForUser = async (notificationId: string, recipi
   const remote = await rms();
   if (remote) return remote.markNotificationReadForUser(notificationId, recipientUserId);
   return notificationsRepository.markRead(notificationId, recipientUserId);
+};
+
+export const getChatThreadsForUser = async (userId: string): Promise<ChatThread[]> => {
+  const remote = await rms();
+  return remote.getChatThreadsForUser(userId);
+};
+
+export const getChatThreadMembers = async (threadId: string): Promise<ChatThreadMember[]> => {
+  const remote = await rms();
+  return remote.getChatThreadMembers(threadId);
+};
+
+export const getChatMessages = async (threadId: string, limit = 100): Promise<ChatMessage[]> => {
+  const remote = await rms();
+  return remote.getChatMessages(threadId, limit);
+};
+
+export const createDirectChatThread = async (input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> => {
+  const remote = await rms();
+  return remote.createDirectChatThread(input);
+};
+
+export const createChatChannel = async (input: {
+  createdByUserId: string;
+  name: string;
+  memberUserIds: string[];
+}): Promise<ChatThread> => {
+  const remote = await rms();
+  return remote.createChatChannel(input);
+};
+
+export const sendChatMessage = async (input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage> => {
+  const remote = await rms();
+  return remote.sendChatMessage(input);
+};
+
+export const markChatThreadRead = async (input: {
+  threadId: string;
+  userId: string;
+  lastReadMessageId: string | null;
+}): Promise<void> => {
+  const remote = await rms();
+  return remote.markChatThreadRead(input);
+};
+
+export const getChatPresencePreferences = async (userIds: string[]): Promise<ChatPresencePreference[]> => {
+  const remote = await rms();
+  return remote.getChatPresencePreferences(userIds);
+};
+
+export const upsertChatPresencePreference = async (input: {
+  userId: string;
+  status: ChatPresenceStatus;
+  dndUntil: string | null;
+  customStatus: string | null;
+}): Promise<ChatPresencePreference> => {
+  const remote = await rms();
+  return remote.upsertChatPresencePreference(input);
+};
+
+export const touchChatPresenceHeartbeat = async (userId: string): Promise<ChatPresencePreference> => {
+  const remote = await rms();
+  return remote.touchChatPresenceHeartbeat(userId);
 };

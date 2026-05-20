@@ -9,6 +9,11 @@ import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/se
 import type {
   AppNotification,
   BudgetAllocation,
+  ChatMessage,
+  ChatPresencePreference,
+  ChatPresenceStatus,
+  ChatThread,
+  ChatThreadMember,
   Client,
   ContractBudget,
   ContractProfileAllocation,
@@ -82,6 +87,22 @@ export interface AppDataProvider {
   getNotificationsUnreadCount(recipientUserId: string): Promise<number>;
   createAppNotification(input: CreateAppNotificationInput): Promise<AppNotification>;
   markNotificationReadForUser(notificationId: string, recipientUserId: string): Promise<boolean>;
+
+  getChatThreadsForUser(userId: string): Promise<ChatThread[]>;
+  getChatThreadMembers(threadId: string): Promise<ChatThreadMember[]>;
+  getChatMessages(threadId: string, limit?: number): Promise<ChatMessage[]>;
+  createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread>;
+  createChatChannel(input: { createdByUserId: string; name: string; memberUserIds: string[] }): Promise<ChatThread>;
+  sendChatMessage(input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage>;
+  markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void>;
+  getChatPresencePreferences(userIds: string[]): Promise<ChatPresencePreference[]>;
+  upsertChatPresencePreference(input: {
+    userId: string;
+    status: ChatPresenceStatus;
+    dndUntil: string | null;
+    customStatus: string | null;
+  }): Promise<ChatPresencePreference>;
+  touchChatPresenceHeartbeat(userId: string): Promise<ChatPresencePreference>;
 
   appendAudit(entry: AuditEntryInput): Promise<void>;
 }

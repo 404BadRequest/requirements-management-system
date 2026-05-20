@@ -10,9 +10,11 @@ import { MainNavIcon } from "@/components/layout/main-nav-icon";
 
 type MobileNavProps = {
   links: MainNavClientLink[];
+  notificationUnread?: number;
+  chatUnread?: number;
 };
 
-export function MobileNav({ links }: MobileNavProps) {
+export function MobileNav({ links, notificationUnread = 0, chatUnread = 0 }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -112,6 +114,8 @@ export function MobileNav({ links }: MobileNavProps) {
             <div className="flex-1 space-y-0.5 overflow-y-auto p-3">
               {links.map((link) => {
                 const active = isNavActive(pathname, link.href);
+                const showNotificationBadge = link.href === "/notifications" && notificationUnread > 0;
+                const showChatBadge = link.href === "/chat" && chatUnread > 0;
                 return (
                   <Link
                     key={link.href}
@@ -125,7 +129,19 @@ export function MobileNav({ links }: MobileNavProps) {
                     onClick={() => closeMenu(false)}
                   >
                     <MainNavIcon iconKey={link.iconKey} className="h-4 w-4 shrink-0 opacity-90" />
-                    {link.label}
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span className="truncate">{link.label}</span>
+                      {showNotificationBadge ? (
+                        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground tabular-nums">
+                          {notificationUnread > 99 ? "99+" : notificationUnread}
+                        </span>
+                      ) : null}
+                      {showChatBadge ? (
+                        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground tabular-nums">
+                          {chatUnread > 99 ? "99+" : chatUnread}
+                        </span>
+                      ) : null}
+                    </span>
                   </Link>
                 );
               })}

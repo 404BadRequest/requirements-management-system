@@ -13,7 +13,7 @@ type SidebarProps = {
 };
 
 const NAV_SECTIONS: { label: string; hrefs: string[] }[] = [
-  { label: "Principal", hrefs: ["/dashboard", "/requirements", "/time-entries"] },
+  { label: "Principal", hrefs: ["/dashboard", "/requirements", "/time-entries", "/chat"] },
   { label: "Análisis", hrefs: ["/reports", "/budgets", "/team"] },
   { label: "Sistema", hrefs: ["/notifications", "/settings"] },
 ];

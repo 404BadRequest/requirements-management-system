@@ -9,6 +9,11 @@ import { calculateDurationMinutes } from "@/lib/calculations/time";
 import type {
   AppNotification,
   BudgetAllocation,
+  ChatMessage,
+  ChatPresencePreference,
+  ChatPresenceStatus,
+  ChatThread,
+  ChatThreadMember,
   Client,
   ContractBudget,
   ContractProfileAllocation,
@@ -93,6 +98,54 @@ function mapAppNotification(r: Row): AppNotification {
     href: r.href != null && r.href !== "" ? String(r.href) : null,
     readAt: r.read_at ? String(r.read_at) : null,
     createdAt: String(r.created_at),
+  };
+}
+
+function mapChatThread(r: Row): ChatThread {
+  return {
+    id: String(r.id),
+    type: String(r.type) as ChatThread["type"],
+    name: r.name ? String(r.name) : null,
+    directKey: r.direct_key ? String(r.direct_key) : null,
+    createdByUserId: String(r.created_by_user_id),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+    lastMessageAt: r.last_message_at ? String(r.last_message_at) : null,
+  };
+}
+
+function mapChatThreadMember(r: Row): ChatThreadMember {
+  return {
+    threadId: String(r.thread_id),
+    userId: String(r.user_id),
+    role: String(r.role) as ChatThreadMember["role"],
+    mutedUntil: r.muted_until ? String(r.muted_until) : null,
+    joinedAt: String(r.joined_at),
+    lastReadMessageId: r.last_read_message_id ? String(r.last_read_message_id) : null,
+  };
+}
+
+function mapChatMessage(r: Row): ChatMessage {
+  return {
+    id: String(r.id),
+    threadId: String(r.thread_id),
+    senderUserId: String(r.sender_user_id),
+    body: String(r.body),
+    kind: "text",
+    createdAt: String(r.created_at),
+    editedAt: r.edited_at ? String(r.edited_at) : null,
+    deletedAt: r.deleted_at ? String(r.deleted_at) : null,
+  };
+}
+
+function mapChatPresence(r: Row): ChatPresencePreference {
+  return {
+    userId: String(r.user_id),
+    status: String(r.status) as ChatPresenceStatus,
+    dndUntil: r.dnd_until ? String(r.dnd_until) : null,
+    customStatus: r.custom_status ? String(r.custom_status) : null,
+    lastSeenAt: String(r.last_seen_at),
+    updatedAt: String(r.updated_at),
   };
 }
 
@@ -751,6 +804,199 @@ export class RmsDataAccess {
       .maybeSingle();
     if (error) throw error;
     return Boolean(data);
+  }
+
+  async getChatThreadsForUser(userId: string): Promise<ChatThread[]> {
+    const { data, error } = await this.sb
+      .from("rms_chat_thread_members")
+      .select("rms_chat_threads!inner(*)")
+      .eq("user_id", userId);
+    if (error) throw error;
+    return ((data as Row[]) ?? [])
+      .map((row) => row.rms_chat_threads as Row)
+      .filter(Boolean)
+      .map(mapChatThread)
+      .sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
+  }
+
+  async getChatThreadMembers(threadId: string): Promise<ChatThreadMember[]> {
+    const { data, error } = await this.sb
+      .from("rms_chat_thread_members")
+      .select("*")
+      .eq("thread_id", threadId)
+      .order("joined_at", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map(mapChatThreadMember);
+  }
+
+  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+    const { data, error } = await this.sb
+      .from("rms_chat_messages")
+      .select("*")
+      .eq("thread_id", threadId)
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, limit));
+    if (error) throw error;
+    return (data as Row[]).map(mapChatMessage).reverse();
+  }
+
+  async createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> {
+    const directKey = [input.createdByUserId, input.peerUserId].sort().join(":");
+    const existing = await this.sb
+      .from("rms_chat_threads")
+      .select("*")
+      .eq("type", "direct")
+      .eq("direct_key", directKey)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) return mapChatThread(existing.data as Row);
+    const now = new Date().toISOString();
+    const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
+    const { data, error } = await this.sb
+      .from("rms_chat_threads")
+      .insert({
+        id: threadId,
+        type: "direct",
+        name: null,
+        direct_key: directKey,
+        created_by_user_id: input.createdByUserId,
+        created_at: now,
+        updated_at: now,
+        last_message_at: null,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    const members = [
+      { thread_id: threadId, user_id: input.createdByUserId, role: "owner", muted_until: null, joined_at: now, last_read_message_id: null },
+      { thread_id: threadId, user_id: input.peerUserId, role: "member", muted_until: null, joined_at: now, last_read_message_id: null },
+    ];
+    const { error: membersError } = await this.sb.from("rms_chat_thread_members").insert(members);
+    if (membersError) throw membersError;
+    return mapChatThread(data as Row);
+  }
+
+  async createChatChannel(input: { createdByUserId: string; name: string; memberUserIds: string[] }): Promise<ChatThread> {
+    const now = new Date().toISOString();
+    const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
+    const { data, error } = await this.sb
+      .from("rms_chat_threads")
+      .insert({
+        id: threadId,
+        type: "channel",
+        name: input.name,
+        direct_key: null,
+        created_by_user_id: input.createdByUserId,
+        created_at: now,
+        updated_at: now,
+        last_message_at: null,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    const users = [...new Set([input.createdByUserId, ...input.memberUserIds])];
+    const members = users.map((userId) => ({
+      thread_id: threadId,
+      user_id: userId,
+      role: userId === input.createdByUserId ? "owner" : "member",
+      muted_until: null,
+      joined_at: now,
+      last_read_message_id: null,
+    }));
+    const { error: membersError } = await this.sb.from("rms_chat_thread_members").insert(members);
+    if (membersError) throw membersError;
+    return mapChatThread(data as Row);
+  }
+
+  async sendChatMessage(input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage> {
+    const now = new Date().toISOString();
+    const id = `msg-${crypto.randomUUID().slice(0, 12)}`;
+    const { data, error } = await this.sb
+      .from("rms_chat_messages")
+      .insert({
+        id,
+        thread_id: input.threadId,
+        sender_user_id: input.senderUserId,
+        body: input.body,
+        kind: "text",
+        created_at: now,
+        edited_at: null,
+        deleted_at: null,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    const { error: threadError } = await this.sb
+      .from("rms_chat_threads")
+      .update({ last_message_at: now, updated_at: now })
+      .eq("id", input.threadId);
+    if (threadError) throw threadError;
+    return mapChatMessage(data as Row);
+  }
+
+  async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {
+    const { error } = await this.sb
+      .from("rms_chat_thread_members")
+      .update({ last_read_message_id: input.lastReadMessageId })
+      .eq("thread_id", input.threadId)
+      .eq("user_id", input.userId);
+    if (error) throw error;
+  }
+
+  async getChatPresencePreferences(userIds: string[]): Promise<ChatPresencePreference[]> {
+    if (userIds.length === 0) return [];
+    const { data, error } = await this.sb.from("rms_chat_presence_preferences").select("*").in("user_id", userIds);
+    if (error) throw error;
+    return (data as Row[]).map(mapChatPresence);
+  }
+
+  async upsertChatPresencePreference(input: {
+    userId: string;
+    status: ChatPresenceStatus;
+    dndUntil: string | null;
+    customStatus: string | null;
+  }): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const { data, error } = await this.sb
+      .from("rms_chat_presence_preferences")
+      .upsert(
+        {
+          user_id: input.userId,
+          status: input.status,
+          dnd_until: input.dndUntil,
+          custom_status: input.customStatus,
+          last_seen_at: now,
+          updated_at: now,
+        },
+        { onConflict: "user_id" },
+      )
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapChatPresence(data as Row);
+  }
+
+  async touchChatPresenceHeartbeat(userId: string): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const current = await this.sb.from("rms_chat_presence_preferences").select("*").eq("user_id", userId).maybeSingle();
+    if (current.error) throw current.error;
+    const { data, error } = await this.sb
+      .from("rms_chat_presence_preferences")
+      .upsert(
+        {
+          user_id: userId,
+          status: (current.data?.status as ChatPresenceStatus | undefined) ?? "online",
+          dnd_until: current.data?.dnd_until ?? null,
+          custom_status: current.data?.custom_status ?? null,
+          last_seen_at: now,
+          updated_at: now,
+        },
+        { onConflict: "user_id" },
+      )
+      .select("*")
+      .single();
+    if (error) throw error;
+    return mapChatPresence(data as Row);
   }
 
   async appendAudit(entry: {

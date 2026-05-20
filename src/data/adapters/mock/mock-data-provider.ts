@@ -20,6 +20,11 @@ import type { AppDataProvider, AuditEntryInput } from "@/data/repositories/app-d
 import type {
   AppNotification,
   BudgetAllocation,
+  ChatMessage,
+  ChatPresencePreference,
+  ChatPresenceStatus,
+  ChatThread,
+  ChatThreadMember,
   Client,
   ContractBudget,
   ContractProfileAllocation,
@@ -44,6 +49,10 @@ export class MockDataProvider implements AppDataProvider {
   private readonly settingsCatalogRepository = new MockSettingsCatalogRepository();
   private readonly financialReferenceRatesRepository = new MockFinancialReferenceRatesRepository();
   private readonly notificationsRepository = new MockNotificationsRepository();
+  private readonly chatThreads: ChatThread[] = [];
+  private readonly chatMembers: ChatThreadMember[] = [];
+  private readonly chatMessages: ChatMessage[] = [];
+  private readonly chatPresence = new Map<string, ChatPresencePreference>();
 
   async getClients(): Promise<Client[]> {
     return this.clientsRepository.getAll();
@@ -212,6 +221,167 @@ export class MockDataProvider implements AppDataProvider {
   }
   async markNotificationReadForUser(notificationId: string, recipientUserId: string): Promise<boolean> {
     return this.notificationsRepository.markRead(notificationId, recipientUserId);
+  }
+
+  async getChatThreadsForUser(userId: string): Promise<ChatThread[]> {
+    const threadIds = new Set(this.chatMembers.filter((row) => row.userId === userId).map((row) => row.threadId));
+    return this.chatThreads
+      .filter((thread) => threadIds.has(thread.id))
+      .sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
+  }
+
+  async getChatThreadMembers(threadId: string): Promise<ChatThreadMember[]> {
+    return this.chatMembers.filter((row) => row.threadId === threadId);
+  }
+
+  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+    return this.chatMessages
+      .filter((row) => row.threadId === threadId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .slice(-Math.max(1, limit));
+  }
+
+  async createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> {
+    const directKey = [input.createdByUserId, input.peerUserId].sort().join(":");
+    const existing = this.chatThreads.find((thread) => thread.type === "direct" && thread.directKey === directKey);
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    const created: ChatThread = {
+      id: `thread-${crypto.randomUUID().slice(0, 10)}`,
+      type: "direct",
+      name: null,
+      directKey,
+      createdByUserId: input.createdByUserId,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+    };
+    this.chatThreads.unshift(created);
+    this.chatMembers.push(
+      {
+        threadId: created.id,
+        userId: input.createdByUserId,
+        role: "owner",
+        mutedUntil: null,
+        joinedAt: now,
+        lastReadMessageId: null,
+      },
+      {
+        threadId: created.id,
+        userId: input.peerUserId,
+        role: "member",
+        mutedUntil: null,
+        joinedAt: now,
+        lastReadMessageId: null,
+      },
+    );
+    return created;
+  }
+
+  async createChatChannel(input: { createdByUserId: string; name: string; memberUserIds: string[] }): Promise<ChatThread> {
+    const now = new Date().toISOString();
+    const created: ChatThread = {
+      id: `thread-${crypto.randomUUID().slice(0, 10)}`,
+      type: "channel",
+      name: input.name,
+      directKey: null,
+      createdByUserId: input.createdByUserId,
+      createdAt: now,
+      updatedAt: now,
+      lastMessageAt: null,
+    };
+    this.chatThreads.unshift(created);
+    const uniqueUsers = [...new Set([input.createdByUserId, ...input.memberUserIds])];
+    for (const memberId of uniqueUsers) {
+      this.chatMembers.push({
+        threadId: created.id,
+        userId: memberId,
+        role: memberId === input.createdByUserId ? "owner" : "member",
+        mutedUntil: null,
+        joinedAt: now,
+        lastReadMessageId: null,
+      });
+    }
+    return created;
+  }
+
+  async sendChatMessage(input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage> {
+    const now = new Date().toISOString();
+    const created: ChatMessage = {
+      id: `msg-${crypto.randomUUID().slice(0, 12)}`,
+      threadId: input.threadId,
+      senderUserId: input.senderUserId,
+      body: input.body,
+      kind: "text",
+      createdAt: now,
+      editedAt: null,
+      deletedAt: null,
+    };
+    this.chatMessages.push(created);
+    const thread = this.chatThreads.find((row) => row.id === input.threadId);
+    if (thread) {
+      thread.lastMessageAt = now;
+      thread.updatedAt = now;
+    }
+    return created;
+  }
+
+  async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {
+    const member = this.chatMembers.find((row) => row.threadId === input.threadId && row.userId === input.userId);
+    if (!member) return;
+    member.lastReadMessageId = input.lastReadMessageId;
+  }
+
+  async getChatPresencePreferences(userIds: string[]): Promise<ChatPresencePreference[]> {
+    const now = new Date().toISOString();
+    return userIds.map((userId) => {
+      const existing = this.chatPresence.get(userId);
+      if (existing) return existing;
+      const fallback: ChatPresencePreference = {
+        userId,
+        status: "offline",
+        dndUntil: null,
+        customStatus: null,
+        lastSeenAt: now,
+        updatedAt: now,
+      };
+      this.chatPresence.set(userId, fallback);
+      return fallback;
+    });
+  }
+
+  async upsertChatPresencePreference(input: {
+    userId: string;
+    status: ChatPresenceStatus;
+    dndUntil: string | null;
+    customStatus: string | null;
+  }): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const next: ChatPresencePreference = {
+      userId: input.userId,
+      status: input.status,
+      dndUntil: input.dndUntil,
+      customStatus: input.customStatus,
+      lastSeenAt: now,
+      updatedAt: now,
+    };
+    this.chatPresence.set(input.userId, next);
+    return next;
+  }
+
+  async touchChatPresenceHeartbeat(userId: string): Promise<ChatPresencePreference> {
+    const now = new Date().toISOString();
+    const current = this.chatPresence.get(userId);
+    const next: ChatPresencePreference = {
+      userId,
+      status: current?.status ?? "online",
+      dndUntil: current?.dndUntil ?? null,
+      customStatus: current?.customStatus ?? null,
+      lastSeenAt: now,
+      updatedAt: now,
+    };
+    this.chatPresence.set(userId, next);
+    return next;
   }
 
   async appendAudit(entry: AuditEntryInput): Promise<void> {

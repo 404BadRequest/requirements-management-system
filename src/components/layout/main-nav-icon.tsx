@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Bell, Clock3, LayoutDashboard, ListTodo, Settings, Users, Wallet } from "lucide-react";
+import { BarChart3, Bell, Clock3, LayoutDashboard, ListTodo, MessageSquare, Settings, Users, Wallet } from "lucide-react";
 import type { MainNavIconKey } from "@/components/layout/nav-links";
 
 const ICONS: Record<MainNavIconKey, typeof LayoutDashboard> = {
@@ -12,6 +12,7 @@ const ICONS: Record<MainNavIconKey, typeof LayoutDashboard> = {
   users: Users,
   settings: Settings,
   bell: Bell,
+  chat: MessageSquare,
 };
 
 export function MainNavIcon({ iconKey, className }: { iconKey: MainNavIconKey; className?: string }) {

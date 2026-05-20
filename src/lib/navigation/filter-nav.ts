@@ -12,6 +12,7 @@ export const COMMAND_NAV_ITEMS: CommandNavItem[] = [
   { label: "Ir a Reportes", href: "/reports", requiredPermission: "reports.read" },
   { label: "Ir a Presupuesto", href: "/budgets", requiredPermission: "budgets.read" },
   { label: "Ir a Equipo", href: "/team", requiredPermission: "team.read" },
+  { label: "Ir a Chat", href: "/chat", requiredPermission: "chat.read" },
   { label: "Ir a Avisos", href: "/notifications", requiredPermission: "notifications.read" },
   { label: "Ir a Configuración", href: "/settings/profiles", requiredPermission: "settings.read" },
 ];

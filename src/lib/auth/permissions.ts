@@ -17,7 +17,9 @@ export type Permission =
   | "dashboard.read"
   | "reports.read"
   | "exports.run"
-  | "notifications.read";
+  | "notifications.read"
+  | "chat.read"
+  | "chat.write";
 
 const matrix: Record<Role, Permission[]> = {
   Admin: [
@@ -38,6 +40,8 @@ const matrix: Record<Role, Permission[]> = {
     "settings.delete",
     "exports.run",
     "notifications.read",
+    "chat.read",
+    "chat.write",
   ],
   "Project Manager": [
     "dashboard.read",
@@ -57,6 +61,8 @@ const matrix: Record<Role, Permission[]> = {
     "settings.delete",
     "exports.run",
     "notifications.read",
+    "chat.read",
+    "chat.write",
   ],
   Contributor: [
     "dashboard.read",
@@ -67,6 +73,8 @@ const matrix: Record<Role, Permission[]> = {
     "team.read",
     "notifications.read",
     "exports.run",
+    "chat.read",
+    "chat.write",
   ],
   Viewer: [
     "dashboard.read",
@@ -76,6 +84,8 @@ const matrix: Record<Role, Permission[]> = {
     "team.read",
     "notifications.read",
     "exports.run",
+    "chat.read",
+    "chat.write",
   ],
 };
 
