@@ -46,6 +46,9 @@ export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
               title="¿Eliminar este cliente?"
               summary="No podrás eliminarlo si tiene requerimientos asociados."
               action={deleteClientAction.bind(null, row.original.id)}
+              pendingMessage="Cliente marcado para eliminar."
+              successMessage="Cliente eliminado."
+              errorMessage="No se pudo eliminar el cliente."
             />
           </div>
         ),

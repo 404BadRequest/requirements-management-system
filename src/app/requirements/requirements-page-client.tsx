@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { SyncStatusBanner } from "@/components/common/sync-status-banner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { PriorityBadge, StatusBadge } from "@/components/common/badges";
 import { RequirementForm } from "@/components/forms/requirement-form";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
@@ -250,9 +251,15 @@ export function RequirementsPageClient({
                 onConfirm={() => {
                   void (async () => {
                     try {
-                      await deleteRequirementAction(row.original.id);
-                      toast.success("Requerimiento eliminado");
-                      await reload();
+                      scheduleUndoableAction({
+                        pendingMessage: "Requerimiento marcado para eliminar.",
+                        successMessage: "Requerimiento eliminado.",
+                        errorMessage: "No se pudo eliminar el requerimiento.",
+                        onCommit: async () => {
+                          await deleteRequirementAction(row.original.id);
+                          await reload();
+                        },
+                      });
                     } catch (e) {
                       toast.error(e instanceof Error ? e.message : "No se pudo eliminar.");
                     }

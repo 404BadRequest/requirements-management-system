@@ -90,10 +90,14 @@ export interface AppDataProvider {
 
   getChatThreadsForUser(userId: string): Promise<ChatThread[]>;
   getChatThreadMembers(threadId: string): Promise<ChatThreadMember[]>;
-  getChatMessages(threadId: string, limit?: number): Promise<ChatMessage[]>;
+  getChatMessages(threadId: string, limit?: number, viewerUserId?: string): Promise<ChatMessage[]>;
   createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread>;
   createChatChannel(input: { createdByUserId: string; name: string; memberUserIds: string[] }): Promise<ChatThread>;
   sendChatMessage(input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage>;
+  hideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean>;
+  unhideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean>;
+  hideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean>;
+  unhideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean>;
   markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void>;
   getChatPresencePreferences(userIds: string[]): Promise<ChatPresencePreference[]>;
   upsertChatPresencePreference(input: {

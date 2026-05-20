@@ -12,7 +12,6 @@ import { FilterStatePersistence } from "@/components/layout/filter-state-persist
 import { RouteProgressBar } from "@/components/layout/route-progress-bar";
 import { ChatInboxNotifier } from "@/components/chat/chat-inbox-notifier";
 import { useState } from "react";
-import { ChatDockAssistant } from "@/components/chat/chat-dock-assistant";
 
 type AppShellClientProps = {
   children: ReactNode;
@@ -37,7 +36,6 @@ export function AppShellClient({
     <div className="min-h-screen bg-background">
       <RouteProgressBar />
       <ChatInboxNotifier enabled={canReadChat} onUnreadCountChange={setChatUnreadState} />
-      <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadState} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Suspense fallback={null}>
           <FilterStatePersistence />

@@ -6,7 +6,11 @@ import {
   getChatThreadMembers,
   getChatThreadsForUser,
   getUsers,
+  hideChatMessageForUser,
+  hideChatThreadForUser,
   markChatThreadRead,
+  unhideChatMessageForUser,
+  unhideChatThreadForUser,
   sendChatMessage,
   touchChatPresenceHeartbeat,
   upsertChatPresencePreference,
@@ -106,8 +110,24 @@ export async function postChatMessage(input: { threadId: string; senderUserId: s
   return sendChatMessage(input);
 }
 
-export async function listThreadMessages(input: { threadId: string; limit?: number }) {
-  return getChatMessages(input.threadId, input.limit ?? 100);
+export async function listThreadMessages(input: { threadId: string; limit?: number; viewerUserId?: string }) {
+  return getChatMessages(input.threadId, input.limit ?? 100, input.viewerUserId);
+}
+
+export async function hideMessageForUser(input: { messageId: string; userId: string }) {
+  return hideChatMessageForUser(input);
+}
+
+export async function unhideMessageForUser(input: { messageId: string; userId: string }) {
+  return unhideChatMessageForUser(input);
+}
+
+export async function hideThreadForUser(input: { threadId: string; userId: string }) {
+  return hideChatThreadForUser(input);
+}
+
+export async function unhideThreadForUser(input: { threadId: string; userId: string }) {
+  return unhideChatThreadForUser(input);
 }
 
 export async function markRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }) {

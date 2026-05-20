@@ -68,6 +68,9 @@ export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[
               title="¿Eliminar este perfil?"
               summary="No podrás eliminarlo si hay usuarios asignados."
               action={deleteProfileAction.bind(null, row.original.id)}
+              pendingMessage="Perfil marcado para eliminar."
+              successMessage="Perfil eliminado."
+              errorMessage="No se pudo eliminar el perfil."
             />
           </div>
         ),

@@ -7,9 +7,33 @@ import type { User } from "@/types/domain";
  */
 export function resolveDirectoryUserIdForSession(sessionUser: AppSessionUser, users: User[]): string {
   const active = users.filter((u) => u.active);
-  const byEmail = active.find((u) => u.email.toLowerCase() === sessionUser.email.toLowerCase());
-  if (byEmail) return byEmail.id;
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .trim()
+      .toLowerCase();
+  const sessionEmail = sessionUser.email?.trim().toLowerCase() ?? "";
+  const sessionName = sessionUser.name?.trim() ?? "";
+
+  if (sessionEmail) {
+    const byEmail = active.find((u) => u.email.toLowerCase() === sessionEmail);
+    if (byEmail) return byEmail.id;
+  }
   if (active.some((u) => u.id === sessionUser.id)) return sessionUser.id;
-  const admin = active.find((u) => u.role === "Admin");
-  return admin?.id ?? active[0]?.id ?? sessionUser.id;
+  if (sessionName) {
+    const normalizedName = normalize(sessionName);
+    const byName = active.find((u) => normalize(u.name) === normalizedName);
+    if (byName) return byName.id;
+    const byAlias = active.find((u) => u.aliases.some((alias) => normalize(alias) === normalizedName));
+    if (byAlias) return byAlias.id;
+  }
+  if (sessionEmail) {
+    const localPart = sessionEmail.split("@")[0] ?? "";
+    if (localPart) {
+      const byAliasFromEmail = active.find((u) => u.aliases.some((alias) => normalize(alias) === normalize(localPart)));
+      if (byAliasFromEmail) return byAliasFromEmail.id;
+    }
+  }
+  return sessionUser.id;
 }

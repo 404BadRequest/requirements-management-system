@@ -364,9 +364,9 @@ export const getChatThreadMembers = async (threadId: string): Promise<ChatThread
   return remote.getChatThreadMembers(threadId);
 };
 
-export const getChatMessages = async (threadId: string, limit = 100): Promise<ChatMessage[]> => {
+export const getChatMessages = async (threadId: string, limit = 100, viewerUserId?: string): Promise<ChatMessage[]> => {
   const remote = await rms();
-  return remote.getChatMessages(threadId, limit);
+  return remote.getChatMessages(threadId, limit, viewerUserId);
 };
 
 export const createDirectChatThread = async (input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> => {
@@ -386,6 +386,26 @@ export const createChatChannel = async (input: {
 export const sendChatMessage = async (input: { threadId: string; senderUserId: string; body: string }): Promise<ChatMessage> => {
   const remote = await rms();
   return remote.sendChatMessage(input);
+};
+
+export const hideChatMessageForUser = async (input: { messageId: string; userId: string }): Promise<boolean> => {
+  const remote = await rms();
+  return remote.hideChatMessageForUser(input);
+};
+
+export const unhideChatMessageForUser = async (input: { messageId: string; userId: string }): Promise<boolean> => {
+  const remote = await rms();
+  return remote.unhideChatMessageForUser(input);
+};
+
+export const hideChatThreadForUser = async (input: { threadId: string; userId: string }): Promise<boolean> => {
+  const remote = await rms();
+  return remote.hideChatThreadForUser(input);
+};
+
+export const unhideChatThreadForUser = async (input: { threadId: string; userId: string }): Promise<boolean> => {
+  const remote = await rms();
+  return remote.unhideChatThreadForUser(input);
 };
 
 export const markChatThreadRead = async (input: {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { CommandPalette } from "@/components/common/command-palette";
+import { ChatDockAssistant } from "@/components/chat/chat-dock-assistant";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import type { AppSessionUser } from "@/lib/auth/session";
@@ -34,6 +35,7 @@ export const Header = ({ sessionUser, commandItems, navLinks, notificationUnread
 function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, chatUnread }: HeaderProps) {
   const unread = notificationUnread ?? 0;
   const chatUnreadCount = chatUnread ?? 0;
+  const canReadChat = navLinks.some((link) => link.href === "/chat");
   const [lastUpdated, setLastUpdated] = useState("--:--");
   useEffect(() => {
     const value = new Intl.DateTimeFormat("es-CL", {
@@ -77,6 +79,9 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, 
 
         <div className="hidden items-center rounded-[2px] border border-border bg-muted px-2.5 py-1 text-[11px] text-muted-foreground xl:inline-flex">
           Updated {lastUpdated}
+        </div>
+        <div className="hidden md:block">
+          <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadCount} placement="header" />
         </div>
         <UserMenu user={sessionUser} />
       </div>

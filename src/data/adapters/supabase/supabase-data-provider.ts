@@ -66,10 +66,15 @@ export class SupabaseDataProvider implements AppDataProvider {
 
   getChatThreadsForUser = (userId: string) => this.access.getChatThreadsForUser(userId);
   getChatThreadMembers = (threadId: string) => this.access.getChatThreadMembers(threadId);
-  getChatMessages = (threadId: string, limit?: number) => this.access.getChatMessages(threadId, limit);
+  getChatMessages = (threadId: string, limit?: number, viewerUserId?: string) =>
+    this.access.getChatMessages(threadId, limit, viewerUserId);
   createDirectChatThread = (input: Parameters<RmsDataAccess["createDirectChatThread"]>[0]) => this.access.createDirectChatThread(input);
   createChatChannel = (input: Parameters<RmsDataAccess["createChatChannel"]>[0]) => this.access.createChatChannel(input);
   sendChatMessage = (input: Parameters<RmsDataAccess["sendChatMessage"]>[0]) => this.access.sendChatMessage(input);
+  hideChatMessageForUser = (input: Parameters<RmsDataAccess["hideChatMessageForUser"]>[0]) => this.access.hideChatMessageForUser(input);
+  unhideChatMessageForUser = (input: Parameters<RmsDataAccess["unhideChatMessageForUser"]>[0]) => this.access.unhideChatMessageForUser(input);
+  hideChatThreadForUser = (input: Parameters<RmsDataAccess["hideChatThreadForUser"]>[0]) => this.access.hideChatThreadForUser(input);
+  unhideChatThreadForUser = (input: Parameters<RmsDataAccess["unhideChatThreadForUser"]>[0]) => this.access.unhideChatThreadForUser(input);
   markChatThreadRead = (input: Parameters<RmsDataAccess["markChatThreadRead"]>[0]) => this.access.markChatThreadRead(input);
   getChatPresencePreferences = (userIds: string[]) => this.access.getChatPresencePreferences(userIds);
   upsertChatPresencePreference = (input: Parameters<RmsDataAccess["upsertChatPresencePreference"]>[0]) =>

@@ -52,6 +52,8 @@ export class MockDataProvider implements AppDataProvider {
   private readonly chatThreads: ChatThread[] = [];
   private readonly chatMembers: ChatThreadMember[] = [];
   private readonly chatMessages: ChatMessage[] = [];
+  private readonly hiddenChatMessagesByUser = new Set<string>();
+  private readonly hiddenChatThreadsByUser = new Set<string>();
   private readonly chatPresence = new Map<string, ChatPresencePreference>();
 
   async getClients(): Promise<Client[]> {
@@ -227,6 +229,7 @@ export class MockDataProvider implements AppDataProvider {
     const threadIds = new Set(this.chatMembers.filter((row) => row.userId === userId).map((row) => row.threadId));
     return this.chatThreads
       .filter((thread) => threadIds.has(thread.id))
+      .filter((thread) => !this.hiddenChatThreadsByUser.has(`${userId}::${thread.id}`))
       .sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
   }
 
@@ -234,9 +237,10 @@ export class MockDataProvider implements AppDataProvider {
     return this.chatMembers.filter((row) => row.threadId === threadId);
   }
 
-  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+  async getChatMessages(threadId: string, limit = 100, viewerUserId?: string): Promise<ChatMessage[]> {
     return this.chatMessages
       .filter((row) => row.threadId === threadId)
+      .filter((row) => !viewerUserId || !this.hiddenChatMessagesByUser.has(`${viewerUserId}::${row.id}`))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .slice(-Math.max(1, limit));
   }
@@ -244,7 +248,10 @@ export class MockDataProvider implements AppDataProvider {
   async createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> {
     const directKey = [input.createdByUserId, input.peerUserId].sort().join(":");
     const existing = this.chatThreads.find((thread) => thread.type === "direct" && thread.directKey === directKey);
-    if (existing) return existing;
+    if (existing) {
+      this.hiddenChatThreadsByUser.delete(`${input.createdByUserId}::${existing.id}`);
+      return existing;
+    }
     const now = new Date().toISOString();
     const created: ChatThread = {
       id: `thread-${crypto.randomUUID().slice(0, 10)}`,
@@ -324,6 +331,34 @@ export class MockDataProvider implements AppDataProvider {
       thread.updatedAt = now;
     }
     return created;
+  }
+
+  async hideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const key = `${input.userId}::${input.messageId}`;
+    const existed = this.hiddenChatMessagesByUser.has(key);
+    this.hiddenChatMessagesByUser.add(key);
+    return !existed;
+  }
+
+  async unhideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const key = `${input.userId}::${input.messageId}`;
+    const existed = this.hiddenChatMessagesByUser.has(key);
+    this.hiddenChatMessagesByUser.delete(key);
+    return existed;
+  }
+
+  async hideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const key = `${input.userId}::${input.threadId}`;
+    const existed = this.hiddenChatThreadsByUser.has(key);
+    this.hiddenChatThreadsByUser.add(key);
+    return !existed;
+  }
+
+  async unhideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const key = `${input.userId}::${input.threadId}`;
+    const existed = this.hiddenChatThreadsByUser.has(key);
+    this.hiddenChatThreadsByUser.delete(key);
+    return existed;
   }
 
   async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {

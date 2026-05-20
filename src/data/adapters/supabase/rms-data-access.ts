@@ -807,6 +807,13 @@ export class RmsDataAccess {
   }
 
   async getChatThreadsForUser(userId: string): Promise<ChatThread[]> {
+    const { data: hiddenRows, error: hiddenError } = await this.sb
+      .from("rms_chat_thread_hidden_for_user")
+      .select("thread_id")
+      .eq("user_id", userId);
+    if (hiddenError) throw hiddenError;
+    const hiddenIds = ((hiddenRows as Array<{ thread_id: string }> | null) ?? []).map((row) => row.thread_id);
+
     const { data, error } = await this.sb
       .from("rms_chat_thread_members")
       .select("rms_chat_threads!inner(*)")
@@ -815,6 +822,7 @@ export class RmsDataAccess {
     return ((data as Row[]) ?? [])
       .map((row) => row.rms_chat_threads as Row)
       .filter(Boolean)
+      .filter((row) => !hiddenIds.includes(String(row.id)))
       .map(mapChatThread)
       .sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
   }
@@ -829,13 +837,27 @@ export class RmsDataAccess {
     return (data as Row[]).map(mapChatThreadMember);
   }
 
-  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
-    const { data, error } = await this.sb
+  async getChatMessages(threadId: string, limit = 100, viewerUserId?: string): Promise<ChatMessage[]> {
+    let hiddenIds: string[] = [];
+    if (viewerUserId) {
+      const { data: hiddenRows, error: hiddenError } = await this.sb
+        .from("rms_chat_message_hidden_for_user")
+        .select("message_id")
+        .eq("user_id", viewerUserId);
+      if (hiddenError) throw hiddenError;
+      hiddenIds = ((hiddenRows as Array<{ message_id: string }> | null) ?? []).map((row) => row.message_id);
+    }
+    let query = this.sb
       .from("rms_chat_messages")
       .select("*")
       .eq("thread_id", threadId)
       .order("created_at", { ascending: false })
       .limit(Math.max(1, limit));
+    if (hiddenIds.length > 0) {
+      const hiddenFilter = hiddenIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",");
+      query = query.not("id", "in", `(${hiddenFilter})`);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     return (data as Row[]).map(mapChatMessage).reverse();
   }
@@ -849,7 +871,15 @@ export class RmsDataAccess {
       .eq("direct_key", directKey)
       .maybeSingle();
     if (existing.error) throw existing.error;
-    if (existing.data) return mapChatThread(existing.data as Row);
+    if (existing.data) {
+      const { error: unhideError } = await this.sb
+        .from("rms_chat_thread_hidden_for_user")
+        .delete()
+        .eq("thread_id", String((existing.data as Row).id))
+        .eq("user_id", input.createdByUserId);
+      if (unhideError) throw unhideError;
+      return mapChatThread(existing.data as Row);
+    }
     const now = new Date().toISOString();
     const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
     const { data, error } = await this.sb
@@ -932,6 +962,54 @@ export class RmsDataAccess {
       .eq("id", input.threadId);
     if (threadError) throw threadError;
     return mapChatMessage(data as Row);
+  }
+
+  async hideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const now = new Date().toISOString();
+    const { error } = await this.sb.from("rms_chat_message_hidden_for_user").upsert(
+      {
+        message_id: input.messageId,
+        user_id: input.userId,
+        hidden_at: now,
+      },
+      { onConflict: "message_id,user_id", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+    return true;
+  }
+
+  async unhideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const { error } = await this.sb
+      .from("rms_chat_message_hidden_for_user")
+      .delete()
+      .eq("message_id", input.messageId)
+      .eq("user_id", input.userId);
+    if (error) throw error;
+    return true;
+  }
+
+  async hideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const now = new Date().toISOString();
+    const { error } = await this.sb.from("rms_chat_thread_hidden_for_user").upsert(
+      {
+        thread_id: input.threadId,
+        user_id: input.userId,
+        hidden_at: now,
+      },
+      { onConflict: "thread_id,user_id", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+    return true;
+  }
+
+  async unhideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const { error } = await this.sb
+      .from("rms_chat_thread_hidden_for_user")
+      .delete()
+      .eq("thread_id", input.threadId)
+      .eq("user_id", input.userId);
+    if (error) throw error;
+    return true;
   }
 
   async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {

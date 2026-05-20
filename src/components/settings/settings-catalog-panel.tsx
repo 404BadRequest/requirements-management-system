@@ -62,6 +62,9 @@ export function SettingsCatalogPanel({
               title="¿Eliminar esta entrada?"
               summary="Solo es posible si no está en uso en requerimientos, horas o presupuesto."
               action={deleteCatalogAction.bind(null, row.original.id)}
+              pendingMessage="Entrada marcada para eliminar."
+              successMessage="Entrada eliminada."
+              errorMessage="No se pudo eliminar la entrada."
             />
           </div>
         ),

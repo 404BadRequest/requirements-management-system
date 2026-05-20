@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, MessageCircle, SendHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import type { ChatMessage, User } from "@/types/domain";
-import type { ChatBootstrapPayload, ChatThreadSummary } from "@/lib/chat/service";
+import type { ChatBootstrapPayload } from "@/lib/chat/service";
 
 type ChatDockAssistantProps = {
   enabled: boolean;
   unreadCount: number;
+  placement?: "floating" | "header";
 };
 
 function initials(name: string): string {
@@ -21,7 +23,7 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export function ChatDockAssistant({ enabled, unreadCount }: ChatDockAssistantProps) {
+export function ChatDockAssistant({ enabled, unreadCount, placement = "floating" }: ChatDockAssistantProps) {
   const [open, setOpen] = useState(false);
   const [bootstrap, setBootstrap] = useState<ChatBootstrapPayload | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState("");
@@ -89,6 +91,46 @@ export function ChatDockAssistant({ enabled, unreadCount }: ChatDockAssistantPro
     await refreshBootstrap();
   }
 
+  async function handleDeleteConversation() {
+    if (!selectedThreadId) return;
+    const deletingToastId = toast.loading("Eliminando...", { toasterId: "undo-center" });
+    const res = await fetch(`/api/chat/threads/${selectedThreadId}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("No se pudo eliminar la conversación.", { id: deletingToastId, toasterId: "undo-center" });
+      return;
+    }
+    setMessages([]);
+    const deletedThreadId = selectedThreadId;
+    setSelectedThreadId("");
+    await refreshBootstrap();
+    toast.message("Conversación eliminada para ti.", {
+      id: deletingToastId,
+      toasterId: "undo-center",
+      duration: 5000,
+      action: {
+        label: "Deshacer",
+        onClick: () => {
+          void handleRestoreConversation(deletedThreadId);
+        },
+      },
+    });
+  }
+
+  async function handleRestoreConversation(threadId: string) {
+    const res = await fetch(`/api/chat/threads/${threadId}`, { method: "PATCH" });
+    if (!res.ok) {
+      toast.error("No se pudo restaurar la conversación.");
+      return;
+    }
+    await refreshBootstrap();
+    setSelectedThreadId(threadId);
+    const messagesRes = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
+    if (!messagesRes.ok) return;
+    const payload = (await messagesRes.json()) as { items: ChatMessage[] };
+    setMessages(payload.items);
+    toast.success("Conversación restaurada.");
+  }
+
   if (!enabled) return null;
 
   const visibleThreads = bootstrap?.threads ?? [];
@@ -98,11 +140,18 @@ export function ChatDockAssistant({ enabled, unreadCount }: ChatDockAssistantPro
     .filter((id): id is string => Boolean(id))
     .map((id) => usersById.get(id))
     .filter((u): u is User => Boolean(u));
+  const isHeaderPlacement = placement === "header";
+  const containerClassName = isHeaderPlacement
+    ? "relative z-[90] flex flex-col items-end gap-2"
+    : "pointer-events-none fixed bottom-4 right-4 z-[90] flex w-[min(96vw,430px)] flex-col items-end gap-2";
+  const panelClassName = isHeaderPlacement
+    ? "pointer-events-auto absolute right-0 top-full mt-2 surface-card flex h-[min(72vh,560px)] w-[min(96vw,430px)] overflow-hidden bg-card"
+    : "pointer-events-auto surface-card flex h-[min(72vh,560px)] w-full overflow-hidden bg-card";
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[90] flex w-[min(96vw,430px)] flex-col items-end gap-2">
+    <div className={containerClassName}>
       {open ? (
-        <section className="pointer-events-auto surface-card flex h-[min(72vh,560px)] w-full overflow-hidden bg-card">
+        <section className={panelClassName}>
           <aside className="w-[44%] border-r border-border bg-card p-2">
             <p className="px-1 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mensajes</p>
             <div className="max-h-full space-y-1 overflow-y-auto pr-1">
@@ -135,7 +184,19 @@ export function ChatDockAssistant({ enabled, unreadCount }: ChatDockAssistantPro
           </aside>
           <div className="flex min-w-0 flex-1 flex-col bg-card">
             <header className="border-b border-border px-3 py-2">
-              <p className="truncate text-sm font-semibold text-foreground">{selectedThread?.title ?? "Selecciona conversación"}</p>
+              <div className="flex items-center justify-between gap-1">
+                <p className="truncate text-sm font-semibold text-foreground">{selectedThread?.title ?? "Selecciona conversación"}</p>
+                {selectedThreadId ? (
+                  <ConfirmDialog
+                    label="Eliminar"
+                    title="¿Eliminar esta conversación solo para ti?"
+                    confirmLabel="Eliminar"
+                    confirmLoadingLabel="Eliminando..."
+                    triggerClassName="inline-flex h-6 items-center rounded-[2px] px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onConfirm={handleDeleteConversation}
+                  />
+                ) : null}
+              </div>
             </header>
             <div className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
               {messages.map((msg) => {

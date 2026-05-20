@@ -10,6 +10,7 @@ import { SyncStatusBanner } from "@/components/common/sync-status-banner";
 import { BudgetForm } from "@/components/forms/budget-form";
 import { RiskBadge } from "@/components/common/badges";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
 import { loadBudgetsPageData, createBudgetAction, deleteBudgetAction, updateBudgetAction } from "@/app/budgets/data-actions";
@@ -243,9 +244,15 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
                 onConfirm={() => {
                   void (async () => {
                     try {
-                      await deleteBudgetAction(row.original.id);
-                      toast.success("Contrato eliminado");
-                      await reload();
+                      scheduleUndoableAction({
+                        pendingMessage: "Contrato marcado para eliminar.",
+                        successMessage: "Contrato eliminado.",
+                        errorMessage: "No se pudo eliminar el contrato.",
+                        onCommit: async () => {
+                          await deleteBudgetAction(row.original.id);
+                          await reload();
+                        },
+                      });
                     } catch (e) {
                       toast.error(e instanceof Error ? e.message : "No se pudo eliminar el contrato.");
                     }

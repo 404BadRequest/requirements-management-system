@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import type { ChatMessage, ChatPresencePreference, ChatPresenceStatus, User } from "@/types/domain";
-import type { ChatBootstrapPayload, ChatThreadSummary } from "@/lib/chat/service";
+import type { ChatBootstrapPayload } from "@/lib/chat/service";
 
 type ChatPageClientProps = {
   initialData: ChatBootstrapPayload;
@@ -103,10 +104,11 @@ export function ChatPageClient({ initialData, initialThreadId = "" }: ChatPageCl
 
   async function refreshBootstrap() {
     const res = await fetch("/api/chat/bootstrap", { cache: "no-store" });
-    if (!res.ok) return;
+    if (!res.ok) return null;
     const data = (await res.json()) as ChatBootstrapPayload;
     setBootstrap(data);
     if (!selectedThreadId && data.threads[0]) setSelectedThreadId(data.threads[0].thread.id);
+    return data;
   }
 
   async function handleSendMessage() {
@@ -129,6 +131,92 @@ export function ChatPageClient({ initialData, initialThreadId = "" }: ChatPageCl
       body: JSON.stringify({ lastReadMessageId: created.id }),
     });
     await refreshBootstrap();
+  }
+
+  async function handleDeleteMessage(messageId: string) {
+    if (!selectedThreadId) return;
+    const deletingToastId = toast.loading("Eliminando...", { toasterId: "undo-center" });
+    const res = await fetch(`/api/chat/threads/${selectedThreadId}/messages`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId }),
+    });
+    if (!res.ok) {
+      toast.error("No se pudo eliminar el mensaje.", { id: deletingToastId, toasterId: "undo-center" });
+      return;
+    }
+    setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    await refreshBootstrap();
+    toast.message("Mensaje eliminado para ti.", {
+      id: deletingToastId,
+      toasterId: "undo-center",
+      duration: 5000,
+      action: {
+        label: "Deshacer",
+        onClick: () => {
+          void handleRestoreMessage(messageId);
+        },
+      },
+    });
+  }
+
+  async function handleRestoreMessage(messageId: string) {
+    if (!selectedThreadId) return;
+    const res = await fetch(`/api/chat/threads/${selectedThreadId}/messages`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId }),
+    });
+    if (!res.ok) {
+      toast.error("No se pudo restaurar el mensaje.");
+      return;
+    }
+    const refreshRes = await fetch(`/api/chat/threads/${selectedThreadId}/messages`, { cache: "no-store" });
+    if (!refreshRes.ok) return;
+    const data = (await refreshRes.json()) as { items: ChatMessage[] };
+    setMessages(data.items);
+    await refreshBootstrap();
+    toast.success("Mensaje restaurado.");
+  }
+
+  async function handleDeleteConversation(threadId: string) {
+    const deletingToastId = toast.loading("Eliminando...", { toasterId: "undo-center" });
+    const res = await fetch(`/api/chat/threads/${threadId}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("No se pudo eliminar la conversación.", { id: deletingToastId, toasterId: "undo-center" });
+      return;
+    }
+    setMessages([]);
+    setSelectedThreadId("");
+    const data = await refreshBootstrap();
+    const nextThreadId = data?.threads[0]?.thread.id ?? "";
+    setSelectedThreadId(nextThreadId);
+    toast.message("Conversación eliminada para ti.", {
+      id: deletingToastId,
+      toasterId: "undo-center",
+      duration: 5000,
+      action: {
+        label: "Deshacer",
+        onClick: () => {
+          void handleRestoreConversation(threadId);
+        },
+      },
+    });
+  }
+
+  async function handleRestoreConversation(threadId: string) {
+    const res = await fetch(`/api/chat/threads/${threadId}`, { method: "PATCH" });
+    if (!res.ok) {
+      toast.error("No se pudo restaurar la conversación.");
+      return;
+    }
+    await refreshBootstrap();
+    setSelectedThreadId(threadId);
+    const messagesRes = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
+    if (!messagesRes.ok) return;
+    const data = (await messagesRes.json()) as { items: ChatMessage[] };
+    setMessages(data.items);
+    toast.success("Conversación restaurada.");
   }
 
   async function handleCreateDirect() {
@@ -279,7 +367,19 @@ export function ChatPageClient({ initialData, initialThreadId = "" }: ChatPageCl
 
       <section className="surface-card flex min-h-[70vh] flex-col">
         <header className="border-b border-border px-4 py-3">
-          <p className="text-sm font-semibold text-foreground">{selectedThread?.title ?? "Selecciona una conversación"}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-foreground">{selectedThread?.title ?? "Selecciona una conversación"}</p>
+            {selectedThreadId ? (
+              <ConfirmDialog
+                label="Eliminar conversación"
+                title="¿Seguro que quieres eliminar esta conversación solo para ti?"
+                confirmLabel="Eliminar"
+                confirmLoadingLabel="Eliminando..."
+                triggerClassName="inline-flex h-7 items-center gap-1 rounded-[2px] border border-border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                onConfirm={() => handleDeleteConversation(selectedThreadId)}
+              />
+            ) : null}
+          </div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             {selectedThreadUsers.map((user) => {
               const presence = presenceByUser.get(user.id);
@@ -300,7 +400,19 @@ export function ChatPageClient({ initialData, initialThreadId = "" }: ChatPageCl
             const sender = usersById.get(message.senderUserId)?.name ?? message.senderUserId;
             return (
               <div key={message.id} className={`max-w-[78%] rounded-[2px] border px-3 py-2 ${mine ? "ml-auto border-primary/35 bg-primary/10" : "border-border bg-muted/30"}`}>
-                <p className="text-[11px] text-muted-foreground">{mine ? "Tú" : sender}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground">{mine ? "Tú" : sender}</p>
+                  {mine ? (
+                    <ConfirmDialog
+                      label="Eliminar"
+                      title="¿Eliminar este mensaje solo para ti?"
+                      confirmLabel="Eliminar"
+                      confirmLoadingLabel="Eliminando..."
+                      triggerClassName="inline-flex h-6 items-center rounded-[2px] px-2 text-[11px] text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                      onConfirm={() => handleDeleteMessage(message.id)}
+                    />
+                  ) : null}
+                </div>
                 <p className="text-sm text-foreground">{message.body}</p>
               </div>
             );

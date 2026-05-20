@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deleteTimeEntryAction } from "@/app/time-entries/new/data-actions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { scheduleUndoableAction } from "@/components/common/undoable-action";
 
 export function TimeEntryDeleteButton({
   entryId,
@@ -29,9 +30,15 @@ export function TimeEntryDeleteButton({
         void (async () => {
           setDeleting(true);
           try {
-            await deleteTimeEntryAction(entryId);
-            toast.success("Hora eliminada");
-            router.refresh();
+            scheduleUndoableAction({
+              pendingMessage: "Hora marcada para eliminar.",
+              successMessage: "Hora eliminada.",
+              errorMessage: "No se pudo eliminar la hora.",
+              onCommit: async () => {
+                await deleteTimeEntryAction(entryId);
+                router.refresh();
+              },
+            });
           } catch (error) {
             toast.error(error instanceof Error ? error.message : "No se pudo eliminar la hora.");
           } finally {

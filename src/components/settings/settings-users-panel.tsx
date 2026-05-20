@@ -91,6 +91,9 @@ export function SettingsUsersPanel({
               title="¿Eliminar este usuario?"
               summary="No podrás eliminarlo si tiene requerimientos como responsable."
               action={deleteUserAction.bind(null, row.original.id)}
+              pendingMessage="Usuario marcado para eliminar."
+              successMessage="Usuario eliminado."
+              errorMessage="No se pudo eliminar el usuario."
             />
           </div>
         ),

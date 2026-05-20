@@ -785,7 +785,9 @@ export class PostgresDataProvider implements AppDataProvider {
       `select t.*
          from rms_chat_threads t
          join rms_chat_thread_members m on m.thread_id = t.id
+         left join rms_chat_thread_hidden_for_user th on th.thread_id = t.id and th.user_id = $1
         where m.user_id = $1
+         and th.thread_id is null
         order by t.last_message_at desc nulls last, t.updated_at desc`,
       [userId],
     );
@@ -800,14 +802,24 @@ export class PostgresDataProvider implements AppDataProvider {
     return rows.map(mapChatThreadMember);
   }
 
-  async getChatMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
+  async getChatMessages(threadId: string, limit = 100, viewerUserId?: string): Promise<ChatMessage[]> {
+    const values: Array<string | number> = [threadId, Math.max(1, limit)];
+    const hiddenJoin = viewerUserId
+      ? `left join rms_chat_message_hidden_for_user hm
+           on hm.message_id = m.id
+          and hm.user_id = $3`
+      : "";
+    const hiddenFilter = viewerUserId ? "and hm.message_id is null" : "";
+    if (viewerUserId) values.push(viewerUserId);
     const { rows } = await queryPg<Row>(
-      `select *
-         from rms_chat_messages
-        where thread_id = $1
-        order by created_at desc
+      `select m.*
+         from rms_chat_messages m
+         ${hiddenJoin}
+        where m.thread_id = $1
+          ${hiddenFilter}
+        order by m.created_at desc
         limit $2`,
-      [threadId, Math.max(1, limit)],
+      values,
     );
     return rows.map(mapChatMessage).reverse();
   }
@@ -815,7 +827,14 @@ export class PostgresDataProvider implements AppDataProvider {
   async createDirectChatThread(input: { createdByUserId: string; peerUserId: string }): Promise<ChatThread> {
     const directKey = [input.createdByUserId, input.peerUserId].sort().join(":");
     const existing = await queryPg<Row>("select * from rms_chat_threads where type = 'direct' and direct_key = $1", [directKey]);
-    if (existing.rows[0]) return mapChatThread(existing.rows[0]);
+    if (existing.rows[0]) {
+      await queryPg(
+        `delete from rms_chat_thread_hidden_for_user
+         where thread_id = $1 and user_id = $2`,
+        [existing.rows[0].id, input.createdByUserId],
+      );
+      return mapChatThread(existing.rows[0]);
+    }
     const now = new Date().toISOString();
     const threadId = `thread-${crypto.randomUUID().slice(0, 10)}`;
     const { rows } = await queryPg<Row>(
@@ -870,6 +889,44 @@ export class PostgresDataProvider implements AppDataProvider {
       [input.threadId, now],
     );
     return mapChatMessage(rows[0]);
+  }
+
+  async hideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const { rowCount } = await queryPg(
+      `insert into rms_chat_message_hidden_for_user (message_id, user_id, hidden_at)
+       values ($1, $2, $3)
+       on conflict (message_id, user_id) do nothing`,
+      [input.messageId, input.userId, new Date().toISOString()],
+    );
+    return (rowCount ?? 0) > 0;
+  }
+
+  async unhideChatMessageForUser(input: { messageId: string; userId: string }): Promise<boolean> {
+    const { rowCount } = await queryPg(
+      `delete from rms_chat_message_hidden_for_user
+       where message_id = $1 and user_id = $2`,
+      [input.messageId, input.userId],
+    );
+    return (rowCount ?? 0) > 0;
+  }
+
+  async hideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const { rowCount } = await queryPg(
+      `insert into rms_chat_thread_hidden_for_user (thread_id, user_id, hidden_at)
+       values ($1, $2, $3)
+       on conflict (thread_id, user_id) do nothing`,
+      [input.threadId, input.userId, new Date().toISOString()],
+    );
+    return (rowCount ?? 0) > 0;
+  }
+
+  async unhideChatThreadForUser(input: { threadId: string; userId: string }): Promise<boolean> {
+    const { rowCount } = await queryPg(
+      `delete from rms_chat_thread_hidden_for_user
+       where thread_id = $1 and user_id = $2`,
+      [input.threadId, input.userId],
+    );
+    return (rowCount ?? 0) > 0;
   }
 
   async markChatThreadRead(input: { threadId: string; userId: string; lastReadMessageId: string | null }): Promise<void> {
