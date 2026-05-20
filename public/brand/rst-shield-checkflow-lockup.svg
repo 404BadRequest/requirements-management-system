@@ -1,0 +1,32 @@
+<svg width="940" height="220" viewBox="0 0 940 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Requirement System TI lockup">
+  <defs>
+    <linearGradient id="lockShieldBg" x1="20" y1="14" x2="176" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#0B1F3A"/>
+    </linearGradient>
+    <linearGradient id="lockFlowStroke" x1="34" y1="72" x2="168" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#67E8F9"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M98 14L170 42.4V100.31C170 148.31 139.52 190.97 98 206C56.48 190.97 26 148.02 26 100.31V42.4L98 14Z" fill="url(#lockShieldBg)"/>
+  <path d="M98 25.3L158 48.9V100.31C158 142.03 132.09 178.71 98 192.2C63.91 178.71 38 142.03 38 100.31V48.9L98 25.3Z" stroke="#60A5FA" stroke-opacity="0.7" stroke-width="2"/>
+
+  <path d="M42 127L70 100L94 121L128 86L154 102" stroke="url(#lockFlowStroke)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M67 68L83.5 84.5L126 64.5" stroke="#E0F2FE" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="42" cy="127" r="7" fill="#E0F2FE"/>
+  <circle cx="70" cy="100" r="7" fill="#67E8F9"/>
+  <circle cx="94" cy="121" r="7" fill="#22D3EE"/>
+  <circle cx="128" cy="86" r="7" fill="#67E8F9"/>
+  <circle cx="154" cy="102" r="7" fill="#E0F2FE"/>
+
+  <text x="212" y="98" fill="#0B1F3A" font-family="Oxanium, Inter, Segoe UI, Arial, sans-serif" font-size="49" font-weight="700" letter-spacing="1.2">
+    REQUIREMENT SYSTEM
+  </text>
+  <text x="214" y="146" fill="#1D4ED8" font-family="Oxanium, Inter, Segoe UI, Arial, sans-serif" font-size="32" font-weight="600" letter-spacing="7.5">
+    TI
+  </text>
+  <rect x="276" y="126" width="620" height="2" rx="1" fill="#1D4ED8" fill-opacity="0.35"/>
+</svg>

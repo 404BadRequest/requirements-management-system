@@ -1,0 +1,32 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RST Shield CheckFlow mark">
+  <defs>
+    <linearGradient id="rstShieldBg" x1="24" y1="16" x2="136" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#0B1F3A"/>
+    </linearGradient>
+    <linearGradient id="rstFlowStroke" x1="34" y1="62" x2="126" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#67E8F9"/>
+    </linearGradient>
+    <filter id="rstSoftGlow" x="22" y="50" width="116" height="66" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="1.2" result="effect1_foregroundBlur"/>
+    </filter>
+  </defs>
+
+  <path d="M80 12L131 32V73C131 107 109.41 137.21 80 148C50.59 137.21 29 107 29 73V32L80 12Z" fill="url(#rstShieldBg)"/>
+  <path d="M80 20L123 36.8V73C123 103.2 104.24 129.77 80 139.52C55.76 129.77 37 103.2 37 73V36.8L80 20Z" stroke="#60A5FA" stroke-opacity="0.75" stroke-width="2"/>
+
+  <g filter="url(#rstSoftGlow)">
+    <path d="M39 92L60 72L78 88L103 62L121 74" stroke="url(#rstFlowStroke)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M57.5 49L69.9 61.4L101.5 46.5" stroke="#E0F2FE" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="39" cy="92" r="6" fill="#E0F2FE"/>
+  <circle cx="60" cy="72" r="6" fill="#67E8F9"/>
+  <circle cx="78" cy="88" r="6" fill="#22D3EE"/>
+  <circle cx="103" cy="62" r="6" fill="#67E8F9"/>
+  <circle cx="121" cy="74" r="6" fill="#E0F2FE"/>
+</svg>

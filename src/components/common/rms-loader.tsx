@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type RmsLoaderProps = {
   title?: string;
   description?: string;
@@ -24,10 +26,17 @@ export function RmsLoader({
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="relative flex h-16 w-16 items-center justify-center">
-            <span className="absolute inset-0 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-[2px] border border-primary bg-primary text-sm font-semibold text-primary-foreground">
-              R
+          <div className="relative flex h-24 w-24 items-center justify-center">
+            <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-border border-t-primary" aria-hidden />
+            <span className="inline-flex h-16 w-16 animate-spin items-center justify-center [animation-duration:1800ms]">
+              <Image
+                src="/brand/rst-shield-checkflow-mark.svg"
+                alt="Escudo Requirement System TI"
+                width={56}
+                height={56}
+                className="h-14 w-14 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+                priority
+              />
             </span>
           </div>
           <div className="space-y-1.5">

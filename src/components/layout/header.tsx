@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { CommandPalette } from "@/components/common/command-palette";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -40,12 +41,26 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread }
     <header className="sticky top-0 z-30 border-b border-border bg-card shadow-soft menu-fade-in">
       <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between gap-3 px-3 py-2.5 md:justify-center sm:px-4">
         <MobileNav links={navLinks} />
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-[2px] border border-primary bg-primary text-primary-foreground">
-            R
-          </span>
-          <span className="text-sm font-semibold tracking-tight text-foreground">Requirement System TI</span>
-          <span className="text-[11px] text-muted-foreground">Plataforma</span>
+        <div className="hidden items-center md:flex">
+          <div className="flex min-w-[21rem] items-center gap-2.5 rounded-[2px] border border-primary/25 bg-background/85 px-2.5 py-1.5 shadow-soft">
+            <Image
+              src="/brand/rst-shield-checkflow-mark.svg"
+              alt="Requirement System TI"
+              width={44}
+              height={44}
+              className="h-9 w-9 shrink-0"
+              priority
+            />
+            <div className="min-w-0 leading-none">
+              <div className="inline-flex max-w-full flex-col">
+                <p className="truncate text-sm font-bold uppercase tracking-[0.06em] text-[#0B1F3A]">Requirement System</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">TI</p>
+                  <span className="h-px min-w-10 flex-1 bg-primary/35" aria-hidden />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="min-w-0 w-full max-w-xl md:flex-none">
