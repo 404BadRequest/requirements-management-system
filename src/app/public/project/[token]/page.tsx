@@ -35,8 +35,8 @@ export default async function PublicProjectPortalPage({
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((row) => ({ code: row.code, label: row.label }));
   
-  const totalBudget = clientContracts.reduce((sum, c) => sum + (c.totalBudget ?? 0), 0);
-  const consumedBudget = clientContracts.reduce((sum, c) => sum + (c.consumedBudget ?? 0), 0);
+  const totalBudget = clientContracts.reduce((sum, c) => sum + ((c as any).totalBudget ?? 0), 0);
+  const consumedBudget = clientContracts.reduce((sum, c) => sum + ((c as any).consumedBudget ?? 0), 0);
   const budgetPercentage = totalBudget > 0 ? (consumedBudget / totalBudget) * 100 : 0;
 
   return (

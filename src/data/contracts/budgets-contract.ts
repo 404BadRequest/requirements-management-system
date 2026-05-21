@@ -3,6 +3,8 @@ import type { BudgetInput, BudgetPatchInput } from "@/schemas/budget-schema";
 
 export type ContractBudgetWithAllocations = ContractBudget & {
   allocations: ContractProfileAllocation[];
+  totalBudget?: number;
+  consumedBudget?: number;
 };
 
 export interface BudgetsRepository {
