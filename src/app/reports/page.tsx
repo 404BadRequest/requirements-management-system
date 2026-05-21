@@ -153,26 +153,32 @@ export default async function ReportsPage({
         ))}
       </div>
 
-      <section className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Horas totales (periodo y filtros)</p>
+          <p className="text-xs text-muted-foreground">Horas totales</p>
           <p className="text-2xl font-semibold tabular-nums">{totalHours.toFixed(2)} h</p>
         </article>
         <article className="surface-card border-primary/20 bg-primary/[0.06] p-4">
-          <p className="text-xs text-muted-foreground">Total equivalente CLP</p>
+          <p className="text-xs text-muted-foreground">Costo Total (CLP)</p>
           <p className="text-2xl font-semibold tabular-nums text-foreground">{totalClpDisplay}</p>
           {hasExcludedFromClpTotal ? (
             <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-              Excluye líneas en monedas distintas de CLP, UF o USD (sin conversión automática).
+              Excluye líneas sin conversión.
             </p>
           ) : null}
         </article>
-        {totalsByCurrency.map((t) => (
-          <article key={t.currency} className="surface-card p-4">
-            <p className="text-xs text-muted-foreground">Costo en moneda original ({t.currency})</p>
-            <p className="text-2xl font-semibold tabular-nums">{t.display}</p>
-          </article>
-        ))}
+        <article className="surface-card border-emerald-500/20 bg-emerald-500/[0.06] p-4">
+          <p className="text-xs text-emerald-700 dark:text-emerald-400">Venta Estimada (CLP)</p>
+          <p className="text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{summarizeSpendReport(rows).totalRevenueClpDisplay}</p>
+        </article>
+        <article className="surface-card border-amber-500/20 bg-amber-500/[0.06] p-4">
+          <p className="text-xs text-amber-700 dark:text-amber-400">Margen Bruto</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+              {summarizeSpendReport(rows).globalMarginPercentageDisplay}
+            </p>
+          </div>
+        </article>
       </section>
 
       <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{formatFinancialReferenceRatesFootnote(referenceRates)}</p>

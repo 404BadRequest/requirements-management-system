@@ -9,6 +9,8 @@ import type { Client } from "@/types/domain";
 import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-confirm";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { SettingsTableToolbar } from "@/components/settings/settings-table-toolbar";
+import { Copy, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 
 export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
   const [createOpen, setCreateOpen] = useState(false);
@@ -37,21 +39,46 @@ export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
         header: "Acciones",
         enableSorting: false,
         enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditClient(row.original)}>
-              Editar
-            </button>
-            <SettingsDeleteConfirm
-              title="¿Eliminar este cliente?"
-              summary="No podrás eliminarlo si tiene requerimientos asociados."
-              action={deleteClientAction.bind(null, row.original.id)}
-              pendingMessage="Cliente marcado para eliminar."
-              successMessage="Cliente eliminado."
-              errorMessage="No se pudo eliminar el cliente."
-            />
-          </div>
-        ),
+        cell: ({ row }) => {
+          const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/project/${row.original.id}`;
+          
+          return (
+            <div className="flex flex-wrap gap-2">
+              <button 
+                type="button" 
+                className="btn-quiet px-2 py-1 text-xs flex items-center gap-1" 
+                onClick={() => {
+                  navigator.clipboard.writeText(publicUrl);
+                  toast.success("Enlace público copiado al portapapeles");
+                }}
+                title="Copiar enlace público"
+              >
+                <Copy className="h-3 w-3" />
+                Enlace
+              </button>
+              <a 
+                href={publicUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="btn-quiet px-2 py-1 text-xs flex items-center gap-1"
+                title="Abrir portal público"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditClient(row.original)}>
+                Editar
+              </button>
+              <SettingsDeleteConfirm
+                title="¿Eliminar este cliente?"
+                summary="No podrás eliminarlo si tiene requerimientos asociados."
+                action={deleteClientAction.bind(null, row.original.id)}
+                pendingMessage="Cliente marcado para eliminar."
+                successMessage="Cliente eliminado."
+                errorMessage="No se pudo eliminar el cliente."
+              />
+            </div>
+          );
+        },
       },
     ],
     [],

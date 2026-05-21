@@ -113,11 +113,13 @@ export const RequirementKanbanBoard = ({
   statusColumns,
   canManageStatus,
   ownerOptions,
+  readOnly = false,
 }: {
   requirements: Requirement[];
   statusColumns: { code: string; label: string }[];
   canManageStatus: boolean;
   ownerOptions: { id: string; name: string }[];
+  readOnly?: boolean;
 }) => {
   const [requirements, setRequirements] = useState(initialRequirements);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -187,88 +189,90 @@ export const RequirementKanbanBoard = ({
 
   return (
     <div className="space-y-2">
-      {canManageStatus ? (
+      {canManageStatus && !readOnly ? (
         <p className="text-xs text-muted-foreground">
           Interacciones habilitadas: arrastra tarjetas entre columnas o usa Anterior/Siguiente para mover estado.
         </p>
       ) : null}
-      <div className="surface-card mb-3 p-3">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="grid gap-1.5">
-            <span className="field-label">Buscar</span>
-            <input
-              className="field-control"
-              placeholder="ID, título, descripción, responsable..."
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-            />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="field-label">Responsable</span>
-            <select className="field-control" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
-              <option value="">Todos</option>
-              {ownerOptions.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5">
-            <span className="field-label">Prioridad</span>
-            <select className="field-control" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
-              <option value="">Todas</option>
-              {Array.from(new Set(requirements.map((item) => item.priority)))
-                .sort((a, b) => a.localeCompare(b, "es"))
-                .map((priority) => (
-                  <option key={priority} value={priority}>
-                    {priority}
+      {!readOnly && (
+        <div className="surface-card mb-3 p-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <label className="grid gap-1.5">
+              <span className="field-label">Buscar</span>
+              <input
+                className="field-control"
+                placeholder="ID, título, descripción, responsable..."
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="field-label">Responsable</span>
+              <select className="field-control" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
+                <option value="">Todos</option>
+                {ownerOptions.map((owner) => (
+                  <option key={owner.id} value={owner.id}>
+                    {owner.name}
                   </option>
                 ))}
-            </select>
-          </label>
-          <div className="flex items-end">
-            <button
-              type="button"
-              className="btn-secondary h-10 px-3 text-sm"
-              onClick={() => {
-                setSearchText("");
-                setOwnerFilter("");
-                setPriorityFilter("");
-                setSelectedStatusCodes(statusColumns.map((status) => status.code));
-              }}
-            >
-              Limpiar filtros
-            </button>
+              </select>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="field-label">Prioridad</span>
+              <select className="field-control" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+                <option value="">Todas</option>
+                {Array.from(new Set(requirements.map((item) => item.priority)))
+                  .sort((a, b) => a.localeCompare(b, "es"))
+                  .map((priority) => (
+                    <option key={priority} value={priority}>
+                      {priority}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                className="btn-secondary h-10 px-3 text-sm"
+                onClick={() => {
+                  setSearchText("");
+                  setOwnerFilter("");
+                  setPriorityFilter("");
+                  setSelectedStatusCodes(statusColumns.map((status) => status.code));
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 rounded-[2px] border border-border/70 bg-muted/15 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estados visibles</p>
+            <div className="flex flex-wrap gap-2">
+              {statusColumns.map((status) => {
+                const checked = selectedStatusCodes.includes(status.code);
+                return (
+                  <label key={status.code} className="inline-flex items-center gap-2 rounded-[2px] border border-border bg-background px-2.5 py-1 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        if (checked && selectedStatusCodes.length === 1) {
+                          toast.info("Debes mantener al menos un estado visible.");
+                          return;
+                        }
+                        setSelectedStatusCodes((prev) =>
+                          checked ? prev.filter((code) => code !== status.code) : [...prev, status.code],
+                        );
+                      }}
+                    />
+                    {status.label}
+                  </label>
+                );
+              })}
+            </div>
           </div>
         </div>
-        <div className="mt-3 rounded-[2px] border border-border/70 bg-muted/15 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estados visibles</p>
-          <div className="flex flex-wrap gap-2">
-            {statusColumns.map((status) => {
-              const checked = selectedStatusCodes.includes(status.code);
-              return (
-                <label key={status.code} className="inline-flex items-center gap-2 rounded-[2px] border border-border bg-background px-2.5 py-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      if (checked && selectedStatusCodes.length === 1) {
-                        toast.info("Debes mantener al menos un estado visible.");
-                        return;
-                      }
-                      setSelectedStatusCodes((prev) =>
-                        checked ? prev.filter((code) => code !== status.code) : [...prev, status.code],
-                      );
-                    }}
-                  />
-                  {status.label}
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      )}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
         {visibleStatusColumns.map((status, idx) => {
           const columnItems = filteredRequirements.filter((item) => {
@@ -282,11 +286,11 @@ export const RequirementKanbanBoard = ({
               className="flex min-w-0 flex-1 flex-col rounded-[2px] border border-border bg-card"
               style={{ borderTopColor: color, borderTopWidth: "3px" }}
               onDragOver={(event) => {
-                if (!canManageStatus) return;
+                if (!canManageStatus || readOnly) return;
                 event.preventDefault();
               }}
               onDrop={(event) => {
-                if (!canManageStatus || !draggingId) return;
+                if (!canManageStatus || readOnly || !draggingId) return;
                 event.preventDefault();
                 void moveRequirement(draggingId, status.code);
               }}
@@ -301,7 +305,7 @@ export const RequirementKanbanBoard = ({
                 </span>
               </header>
 
-              <div className="flex-1 space-y-2 overflow-y-auto p-3 [scrollbar-width:thin]" style={{ maxHeight: "calc(100vh - 14rem)" }}>
+              <div className="flex-1 space-y-2 overflow-y-auto p-3 [scrollbar-width:thin]" style={{ maxHeight: readOnly ? "600px" : "calc(100vh - 14rem)" }}>
                 {columnItems.length === 0 ? (
                   <ColumnEmptyState />
                 ) : (
@@ -311,7 +315,7 @@ export const RequirementKanbanBoard = ({
                       item={item}
                       statusIndex={idx}
                       statusColumns={visibleStatusColumns}
-                      canManageStatus={canManageStatus}
+                      canManageStatus={canManageStatus && !readOnly}
                       pending={savingId === item.id}
                       ownerName={ownerNameById.get(item.ownerId) ?? item.ownerId}
                       onMove={(id, next) => {

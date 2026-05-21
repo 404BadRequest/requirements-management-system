@@ -26,8 +26,24 @@ export function SpendReportTable({ rows }: { rows: SpendReportRow[] }) {
       },
       {
         accessorKey: "amountClpDisplay",
-        header: "Equivalente CLP",
+        header: "Costo CLP",
         meta: { align: "right" },
+      },
+      {
+        accessorKey: "revenueClpDisplay",
+        header: "Venta CLP",
+        meta: { align: "right" },
+      },
+      {
+        accessorKey: "marginPercentageDisplay",
+        header: "Margen %",
+        meta: { align: "right" },
+        cell: ({ row }) => {
+          const margin = row.original.marginPercentage;
+          if (margin === null) return "—";
+          const colorClass = margin < 20 ? "text-rose-500" : margin < 40 ? "text-amber-500" : "text-emerald-500";
+          return <span className={`font-medium ${colorClass}`}>{row.original.marginPercentageDisplay}</span>;
+        }
       },
     ],
     [],

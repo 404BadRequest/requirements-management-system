@@ -4,6 +4,7 @@ import { KpiCard } from "@/components/common/kpi-card";
 import { PageHeader } from "@/components/common/page-header";
 import { RiskBadge } from "@/components/common/badges";
 import { AppShell } from "@/components/layout/app-shell";
+import { UtilizationPanel, type UtilizationData } from "@/components/reports/utilization-panel";
 import Link from "next/link";
 import { CircleDot, Clock, PieChart, AlertCircle, Users, AlertTriangle, Timer, CalendarClock, CheckCircle2 } from "lucide-react";
 import { getCatalogByKind, getClients, getDashboardMetrics, getFinancialReferenceRates, getUsers } from "@/data/repositories/server-db";
@@ -76,6 +77,19 @@ export default async function DashboardPage({
   const monthHours = sortedMonthHours(metrics.hoursByMonth);
   const byClientHours = recordToHoursChartData(metrics.hoursByClient);
   const byPersonHours = recordToHoursChartData(metrics.hoursByPerson);
+
+  // Preparar datos de utilización (asumiendo 40h semanales = 160h mensuales como capacidad base para el demo)
+  const utilizationData: UtilizationData[] = Object.entries(metrics.hoursByPerson).map(([name, minutes]) => {
+    const user = users.find(u => u.name === name);
+    return {
+      userId: user?.id ?? name,
+      userName: name,
+      role: user?.role ?? "Desconocido",
+      loggedHours: minutes / 60,
+      capacityHours: 160, // En un sistema real esto vendría de la configuración del usuario
+    };
+  });
+
   const roleChartSets = isContributor
     ? [monthHours, categoryHoursChartData, priorityChartData]
     : isProjectManager
@@ -225,6 +239,10 @@ export default async function DashboardPage({
             rows={metrics.billingEstimateByClient}
             referenceFootnote={formatFinancialReferenceRatesFootnote(referenceRates)}
           />
+        ) : null}
+
+        {(isAdminLike || isProjectManager) && utilizationData.length > 0 ? (
+          <UtilizationPanel data={utilizationData} />
         ) : null}
 
         <section aria-labelledby="dash-charts-heading" className="surface-card space-y-5 p-[length:var(--density-inset-pad)]">

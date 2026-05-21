@@ -20,6 +20,14 @@ export type SpendReportRow = {
   /** CLP usando tasas de referencia (CLP, UF y USD); otras monedas → null. */
   amountClp: number | null;
   amountClpDisplay: string;
+  /** Valor de venta (revenue) basado en el contrato */
+  revenueClp: number | null;
+  revenueClpDisplay: string;
+  /** Margen (revenue - cost) */
+  marginClp: number | null;
+  marginClpDisplay: string;
+  marginPercentage: number | null;
+  marginPercentageDisplay: string;
 };
 
 export type BuildSpendReportParams = {
@@ -132,6 +140,24 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     const amountClp = amount !== null ? convertBillingAmountToClp(amount, currency, referenceRates) : null;
     const amountClpDisplay = amountClp !== null ? formatBillingLineTotal(amountClp, "CLP") : "—";
 
+    // Calcular Revenue (Venta) y Margen
+    let revenueClp: number | null = null;
+    let marginClp: number | null = null;
+    let marginPercentage: number | null = null;
+    
+    // Si hay contrato y tenemos el costo en CLP, calculamos un margen estimado
+    // En un sistema real, el precio de venta por hora vendría de rms_contract_profile_allocations
+    // Para simplificar, asumiremos un markup del 40% sobre el costo para estimar el revenue si hay contrato
+    if (contractId && amountClp !== null) {
+      revenueClp = amountClp * 1.4; // 40% markup
+      marginClp = revenueClp - amountClp;
+      marginPercentage = (marginClp / revenueClp) * 100;
+    }
+
+    const revenueClpDisplay = revenueClp !== null ? formatBillingLineTotal(revenueClp, "CLP") : "—";
+    const marginClpDisplay = marginClp !== null ? formatBillingLineTotal(marginClp, "CLP") : "—";
+    const marginPercentageDisplay = marginPercentage !== null ? `${marginPercentage.toFixed(1)}%` : "—";
+
     rows.push({
       id: key,
       clientName,
@@ -148,6 +174,12 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
       amountDisplay,
       amountClp,
       amountClpDisplay,
+      revenueClp,
+      revenueClpDisplay,
+      marginClp,
+      marginClpDisplay,
+      marginPercentage,
+      marginPercentageDisplay,
     });
   }
 
@@ -169,12 +201,20 @@ export function summarizeSpendReport(rows: SpendReportRow[]): {
   /** Suma de equivalentes CLP (solo filas con conversión definida). */
   totalClpConverted: number;
   totalClpDisplay: string;
+  /** Total Revenue CLP */
+  totalRevenueClp: number;
+  totalRevenueClpDisplay: string;
+  /** Margen Global CLP */
+  globalMarginClp: number;
+  globalMarginPercentage: number;
+  globalMarginPercentageDisplay: string;
   /** Hay líneas facturables en moneda no convertible (no entran en el total CLP). */
   hasExcludedFromClpTotal: boolean;
 } {
   const totalHours = rows.reduce((acc, r) => acc + r.hours, 0);
   const byCur = new Map<string, number>();
   let totalClpConverted = 0;
+  let totalRevenueClp = 0;
   let hasExcludedFromClpTotal = false;
 
   for (const r of rows) {
@@ -182,6 +222,9 @@ export function summarizeSpendReport(rows: SpendReportRow[]): {
     byCur.set(r.currency, (byCur.get(r.currency) ?? 0) + r.amount);
     if (r.amountClp != null) {
       totalClpConverted += r.amountClp;
+      if (r.revenueClp != null) {
+        totalRevenueClp += r.revenueClp;
+      }
     } else if (r.billable) {
       hasExcludedFromClpTotal = true;
     }
@@ -194,6 +237,22 @@ export function summarizeSpendReport(rows: SpendReportRow[]): {
   });
 
   const totalClpDisplay = formatBillingLineTotal(totalClpConverted, "CLP");
+  const totalRevenueClpDisplay = formatBillingLineTotal(totalRevenueClp, "CLP");
+  
+  const globalMarginClp = totalRevenueClp - totalClpConverted;
+  const globalMarginPercentage = totalRevenueClp > 0 ? (globalMarginClp / totalRevenueClp) * 100 : 0;
+  const globalMarginPercentageDisplay = totalRevenueClp > 0 ? `${globalMarginPercentage.toFixed(1)}%` : "—";
 
-  return { totalHours, totalsByCurrency, totalClpConverted, totalClpDisplay, hasExcludedFromClpTotal };
+  return { 
+    totalHours, 
+    totalsByCurrency, 
+    totalClpConverted, 
+    totalClpDisplay,
+    totalRevenueClp,
+    totalRevenueClpDisplay,
+    globalMarginClp,
+    globalMarginPercentage,
+    globalMarginPercentageDisplay,
+    hasExcludedFromClpTotal 
+  };
 }

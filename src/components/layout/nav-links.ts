@@ -10,7 +10,8 @@ export type MainNavIconKey =
   | "users"
   | "settings"
   | "bell"
-  | "chat";
+  | "chat"
+  | "calendar";
 
 export type MainNavLinkDef = {
   href: string;
@@ -29,6 +30,7 @@ export const MAIN_NAV_LINK_DEFS: MainNavLinkDef[] = [
   { href: "/dashboard", label: "Dashboard", iconKey: "dashboard", requiredPermission: "dashboard.read" },
   { href: "/requirements", label: "Requerimientos", iconKey: "requirements", requiredPermission: "requirements.read" },
   { href: "/time-entries", label: "Horas", iconKey: "clock", requiredPermission: "time_entries.read" },
+  { href: "/time-entries/weekly", label: "Semana", iconKey: "calendar", requiredPermission: "time_entries.read" },
   { href: "/reports", label: "Reportes", iconKey: "report", requiredPermission: "reports.read" },
   { href: "/budgets", label: "Presupuesto", iconKey: "wallet", requiredPermission: "budgets.read" },
   { href: "/team", label: "Equipo", iconKey: "users", requiredPermission: "team.read" },

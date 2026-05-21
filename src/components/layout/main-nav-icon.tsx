@@ -1,12 +1,13 @@
 "use client";
 
-import { BarChart3, Bell, Clock3, LayoutDashboard, ListTodo, MessageSquare, Settings, Users, Wallet } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, Clock3, LayoutDashboard, ListTodo, MessageSquare, Settings, Users, Wallet } from "lucide-react";
 import type { MainNavIconKey } from "@/components/layout/nav-links";
 
 const ICONS: Record<MainNavIconKey, typeof LayoutDashboard> = {
   dashboard: LayoutDashboard,
   requirements: ListTodo,
   clock: Clock3,
+  calendar: CalendarDays,
   report: BarChart3,
   wallet: Wallet,
   users: Users,
