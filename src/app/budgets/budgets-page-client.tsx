@@ -461,6 +461,8 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
                 startDate: editTarget.startDate,
                 endDate: editTarget.endDate,
                 rateUfPerHour: editTarget.rateUfPerHour,
+                markupPercentage: editTarget.markupPercentage,
+                opexPercentage: editTarget.opexPercentage,
                 allocations:
                   allocations
                     .filter((allocation) => allocation.contractId === editTarget.id)

@@ -16,6 +16,8 @@ export const contractBudgetsMock: ContractBudget[] = budgetScopeCodes.map((scope
   startDate: "2026-01-01",
   endDate: "2026-12-31",
   rateUfPerHour: 1,
+  markupPercentage: 40,
+  opexPercentage: 10,
   active: true,
   createdAt: now,
   updatedAt: now,

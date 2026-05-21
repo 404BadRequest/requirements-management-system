@@ -146,11 +146,16 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     let marginPercentage: number | null = null;
     
     // Si hay contrato y tenemos el costo en CLP, calculamos un margen estimado
-    // En un sistema real, el precio de venta por hora vendría de rms_contract_profile_allocations
-    // Para simplificar, asumiremos un markup del 40% sobre el costo para estimar el revenue si hay contrato
     if (contractId && amountClp !== null) {
-      revenueClp = amountClp * 1.4; // 40% markup
-      marginClp = revenueClp - amountClp;
+      const contract = contractById.get(contractId);
+      const markup = contract?.markupPercentage ?? 40;
+      const opex = contract?.opexPercentage ?? 10;
+      
+      revenueClp = amountClp * (1 + markup / 100);
+      
+      // Margen = Venta - Costo Directo - OPEX (calculado sobre el costo directo)
+      const opexAmount = amountClp * (opex / 100);
+      marginClp = revenueClp - amountClp - opexAmount;
       marginPercentage = (marginClp / revenueClp) * 100;
     }
 

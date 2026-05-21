@@ -126,6 +126,8 @@ export interface ContractBudget {
   startDate: string;
   endDate: string;
   rateUfPerHour: number;
+  markupPercentage: number;
+  opexPercentage: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;

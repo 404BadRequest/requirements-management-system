@@ -23,6 +23,8 @@ export class MockBudgetsRepository implements BudgetsRepository {
       startDate: input.startDate,
       endDate: input.endDate,
       rateUfPerHour: input.rateUfPerHour,
+      markupPercentage: input.markupPercentage,
+      opexPercentage: input.opexPercentage,
       active: true,
       allocations: input.allocations.map((allocation) => ({
         id: `alloc-${crypto.randomUUID().slice(0, 10)}`,

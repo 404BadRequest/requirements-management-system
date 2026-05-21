@@ -136,6 +136,8 @@ function mapContract(r: Row): ContractBudget {
     startDate: String(r.start_date),
     endDate: String(r.end_date),
     rateUfPerHour: Number(r.rate_uf_per_hour),
+    markupPercentage: Number(r.markup_percentage ?? 40),
+    opexPercentage: Number(r.opex_percentage ?? 10),
     active: Boolean(r.active),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
@@ -631,10 +633,10 @@ export class PostgresDataProvider implements AppDataProvider {
     const id = `contract-${crypto.randomUUID().slice(0, 8)}`;
     const { rows } = await queryPg<Row>(
       `insert into rms_contract_budgets
-       (id, client_id, project_id, scope, code, name, start_date, end_date, rate_uf_per_hour, active, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,$10,$11)
+       (id, client_id, project_id, scope, code, name, start_date, end_date, rate_uf_per_hour, markup_percentage, opex_percentage, active, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13)
        returning *`,
-      [id, input.clientId, input.projectId, input.scope, input.code, input.name, input.startDate, input.endDate, input.rateUfPerHour, now, now],
+      [id, input.clientId, input.projectId, input.scope, input.code, input.name, input.startDate, input.endDate, input.rateUfPerHour, input.markupPercentage, input.opexPercentage, now, now],
     );
     for (const allocation of input.allocations) {
       await queryPg(
@@ -668,7 +670,9 @@ export class PostgresDataProvider implements AppDataProvider {
            start_date = coalesce($7, start_date),
            end_date = coalesce($8, end_date),
            rate_uf_per_hour = coalesce($9, rate_uf_per_hour),
-           updated_at = $10
+           markup_percentage = coalesce($10, markup_percentage),
+           opex_percentage = coalesce($11, opex_percentage),
+           updated_at = $12
        where id = $1
        returning *`,
       [
@@ -681,6 +685,8 @@ export class PostgresDataProvider implements AppDataProvider {
         input.startDate ?? null,
         input.endDate ?? null,
         input.rateUfPerHour ?? null,
+        input.markupPercentage ?? null,
+        input.opexPercentage ?? null,
         now,
       ],
     );

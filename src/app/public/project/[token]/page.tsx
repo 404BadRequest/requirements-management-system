@@ -54,20 +54,17 @@ export default async function PublicProjectPortalPage({
 
         <div className="grid gap-4 md:grid-cols-2">
           <KpiCard
-            title="Estado de Presupuesto"
+            label="Estado de Presupuesto"
             value={`${budgetPercentage.toFixed(1)}%`}
-            description={`${consumedBudget} de ${totalBudget} UF consumidas`}
-            icon={<Wallet className="h-4 w-4" />}
-            trend={{
-              value: budgetPercentage > 90 ? "Crítico" : budgetPercentage > 75 ? "Atención" : "Normal",
-              direction: budgetPercentage > 90 ? "down" : budgetPercentage > 75 ? "neutral" : "up"
-            }}
+            helper={`${consumedBudget} de ${totalBudget} UF consumidas`}
+            icon={Wallet}
+            variant={budgetPercentage > 90 ? "danger" : budgetPercentage > 75 ? "warning" : "default"}
           />
           <KpiCard
-            title="Requerimientos Activos"
+            label="Requerimientos Activos"
             value={clientRequirements.filter(r => r.status !== "cerrado").length.toString()}
-            description={`De un total de ${clientRequirements.length} requerimientos`}
-            icon={<ListTodo className="h-4 w-4" />}
+            helper={`De un total de ${clientRequirements.length} requerimientos`}
+            icon={ListTodo}
           />
         </div>
 

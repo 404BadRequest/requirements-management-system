@@ -60,6 +60,8 @@ export const BudgetForm = ({
       startDate: new Date().toISOString().slice(0, 10),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 12)).toISOString().slice(0, 10),
       rateUfPerHour: 1,
+      markupPercentage: 40,
+      opexPercentage: 10,
       allocations: [{ profileId: profiles[0]?.id ?? "", quotedMinutes: 600, rateUfPerHour: null }],
       ...defaultValues,
     },
@@ -127,6 +129,26 @@ export const BudgetForm = ({
             className="field-control w-full"
             value={toDateInputValue(form.watch("endDate"))}
             onChange={(event) => form.setValue("endDate", event.target.value)}
+          />
+        </FormField>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormField label="Markup (Margen %) para estimar Venta">
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            className="field-control w-full"
+            {...form.register("markupPercentage", { valueAsNumber: true })}
+          />
+        </FormField>
+        <FormField label="OPEX (%)">
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            className="field-control w-full"
+            {...form.register("opexPercentage", { valueAsNumber: true })}
           />
         </FormField>
       </div>

@@ -15,6 +15,8 @@ export const budgetSchema = z.object({
   startDate: z.string().min(1, "Fecha inicio requerida"),
   endDate: z.string().min(1, "Fecha término requerida"),
   rateUfPerHour: z.number().positive("Tarifa UF/hora requerida"),
+  markupPercentage: z.number().min(0, "Markup no puede ser negativo"),
+  opexPercentage: z.number().min(0, "OPEX no puede ser negativo"),
   allocations: z.array(contractProfileAllocationSchema).min(1, "Debes agregar al menos un perfil"),
 });
 

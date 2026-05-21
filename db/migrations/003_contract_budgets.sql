@@ -10,6 +10,8 @@ create table if not exists public.rms_contract_budgets (
   start_date date not null,
   end_date date not null,
   rate_uf_per_hour numeric not null,
+  markup_percentage numeric(5,2) not null default 40.00,
+  opex_percentage numeric(5,2) not null default 10.00,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

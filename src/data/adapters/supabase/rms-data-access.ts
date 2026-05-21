@@ -192,6 +192,8 @@ function mapContract(r: Row): ContractBudget {
     startDate: String(r.start_date),
     endDate: String(r.end_date),
     rateUfPerHour: Number(r.rate_uf_per_hour),
+    markupPercentage: Number(r.markup_percentage ?? 40),
+    opexPercentage: Number(r.opex_percentage ?? 10),
     active: Boolean(r.active),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
@@ -659,6 +661,8 @@ export class RmsDataAccess {
       start_date: input.startDate,
       end_date: input.endDate,
       rate_uf_per_hour: input.rateUfPerHour,
+      markup_percentage: input.markupPercentage,
+      opex_percentage: input.opexPercentage,
       active: true,
       created_at: now,
       updated_at: now,
@@ -689,6 +693,8 @@ export class RmsDataAccess {
     if (input.startDate !== undefined) patch.start_date = input.startDate;
     if (input.endDate !== undefined) patch.end_date = input.endDate;
     if (input.rateUfPerHour !== undefined) patch.rate_uf_per_hour = input.rateUfPerHour;
+    if (input.markupPercentage !== undefined) patch.markup_percentage = input.markupPercentage;
+    if (input.opexPercentage !== undefined) patch.opex_percentage = input.opexPercentage;
     const { data, error } = await this.sb.from("rms_contract_budgets").update(patch).eq("id", id).select("*").maybeSingle();
     if (error) throw error;
     if (!data) return undefined;
