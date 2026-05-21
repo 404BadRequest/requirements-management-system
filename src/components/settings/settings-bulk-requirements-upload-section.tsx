@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { importTimeEntriesCsvAction } from "@/app/time-entries/new/data-actions";
+import { importRequirementsCsvAction } from "@/app/requirements/data-actions";
 
 type BulkUploadResult = {
   totalRows: number;
@@ -11,7 +11,7 @@ type BulkUploadResult = {
   rowErrors: Array<{ row: number; message: string }>;
 };
 
-export function TimeEntriesBulkUploadSection() {
+export function SettingsBulkRequirementsUploadSection() {
   const [fileName, setFileName] = useState("");
   const [csvText, setCsvText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,12 +41,12 @@ export function TimeEntriesBulkUploadSection() {
     setLoading(true);
     const loadingId = toast.loading("Procesando carga masiva...");
     try {
-      const response = (await importTimeEntriesCsvAction({ csvText })) as BulkUploadResult;
+      const response = (await importRequirementsCsvAction({ csvText })) as BulkUploadResult;
       setResult(response);
       if (response.failedCount > 0) {
         toast.error(`Carga parcial: ${response.createdCount} exitosas, ${response.failedCount} con error.`, { id: loadingId });
       } else {
-        toast.success(`Carga exitosa: ${response.createdCount} horas registradas.`, { id: loadingId });
+        toast.success(`Carga exitosa: ${response.createdCount} requerimientos creados.`, { id: loadingId });
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo procesar el archivo.", { id: loadingId });
@@ -59,16 +59,16 @@ export function TimeEntriesBulkUploadSection() {
     <section className="surface-card p-[length:var(--density-inset-pad)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Carga masiva de horas</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Funcionalidad avanzada para importar múltiples registros en lote.</p>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Carga masiva de requerimientos</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Funcionalidad avanzada para importar requerimientos en lote.</p>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Descarga la plantilla CSV, completa las filas y luego carga el archivo para registrar múltiples horas.
+          Descarga la plantilla CSV, completa las filas y luego carga el archivo para crear múltiples requerimientos.
         </p>
-        <a href="/api/export/time-entries/template" className="btn-secondary inline-flex py-2 text-sm no-underline">
+        <a href="/api/export/requirements/template" className="btn-secondary inline-flex py-2 text-sm no-underline">
           Descargar plantilla CSV
         </a>
       </div>
@@ -86,23 +86,23 @@ export function TimeEntriesBulkUploadSection() {
           />
         </label>
         <button type="button" className="btn-primary py-2 text-sm" onClick={() => void handleUpload()} disabled={loading || !csvText.trim()}>
-          {loading ? "Cargando..." : "Cargar horas masivas"}
+          {loading ? "Cargando..." : "Cargar requerimientos"}
         </button>
       </div>
 
       {fileName ? <p className="mt-2 text-xs text-muted-foreground">Archivo seleccionado: {fileName}</p> : null}
       <div className="mt-2 rounded-[2px] border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        Formato esperado: <span className="font-medium text-foreground">date = YYYY-MM-DD</span>,{" "}
-        <span className="font-medium text-foreground">startTime/endTime = HH:mm</span>. Deja vacío{" "}
-        <span className="font-medium text-foreground">requirementId</span>,{" "}
-        <span className="font-medium text-foreground">contractId</span> y{" "}
-        <span className="font-medium text-foreground">contractProfileId</span> cuando no aplique.
+        Columnas esperadas:{" "}
+        <span className="font-medium text-foreground">
+          projectId, clientId, contractId, origin, title, description, priority, ownerId, status, notes
+        </span>
+        . Deja vacío <span className="font-medium text-foreground">contractId</span> cuando no aplique.
       </div>
 
       {result ? (
         <div className="mt-3 rounded-[2px] border border-border bg-muted/20 p-3">
           <p className="text-sm font-medium text-foreground">
-            Resultado: {result.createdCount} creadas / {result.failedCount} con error (total filas: {result.totalRows})
+            Resultado: {result.createdCount} creados / {result.failedCount} con error (total filas: {result.totalRows})
           </p>
           {result.rowErrors.length > 0 ? (
             <ul className="mt-2 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-danger">

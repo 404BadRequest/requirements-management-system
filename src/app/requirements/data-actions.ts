@@ -23,6 +23,7 @@ import { requirementDetailPath } from "@/lib/routes/requirements";
 import { revalidatePath } from "next/cache";
 import type { Client, Requirement, SettingsCatalogEntry } from "@/types/domain";
 import type { RequirementInput } from "@/schemas/requirement-schema";
+import { requirementSchema } from "@/schemas/requirement-schema";
 
 export async function loadRequirementsPageData(): Promise<{
   requirements: Requirement[];
@@ -269,4 +270,125 @@ export async function addRequirementCommentAction(requirementId: string, formDat
     entityId: requirementId,
     outcome: "ok",
   });
+}
+
+function parseCsvRows(input: string): string[][] {
+  const rows: string[][] = [];
+  const normalized = input.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+  for (const rawLine of lines) {
+    if (!rawLine.trim()) continue;
+    const cells: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < rawLine.length; i += 1) {
+      const char = rawLine[i];
+      if (char === '"') {
+        if (inQuotes && rawLine[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (char === "," && !inQuotes) {
+        cells.push(current.trim());
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+    cells.push(current.trim());
+    rows.push(cells);
+  }
+  return rows;
+}
+
+function normalizeNullable(value: string | undefined): string | null {
+  const text = (value ?? "").trim();
+  if (!text) return null;
+  const normalized = text.toLowerCase();
+  if (normalized === "null" || normalized === "n/a" || normalized === "na") return null;
+  return text;
+}
+
+export async function importRequirementsCsvAction(input: { csvText: string }) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "requirements.write");
+  if (!user) throw new Error("Debes iniciar sesión.");
+  if (user.role !== "Admin" && user.role !== "Project Manager") {
+    throw new Error("Solo Admin y Project Manager pueden realizar cargas masivas de requerimientos.");
+  }
+
+  const rows = parseCsvRows(input.csvText ?? "");
+  if (rows.length < 2) {
+    throw new Error("El archivo está vacío o no contiene filas de datos.");
+  }
+
+  const header = rows[0].map((cell) => cell.trim());
+  const requiredHeaders = [
+    "projectId",
+    "clientId",
+    "contractId",
+    "origin",
+    "title",
+    "description",
+    "priority",
+    "ownerId",
+    "status",
+    "notes",
+  ];
+  const missingHeaders = requiredHeaders.filter((field) => !header.includes(field));
+  if (missingHeaders.length > 0) {
+    throw new Error(`Faltan columnas en la plantilla: ${missingHeaders.join(", ")}.`);
+  }
+
+  const headerIndex = new Map(header.map((name, idx) => [name, idx]));
+  const rowErrors: Array<{ row: number; message: string }> = [];
+  let createdCount = 0;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const rowNumber = i + 1;
+    const row = rows[i];
+    const cell = (name: string) => row[headerIndex.get(name) ?? -1] ?? "";
+    const payload: RequirementInput = {
+      projectId: cell("projectId").trim(),
+      clientId: cell("clientId").trim(),
+      contractId: normalizeNullable(cell("contractId")),
+      origin: cell("origin").trim(),
+      title: cell("title").trim(),
+      description: cell("description").trim(),
+      priority: cell("priority").trim(),
+      ownerId: cell("ownerId").trim(),
+      status: cell("status").trim(),
+      notes: cell("notes").trim(),
+    };
+
+    const validation = requirementSchema.safeParse(payload);
+    if (!validation.success) {
+      rowErrors.push({
+        row: rowNumber,
+        message: validation.error.issues[0]?.message ?? "Fila inválida.",
+      });
+      continue;
+    }
+
+    try {
+      await createRequirementAction(validation.data);
+      createdCount += 1;
+    } catch (error) {
+      rowErrors.push({
+        row: rowNumber,
+        message: error instanceof Error ? error.message : "No se pudo registrar la fila.",
+      });
+    }
+  }
+
+  return {
+    createdCount,
+    failedCount: rowErrors.length,
+    rowErrors,
+    totalRows: rows.length - 1,
+  };
 }

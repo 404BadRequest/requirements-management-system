@@ -2,7 +2,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
-import { TimeEntriesBulkUploadSection } from "@/components/time-entries/time-entries-bulk-upload-section";
 import {
   getCatalogByKind,
   getClients,
@@ -25,7 +24,6 @@ export default async function TimeEntriesPage({
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
-  const canBulkUpload = user.role === "Admin" || user.role === "Project Manager";
   const canEditAnyEntry = user.role === "Admin" || user.role === "Project Manager";
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
@@ -155,7 +153,6 @@ export default async function TimeEntriesPage({
           </div>
         }
       />
-      {canBulkUpload ? <TimeEntriesBulkUploadSection /> : null}
       <form
         className="surface-card mb-4 flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)]"
         action="/time-entries"
