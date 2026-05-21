@@ -5,6 +5,7 @@ import { getCatalogByKind, getClients, getRequirements, getUsers } from "@/data/
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
+import { roleHasPermission } from "@/lib/auth/permissions";
 
 export default async function RequirementsKanbanPage({
   searchParams,
@@ -12,6 +13,7 @@ export default async function RequirementsKanbanPage({
   searchParams: Promise<{ clientId?: string }>;
 }) {
   const user = await requirePermission("requirements.read");
+  const canManageStatus = roleHasPermission(user.role, "requirements.write");
   const { clientId = "" } = await searchParams;
   const clientIdTrim = clientId.trim();
 
@@ -72,7 +74,12 @@ export default async function RequirementsKanbanPage({
           Aplicar filtro
         </button>
       </form>
-      <RequirementKanbanBoard requirements={filteredRequirements} statusColumns={statusColumns} />
+      <RequirementKanbanBoard
+        requirements={filteredRequirements}
+        statusColumns={statusColumns}
+        canManageStatus={canManageStatus}
+        ownerOptions={users.filter((entry) => entry.active).map((entry) => ({ id: entry.id, name: entry.name }))}
+      />
     </AppShell>
   );
 }
