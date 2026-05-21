@@ -32,6 +32,7 @@ function formatDisplayDate(date: Date) {
 // Tipos para la grilla
 type GridRow = {
   id: string; // ID temporal para la UI
+  clientId: string;
   projectId: string;
   requirementId: string | null;
   contractId: string | null;
@@ -100,8 +101,13 @@ export function WeeklyTimesheetClient({
       const key = `${entry.projectId}-${entry.requirementId}-${entry.category}`;
       
       if (!existingRows.has(key)) {
+        const req = requirements.find(r => r.id === entry.requirementId);
+        const contract = contracts.find(c => c.id === entry.contractId);
+        const clientId = req?.clientId || contract?.clientId || "";
+
         existingRows.set(key, {
           id: `row-${crypto.randomUUID()}`,
+          clientId,
           projectId: entry.projectId,
           requirementId: entry.requirementId,
           contractId: entry.contractId,
@@ -123,6 +129,7 @@ export function WeeklyTimesheetClient({
     if (existingRows.size === 0) {
       return [{
         id: `row-${crypto.randomUUID()}`,
+        clientId: "",
         projectId: "proj-main",
         requirementId: null,
         contractId: null,
@@ -146,6 +153,7 @@ export function WeeklyTimesheetClient({
   const addRow = () => {
     setRows(prev => [...prev, {
       id: `row-${crypto.randomUUID()}`,
+      clientId: "",
       projectId: "proj-main",
       requirementId: null,
       contractId: null,
@@ -309,6 +317,8 @@ export function WeeklyTimesheetClient({
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
+              <th className="min-w-[150px] p-3 font-semibold">Cliente</th>
+              <th className="min-w-[150px] p-3 font-semibold">Contrato</th>
               <th className="min-w-[200px] p-3 font-semibold">Requerimiento</th>
               <th className="min-w-[150px] p-3 font-semibold">Categoría</th>
               <th className="min-w-[200px] p-3 font-semibold">Descripción</th>
@@ -333,11 +343,55 @@ export function WeeklyTimesheetClient({
                   <td className="p-2">
                     <select
                       className="field-control w-full text-xs"
+                      value={row.clientId}
+                      onChange={(e) => {
+                        const newClientId = e.target.value;
+                        setRows(prev => {
+                          const newRows = [...prev];
+                          newRows[rowIndex] = {
+                            ...newRows[rowIndex],
+                            clientId: newClientId,
+                            contractId: null,
+                            requirementId: null
+                          };
+                          return newRows;
+                        });
+                      }}
+                    >
+                      <option value="">Seleccionar cliente...</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <select
+                      className="field-control w-full text-xs"
+                      value={row.contractId || ""}
+                      onChange={(e) => updateRow(rowIndex, "contractId", e.target.value || null)}
+                      disabled={!row.clientId}
+                    >
+                      <option value="">Sin contrato</option>
+                      {contracts
+                        .filter(c => c.clientId === row.clientId)
+                        .map(c => (
+                        <option key={c.id} value={c.id} title={c.label}>
+                          {c.label.length > 20 ? c.label.substring(0, 20) + "..." : c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <select
+                      className="field-control w-full text-xs"
                       value={row.requirementId || ""}
                       onChange={(e) => updateRow(rowIndex, "requirementId", e.target.value || null)}
+                      disabled={!row.clientId}
                     >
                       <option value="">Sin requerimiento</option>
-                      {requirements.map(req => (
+                      {requirements
+                        .filter(req => req.clientId === row.clientId)
+                        .map(req => (
                         <option key={req.id} value={req.id} title={req.title}>
                           {req.title.length > 30 ? req.title.substring(0, 30) + "..." : req.title}
                         </option>
@@ -397,7 +451,7 @@ export function WeeklyTimesheetClient({
           </tbody>
           <tfoot className="bg-muted/30 font-medium">
             <tr>
-              <td colSpan={3} className="p-3 text-right text-xs uppercase text-muted-foreground">
+              <td colSpan={5} className="p-3 text-right text-xs uppercase text-muted-foreground">
                 Total Semanal
               </td>
               {dailyTotals.map((total, i) => (
