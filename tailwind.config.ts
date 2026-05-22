@@ -21,6 +21,8 @@ const config: Config = {
         accent: "hsl(var(--accent))",
         "accent-foreground": "hsl(var(--accent-foreground))",
         danger: "hsl(var(--danger))",
+        warning: "hsl(var(--warning))",
+        success: "hsl(var(--success))",
         ring: "hsl(var(--ring))",
         chart: {
           1: "hsl(var(--chart-1))",

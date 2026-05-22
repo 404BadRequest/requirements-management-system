@@ -5,7 +5,7 @@ import { getAuthProviderKind } from "@/lib/postgres/env";
 import { isAuthMiddlewareEnabled, isSupabaseConfigured } from "@/lib/supabase/env";
 import { REQUIREMENT_DETAIL_PREFIX } from "@/lib/routes/requirements";
 
-const PUBLIC_PREFIXES = ["/login", "/auth/callback", "/_next", "/favicon.ico", "/api/health"];
+const PUBLIC_PREFIXES = ["/login", "/auth/callback", "/_next", "/favicon.ico", "/api/health", "/public"];
 
 /** URLs antiguas `/requirements/{id}` → canónico `/requirements/id/{id}` (excluye kanban y prefijo nuevo). */
 function redirectLegacyRequirementDetail(request: NextRequest): NextResponse | null {
@@ -26,6 +26,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/health")) return true;
   if (pathname.startsWith("/api/session")) return true;
   if (pathname.startsWith("/api/auth")) return true;
+  if (pathname.startsWith("/public")) return true;
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

@@ -79,10 +79,13 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, 
         </div>
 
         <div className="hidden items-center rounded-[2px] border border-border bg-muted px-2.5 py-1 text-[11px] text-muted-foreground xl:inline-flex">
-          Updated {lastUpdated}
+          Actualizado a las {lastUpdated}
         </div>
         <div className="hidden md:block">
           <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadCount} placement="header" />
+        </div>
+        <div className="md:hidden">
+          <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadCount} placement="floating" />
         </div>
         <QuickActionsMenu />
         <UserMenu user={sessionUser} />

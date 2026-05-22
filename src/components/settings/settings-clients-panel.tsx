@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { createClientAction, deleteClientAction, updateClientAction } from "@/app/settings/actions";
+import { createClientAction, deleteClientAction, updateClientAction, getPortalTokenAction } from "@/app/settings/actions";
 import { DataTable } from "@/components/common/data-table";
 import type { Client } from "@/types/domain";
 import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-confirm";
@@ -40,31 +40,47 @@ export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => {
-          const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/project/${row.original.id}`;
-          
+          const clientId = row.original.id;
+
+          const getPortalUrl = async () => {
+            const token = await getPortalTokenAction(clientId);
+            return `${window.location.origin}/public/project/${token}`;
+          };
+
           return (
             <div className="flex flex-wrap gap-2">
-              <button 
-                type="button" 
-                className="btn-quiet px-2 py-1 text-xs flex items-center gap-1" 
-                onClick={() => {
-                  navigator.clipboard.writeText(publicUrl);
-                  toast.success("Enlace público copiado al portapapeles");
+              <button
+                type="button"
+                className="btn-quiet px-2 py-1 text-xs flex items-center gap-1"
+                onClick={async () => {
+                  try {
+                    const url = await getPortalUrl();
+                    await navigator.clipboard.writeText(url);
+                    toast.success("Enlace público copiado al portapapeles");
+                  } catch {
+                    toast.error("No se pudo copiar el enlace");
+                  }
                 }}
                 title="Copiar enlace público"
               >
                 <Copy className="h-3 w-3" />
                 Enlace
               </button>
-              <a 
-                href={publicUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className="btn-quiet px-2 py-1 text-xs flex items-center gap-1"
                 title="Abrir portal público"
+                onClick={async () => {
+                  try {
+                    const url = await getPortalUrl();
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  } catch {
+                    toast.error("No se pudo abrir el portal");
+                  }
+                }}
               >
                 <ExternalLink className="h-3 w-3" />
-              </a>
+              </button>
               <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditClient(row.original)}>
                 Editar
               </button>

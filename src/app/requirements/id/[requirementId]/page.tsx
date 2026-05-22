@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import {
@@ -153,6 +154,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
 
   const statusLabel = requirementStatusLabel(requirementStatuses, requirement.status);
   const priorityLabel = catalogLabel(requirementPriorities, requirement.priority);
+  const contractLabel = requirement.contractId
+    ? contracts.find((c) => c.id === requirement.contractId)?.name ?? requirement.contractId
+    : null;
 
   const canPostObservations = roleHasPermission(sessionUser.role, "requirements.write");
   const canReassignOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
@@ -218,6 +222,42 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           />
         }
       />
+      {/* Tarjeta de metadata expandida */}
+      <section className="surface-card-static grid gap-x-8 gap-y-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Creado</p>
+          <p className="mt-1 text-sm text-foreground">
+            {new Date(requirement.createdAt).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+          </p>
+        </div>
+        {requirement.completedAt ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Completado</p>
+            <p className="mt-1 text-sm text-foreground">
+              {new Date(requirement.completedAt).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+            </p>
+          </div>
+        ) : null}
+        {requirement.origin ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Origen</p>
+            <p className="mt-1 text-sm text-foreground">{requirement.origin}</p>
+          </div>
+        ) : null}
+        {contractLabel ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Contrato</p>
+            <p className="mt-1 text-sm text-foreground">{contractLabel}</p>
+          </div>
+        ) : null}
+        {requirement.notes ? (
+          <div className="sm:col-span-2 lg:col-span-4">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Notas</p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/90">{requirement.notes}</p>
+          </div>
+        ) : null}
+      </section>
+
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Cliente</h3>
@@ -253,6 +293,15 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       <RequirementActivityTimeline events={activityEvents} />
 
       <section id="hours-section">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-foreground">Horas registradas</h2>
+          <Link
+            href={`/time-entries?nueva=1&requirementId=${requirementId}`}
+            className="inline-flex items-center gap-1.5 rounded-[2px] border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 no-underline"
+          >
+            + Registrar horas
+          </Link>
+        </div>
         <RequirementHoursPanel
           rows={hourRows}
           byProfile={byProfile.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}

@@ -12,7 +12,10 @@ const fontApp = Oxanium({
 });
 
 export const metadata: Metadata = {
-  title: "Requirement System TI",
+  title: {
+    default: "Requirement System TI",
+    template: "%s · RST",
+  },
   description: "Gestión interna de requerimientos, horas y presupuesto",
 };
 
@@ -20,6 +23,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es" data-density="compact" className={fontApp.variable} suppressHydrationWarning>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[200] focus:rounded-[2px] focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-soft focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          Ir al contenido principal
+        </a>
         <ThemeProvider>
           <DensityHtmlSync />
           {children}

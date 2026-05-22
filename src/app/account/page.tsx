@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
+import { DensityToggle } from "@/components/common/density-toggle";
 import { getAppSession } from "@/lib/auth/session";
 import { getAuthCredentialStatusByUserIds } from "@/lib/auth/authjs-identities";
 import { getUsers } from "@/data/repositories/server-db";
@@ -50,6 +51,15 @@ export default async function AccountPage() {
             <dd className="mt-1 break-all font-mono text-xs text-foreground">{user.id}</dd>
           </div>
         </dl>
+
+        <section className="surface-card p-[length:var(--density-inset-pad)]">
+          <h2 className="text-base font-semibold text-foreground">Preferencias de visualización</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Ajusta la densidad de la interfaz según tu preferencia.</p>
+          <div className="mt-4 flex items-center gap-3">
+            <label className="text-sm font-medium text-foreground">Densidad</label>
+            <DensityToggle />
+          </div>
+        </section>
 
         {canChangePassword ? (
           <section className="surface-card p-[length:var(--density-inset-pad)]">

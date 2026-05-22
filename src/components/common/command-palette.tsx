@@ -210,41 +210,46 @@ export const CommandPalette = ({ items }: CommandPaletteProps) => {
 
   return (
     <div className="relative w-full">
-      <input
-        ref={inputRef}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          // retraso mínimo para permitir click en opción
-          setTimeout(() => setOpen(false), 120);
-        }}
-        onKeyDown={(event) => {
-          if (!open || flatItems.length === 0) return;
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            setActiveIndex((idx) => (idx + 1) % flatItems.length);
-            return;
-          }
-          if (event.key === "ArrowUp") {
-            event.preventDefault();
-            setActiveIndex((idx) => (idx - 1 + flatItems.length) % flatItems.length);
-            return;
-          }
-          if (event.key === "Enter") {
-            event.preventDefault();
-            const selected = flatItems[activeIndex];
-            if (selected) selectItem(selected);
-          }
-        }}
-        placeholder="Buscar módulos, requerimientos u horas…"
-        className="field-control h-10 w-full rounded-[2px] border-border py-2 pl-3 pr-3 text-sm"
-        aria-label="Búsqueda rápida de módulos"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={listboxId}
-        aria-autocomplete="list"
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            // retraso mínimo para permitir click en opción
+            setTimeout(() => setOpen(false), 120);
+          }}
+          onKeyDown={(event) => {
+            if (!open || flatItems.length === 0) return;
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setActiveIndex((idx) => (idx + 1) % flatItems.length);
+              return;
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActiveIndex((idx) => (idx - 1 + flatItems.length) % flatItems.length);
+              return;
+            }
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const selected = flatItems[activeIndex];
+              if (selected) selectItem(selected);
+            }
+          }}
+          placeholder="Buscar módulos, requerimientos u horas…"
+          className="field-control h-10 w-full rounded-[2px] border-border py-2 pl-3 pr-16 text-sm"
+          aria-label="Búsqueda rápida de módulos"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+        />
+        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:flex">
+          <span className="text-[11px]">⌘</span>K
+        </kbd>
+      </div>
       {open ? (
         <div
           id={listboxId}

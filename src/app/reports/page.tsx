@@ -13,6 +13,7 @@ import {
   getUsers,
 } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
+import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { buildSpendReport, summarizeSpendReport } from "@/lib/reports/spend-report";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
@@ -70,6 +71,12 @@ export default async function ReportsPage({
     return qs ? `/time-entries?${qs}` : "/time-entries";
   })();
   const hasActiveFilters = selectedClientId !== "";
+  const canExport = roleHasPermission(sessionUser.role, "reports.read");
+  const exportHref = (() => {
+    const q = new URLSearchParams({ from, to });
+    if (selectedClientId) q.set("clientId", selectedClientId);
+    return `/api/export/reports?${q.toString()}`;
+  })();
   const activeFilterChips = [
     selectedClientId ? `Cliente: ${clientNameById.get(selectedClientId) ?? selectedClientId}` : "",
     `Periodo: ${from} → ${to}`,
@@ -102,6 +109,11 @@ export default async function ReportsPage({
             <Link href={timeEntriesHref} className="btn-secondary py-2 text-sm no-underline">
               Ver horas filtradas
             </Link>
+            {canExport ? (
+              <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
+                Exportar CSV
+              </a>
+            ) : null}
             {hasActiveFilters ? (
               <Link href="/reports" className="btn-secondary py-2 text-sm no-underline">
                 Limpiar filtros

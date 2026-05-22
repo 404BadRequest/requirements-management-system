@@ -60,7 +60,7 @@ export function QuickActionsMenu() {
           >
             <Link
               ref={firstItemRef}
-              href="/requirements?new=true"
+              href="/requirements?nueva=1"
               role="menuitem"
               className="mx-1 flex items-center gap-2 rounded-[2px] px-3 py-2 text-sm hover:bg-muted"
               onClick={() => close(false)}
@@ -69,7 +69,7 @@ export function QuickActionsMenu() {
               Crear requerimiento
             </Link>
             <Link
-              href="/time-entries?new=true"
+              href="/time-entries?nueva=1"
               role="menuitem"
               className="mx-1 flex items-center gap-2 rounded-[2px] px-3 py-2 text-sm hover:bg-muted"
               onClick={() => close(false)}
@@ -88,7 +88,7 @@ export function QuickActionsMenu() {
             </Link>
             <div className="my-1 h-px bg-border" role="separator" />
             <Link
-              href="/requirements?view=kanban"
+              href="/requirements/kanban"
               role="menuitem"
               className="mx-1 flex items-center gap-2 rounded-[2px] px-3 py-2 text-sm hover:bg-muted"
               onClick={() => close(false)}

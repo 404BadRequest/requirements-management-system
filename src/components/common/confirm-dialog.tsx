@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const ConfirmDialog = ({
   label,
@@ -21,6 +21,42 @@ export const ConfirmDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    cancelRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+      }
+      if (event.key === "Tab") {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable || focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <>
@@ -33,11 +69,22 @@ export const ConfirmDialog = ({
         {label}
       </button>
       {open ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4">
-          <div className="w-full max-w-sm rounded-[2px] border border-border bg-card p-4 shadow-soft">
-            <p className="font-medium">{title}</p>
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-dialog-title"
+        >
+          <div ref={dialogRef} className="w-full max-w-sm rounded-[2px] border border-border bg-card p-4 shadow-soft">
+            <p id="confirm-dialog-title" className="font-medium">{title}</p>
             <div className="mt-4 flex justify-end gap-2">
-              <button className="btn-secondary px-3 py-1 text-sm" onClick={() => setOpen(false)} type="button" disabled={confirming}>
+              <button
+                ref={cancelRef}
+                className="btn-secondary px-3 py-1 text-sm"
+                onClick={() => setOpen(false)}
+                type="button"
+                disabled={confirming}
+              >
                 Cancelar
               </button>
               <button

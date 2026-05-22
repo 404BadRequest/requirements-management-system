@@ -20,7 +20,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function TimeEntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string; duplicateId?: string }>;
+  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string; duplicateId?: string; from?: string; to?: string }>;
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
@@ -28,7 +28,9 @@ export default async function TimeEntriesPage({
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
-  const { clientId = "", contractId = "", contractStatus = "", nueva, duplicateId = "" } = await searchParams;
+  const { clientId = "", contractId = "", contractStatus = "", nueva, duplicateId = "", from = "", to = "" } = await searchParams;
+  const selectedFrom = from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : "";
+  const selectedTo = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
   const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
@@ -117,6 +119,8 @@ export default async function TimeEntriesPage({
       const isProfileQuoted = validContractProfileKeys.has(`${entry.contractId}::${entry.contractProfileId}`);
       if (isProfileQuoted) return false;
     }
+    if (selectedFrom && entry.date < selectedFrom) return false;
+    if (selectedTo && entry.date > selectedTo) return false;
     return true;
   });
 
@@ -125,6 +129,8 @@ export default async function TimeEntriesPage({
     if (selectedClientId) q.set("clientId", selectedClientId);
     if (selectedContractId) q.set("contractId", selectedContractId);
     if (selectedContractStatus) q.set("contractStatus", selectedContractStatus);
+    if (selectedFrom) q.set("from", selectedFrom);
+    if (selectedTo) q.set("to", selectedTo);
     const s = q.toString();
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
   })();
@@ -197,6 +203,30 @@ export default async function TimeEntriesPage({
             <option value="">Todos</option>
             <option value="unassigned">Sin asignación contractual</option>
           </select>
+        </div>
+        <div className="flex min-w-[10rem] flex-col gap-2">
+          <label htmlFor="from-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Desde
+          </label>
+          <input
+            id="from-filter"
+            type="date"
+            name="from"
+            defaultValue={selectedFrom}
+            className="field-control"
+          />
+        </div>
+        <div className="flex min-w-[10rem] flex-col gap-2">
+          <label htmlFor="to-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Hasta
+          </label>
+          <input
+            id="to-filter"
+            type="date"
+            name="to"
+            defaultValue={selectedTo}
+            className="field-control"
+          />
         </div>
         <button type="submit" className="btn-primary">
           Aplicar filtro

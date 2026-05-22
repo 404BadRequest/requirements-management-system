@@ -17,6 +17,8 @@
   --accent: 207 53% 51%;
   --accent-foreground: 0 0% 100%;
   --danger: 357 79% 43%;
+  --warning: 38 92% 48%;
+  --success: 145 55% 40%;
   --ring: 214 38% 40%;
 
   --chart-1: 214 38% 40%;
@@ -117,6 +119,15 @@ body {
   .surface-card:hover {
     @apply border-border shadow-hover;
     transform: translateY(-2px);
+  }
+
+  /** Tarjetas informativas que no son clickeables — sin lift al hover */
+  .surface-card-static {
+    @apply rounded-[var(--radius-card)] border border-border bg-card text-card-foreground shadow-soft;
+    background-image: none;
+    transition:
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-normal) ease;
   }
 
   /** Controles coherentes para formularios y filtros del shell */

@@ -429,3 +429,9 @@ export async function updateFinancialReferenceRatesAction(formData: FormData) {
   await updateFinancialReferenceRates({ ufToClp: uf, usdToClp: usd });
   refreshDataViews();
 }
+
+export async function getPortalTokenAction(clientId: string): Promise<string> {
+  await requireSettingsWrite();
+  const { signPortalToken } = await import("@/lib/portal/token");
+  return signPortalToken(clientId);
+}

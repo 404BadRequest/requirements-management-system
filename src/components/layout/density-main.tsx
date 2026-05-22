@@ -11,6 +11,7 @@ export function DensityMain({ children }: { children: ReactNode }) {
 
   return (
     <main
+      id="main-content"
       key={pathname}
       className={cn(
         "route-content-enter mx-auto flex w-full max-w-[1760px] flex-1 flex-col",
