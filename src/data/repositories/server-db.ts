@@ -309,13 +309,24 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
 
   const filteredBudgets = budgets.filter((item) => !filters?.projectId || item.projectId === filters.projectId);
 
-  return calculateDashboardMetrics(filteredRequirements, filteredEntries, filteredBudgets, {
+  // Calcular horas ingresadas hoy por el usuario (si aplica)
+  let loggedHoursToday = 0;
+  if (filters?.ownerId) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    loggedHoursToday = entries
+      .filter(e => e.userId === filters.ownerId && e.date === todayStr)
+      .reduce((sum, e) => sum + (e.durationMinutes / 60), 0);
+  }
+
+  const metrics = calculateDashboardMetrics(filteredRequirements, filteredEntries, filteredBudgets, {
     users,
     profiles,
     clients,
     contracts,
     referenceRates: await getFinancialReferenceRates(),
   });
+
+  return { ...metrics, loggedHoursToday };
 };
 
 export const getFinancialReferenceRates = async () => {

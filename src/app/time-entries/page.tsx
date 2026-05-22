@@ -202,37 +202,54 @@ export default async function TimeEntriesPage({
           Aplicar filtro
         </button>
       </form>
-      <TimeEntriesTable
-        users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-        clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
-        requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-        contracts={contracts
-          .filter((contract) => contract.active)
-          .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
-        contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
-        categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
-        canPickAnyOwner={canPickAnyOwner}
-        rows={filteredEntries.map((entry) => ({
-          id: entry.id,
-          entry,
-          date: entry.date,
-          userName: userMap.get(entry.userId) ?? entry.userId,
-          canEdit:
-            canEditAnyEntry ||
-            (entry.userId === currentDirectoryUserId &&
-              (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
-          canDelete:
-            canEditAnyEntry ||
-            (entry.userId === currentDirectoryUserId &&
-              (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
-          category: categoryLabelByCode.get(entry.category) ?? entry.category,
-          durationMinutes: entry.durationMinutes,
-          durationLabel: entry.endTime ? `${(entry.durationMinutes / 60).toFixed(2)} h` : "En curso",
-          clientLabel: clientCell(entry.requirementId),
-          contractStatus: resolveContractStatus(entry),
-          openEndWarning: !entry.endTime,
-        }))}
-      />
+      {filteredEntries.length === 0 && !selectedClientId && !selectedContractId && !selectedContractStatus ? (
+        <div className="surface-card p-4 sm:p-5">
+          <div
+            className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
+            role="status"
+          >
+            <p className="font-medium text-foreground">No hay horas registradas</p>
+            <p className="mt-1">Aún no se han registrado horas en el sistema. Comienza registrando tu trabajo.</p>
+            {canCreate ? (
+              <div className="mt-4 flex justify-center">
+                <TimeEntriesNewModal autoOpen={openNewModal} defaultValues={duplicateDefaultValues} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <TimeEntriesTable
+          users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+          clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
+          requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
+          contracts={contracts
+            .filter((contract) => contract.active)
+            .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
+          contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
+          categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
+          canPickAnyOwner={canPickAnyOwner}
+          rows={filteredEntries.map((entry) => ({
+            id: entry.id,
+            entry,
+            date: entry.date,
+            userName: userMap.get(entry.userId) ?? entry.userId,
+            canEdit:
+              canEditAnyEntry ||
+              (entry.userId === currentDirectoryUserId &&
+                (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
+            canDelete:
+              canEditAnyEntry ||
+              (entry.userId === currentDirectoryUserId &&
+                (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
+            category: categoryLabelByCode.get(entry.category) ?? entry.category,
+            durationMinutes: entry.durationMinutes,
+            durationLabel: entry.endTime ? `${(entry.durationMinutes / 60).toFixed(2)} h` : "En curso",
+            clientLabel: clientCell(entry.requirementId),
+            contractStatus: resolveContractStatus(entry),
+            openEndWarning: !entry.endTime,
+          }))}
+        />
+      )}
     </AppShell>
   );
 }

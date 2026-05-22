@@ -52,6 +52,26 @@ export const RequirementForm = ({
     [contracts, selectedClientId],
   );
 
+  const applyTemplate = (type: "bug" | "enhancement" | "support") => {
+    switch (type) {
+      case "bug":
+        form.setValue("title", "[BUG] ");
+        form.setValue("description", "**Pasos para reproducir:**\n1. \n2. \n3. \n\n**Comportamiento esperado:**\n\n**Comportamiento actual:**\n");
+        form.setValue("priority", "P1");
+        break;
+      case "enhancement":
+        form.setValue("title", "[MEJORA] ");
+        form.setValue("description", "**Descripción de la mejora:**\n\n**Valor para el cliente/negocio:**\n\n**Criterios de aceptación:**\n- \n- \n");
+        form.setValue("priority", "P2");
+        break;
+      case "support":
+        form.setValue("title", "[SOPORTE] ");
+        form.setValue("description", "**Consulta / Problema:**\n\n**Usuario afectado:**\n\n**Contexto adicional:**\n");
+        form.setValue("priority", "P3");
+        break;
+    }
+  };
+
   useEffect(() => {
     if (!selectedContractId) return;
     const isValidForClient = filteredContracts.some((contract) => contract.id === selectedContractId);
@@ -62,6 +82,14 @@ export const RequirementForm = ({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(async (values) => onSubmit(values))}>
+      {!defaultValues?.title && (
+        <div className="mb-1 flex flex-wrap gap-2">
+          <span className="text-xs font-medium text-muted-foreground self-center mr-1">Plantillas:</span>
+          <button type="button" onClick={() => applyTemplate("bug")} className="btn-secondary px-2 py-1 text-[11px]">Bug</button>
+          <button type="button" onClick={() => applyTemplate("enhancement")} className="btn-secondary px-2 py-1 text-[11px]">Mejora</button>
+          <button type="button" onClick={() => applyTemplate("support")} className="btn-secondary px-2 py-1 text-[11px]">Soporte</button>
+        </div>
+      )}
       <FormField label="Título" error={form.formState.errors.title?.message}>
         <input className="field-control w-full" {...form.register("title")} />
       </FormField>

@@ -309,102 +309,124 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       {loading && contracts.length === 0 ? (
         <div className="skeleton-shimmer h-44 rounded-[2px] border border-border" aria-busy aria-label="Cargando contratos" />
       ) : null}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Contratos en riesgo</p>
-          <p className="text-2xl font-semibold">{globalDecisionMetrics.contractsAtRiskCount}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{globalDecisionMetrics.contractsAtRiskPct.toFixed(1)}% de cartera</p>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Mala asignación global</p>
-          <p className="text-2xl font-semibold">{(globalDecisionMetrics.misallocationMinutes / 60).toFixed(2)} h</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {globalDecisionMetrics.misallocationCount} registros · {globalDecisionMetrics.misallocationPct.toFixed(1)}%
-          </p>
-          <div className="mt-1">
-            <RiskBadge risk={globalDecisionMetrics.misallocationRisk} />
-          </div>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Desviación global vs plan</p>
-          <p className="text-2xl font-semibold">{deviationHoursGlobal.toFixed(2)} h</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {deviationDirectionGlobal} · {globalDecisionMetrics.deviationPctGlobal.toFixed(1)}%
-          </p>
-          <div className="mt-1">
-            <RiskBadge risk={globalDecisionMetrics.deviationRiskGlobal} />
-          </div>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Velocidad semanal</p>
-          <p className="text-2xl font-semibold">{(globalDecisionMetrics.burnRateMinutesPerWeekGlobal / 60).toFixed(2)} h</p>
-          <p className="mt-1 text-xs text-muted-foreground">Promedio últimas 4 semanas</p>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">UF equivalente</p>
-          <p className="text-lg font-semibold">{globalDecisionMetrics.usedUfTotal.toFixed(1)} / {globalDecisionMetrics.quotedUfTotal.toFixed(1)} UF</p>
-          <p className="mt-1 text-xs text-muted-foreground">Disponible: {globalDecisionMetrics.availableUfTotal.toFixed(1)} UF</p>
-        </article>
-      </section>
-      <article className="surface-card p-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top contratos por riesgo</h2>
-          <span className="text-xs text-muted-foreground">{globalDecisionMetrics.topContractsByRisk.length} contrato(s)</span>
-        </div>
-        {globalDecisionMetrics.topContractsByRisk.length > 0 ? (
-          <ul className="space-y-2">
-            {globalDecisionMetrics.topContractsByRisk.map((item) => (
-              <li key={item.contractId} className="flex flex-wrap items-center justify-between gap-2 rounded-[2px] border border-border/70 bg-muted/15 px-3 py-2">
-                <div className="min-w-0">
-                  <Link href={`/budgets/${item.contractId}`} className="font-medium text-primary hover:underline">
-                    {item.code} · {item.name}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{item.clientName}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-muted-foreground">{item.usedHoursLabel} / {item.quotedHoursLabel}</span>
-                  <span className="text-muted-foreground">
-                    {item.daysToDepletion === null ? "Sin proyección" : `${item.daysToDepletion} días`}
-                  </span>
-                  <span className="font-medium">{item.healthScore}/100</span>
-                  <RiskBadge risk={item.healthRisk} />
-                </div>
-                <p className="w-full text-[11px] text-muted-foreground">{item.healthFormulaLabel}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">No hay contratos suficientes para priorizar riesgo.</p>
-        )}
-      </article>
-      <section className="grid gap-4 md:grid-cols-3">
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Horas cotizadas</p>
-          <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(2)}</p>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Horas usadas</p>
-          <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(2)}</p>
-        </article>
-        <article className="surface-card p-4">
-          <p className="text-xs text-muted-foreground">Disponibles</p>
-          <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(2)}</p>
-          <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
-        </article>
-      </section>
-      {unallocatedCount > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-[2px] border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          <span>
-            Hay {unallocatedCount} hora(s) sin asignación contractual ({(unallocatedMinutes / 60).toFixed(2)} h) para corregir.
-          </span>
-          <Link
-            href="/time-entries?contractStatus=unassigned"
-            className="inline-flex items-center rounded-[2px] border border-amber-500/60 px-2 py-1 font-medium text-amber-900 no-underline hover:bg-amber-100"
+      
+      {contracts.length === 0 && !loading ? (
+        <div className="surface-card p-4 sm:p-5">
+          <div
+            className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
+            role="status"
           >
-            Ver listado de horas a corregir
-          </Link>
+            <p className="font-medium text-foreground">No hay contratos registrados</p>
+            <p className="mt-1">Aún no se han configurado contratos ni presupuestos en el sistema.</p>
+            {canWrite ? (
+              <div className="mt-4 flex justify-center">
+                <button type="button" className="btn-primary py-2 text-sm" onClick={openCreateModal}>
+                  Crear primer contrato
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Contratos en riesgo</p>
+              <p className="text-2xl font-semibold">{globalDecisionMetrics.contractsAtRiskCount}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{globalDecisionMetrics.contractsAtRiskPct.toFixed(1)}% de cartera</p>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Mala asignación global</p>
+              <p className="text-2xl font-semibold">{(globalDecisionMetrics.misallocationMinutes / 60).toFixed(2)} h</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {globalDecisionMetrics.misallocationCount} registros · {globalDecisionMetrics.misallocationPct.toFixed(1)}%
+              </p>
+              <div className="mt-1">
+                <RiskBadge risk={globalDecisionMetrics.misallocationRisk} />
+              </div>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Desviación global vs plan</p>
+              <p className="text-2xl font-semibold">{deviationHoursGlobal.toFixed(2)} h</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {deviationDirectionGlobal} · {globalDecisionMetrics.deviationPctGlobal.toFixed(1)}%
+              </p>
+              <div className="mt-1">
+                <RiskBadge risk={globalDecisionMetrics.deviationRiskGlobal} />
+              </div>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Velocidad semanal</p>
+              <p className="text-2xl font-semibold">{(globalDecisionMetrics.burnRateMinutesPerWeekGlobal / 60).toFixed(2)} h</p>
+              <p className="mt-1 text-xs text-muted-foreground">Promedio últimas 4 semanas</p>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">UF equivalente</p>
+              <p className="text-lg font-semibold">{globalDecisionMetrics.usedUfTotal.toFixed(1)} / {globalDecisionMetrics.quotedUfTotal.toFixed(1)} UF</p>
+              <p className="mt-1 text-xs text-muted-foreground">Disponible: {globalDecisionMetrics.availableUfTotal.toFixed(1)} UF</p>
+            </article>
+          </section>
+          <article className="surface-card p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top contratos por riesgo</h2>
+              <span className="text-xs text-muted-foreground">{globalDecisionMetrics.topContractsByRisk.length} contrato(s)</span>
+            </div>
+            {globalDecisionMetrics.topContractsByRisk.length > 0 ? (
+              <ul className="space-y-2">
+                {globalDecisionMetrics.topContractsByRisk.map((item) => (
+                  <li key={item.contractId} className="flex flex-wrap items-center justify-between gap-2 rounded-[2px] border border-border/70 bg-muted/15 px-3 py-2">
+                    <div className="min-w-0">
+                      <Link href={`/budgets/${item.contractId}`} className="font-medium text-primary hover:underline">
+                        {item.code} · {item.name}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{item.clientName}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">{item.usedHoursLabel} / {item.quotedHoursLabel}</span>
+                      <span className="text-muted-foreground">
+                        {item.daysToDepletion === null ? "Sin proyección" : `${item.daysToDepletion} días`}
+                      </span>
+                      <span className="font-medium">{item.healthScore}/100</span>
+                      <RiskBadge risk={item.healthRisk} />
+                    </div>
+                    <p className="w-full text-[11px] text-muted-foreground">{item.healthFormulaLabel}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No hay contratos suficientes para priorizar riesgo.</p>
+            )}
+          </article>
+          <section className="grid gap-4 md:grid-cols-3">
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Horas cotizadas</p>
+              <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(2)}</p>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Horas usadas</p>
+              <p className="text-2xl font-semibold">{(usedMinutes / 60).toFixed(2)}</p>
+            </article>
+            <article className="surface-card p-4">
+              <p className="text-xs text-muted-foreground">Disponibles</p>
+              <p className="text-2xl font-semibold">{(availableMinutes / 60).toFixed(2)}</p>
+              <RiskBadge risk={budgetRiskLevel(quotedMinutes, usedMinutes)} />
+            </article>
+          </section>
+          {unallocatedCount > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-[2px] border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <span>
+                Hay {unallocatedCount} hora(s) sin asignación contractual ({(unallocatedMinutes / 60).toFixed(2)} h) para corregir.
+              </span>
+              <Link
+                href="/time-entries?contractStatus=unassigned"
+                className="inline-flex items-center rounded-[2px] border border-amber-500/60 px-2 py-1 font-medium text-amber-900 no-underline hover:bg-amber-100"
+              >
+                Ver listado de horas a corregir
+              </Link>
+            </div>
+          ) : null}
+        </>
+      )}
 
       {canWrite ? (
         <SettingsModal
@@ -490,25 +512,44 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
 
       <div className="mt-6 space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contratos</h2>
-        <DataTable
-          data={budgetRows}
-          columns={budgetColumns}
-          globalFilterPlaceholder="Buscar por contrato, ámbito o cliente…"
-          pageSize={20}
-          emptyTitle="Sin contratos"
-          emptyDescription="Añade contratos con «Nuevo contrato»."
-          emptyAction={
-            canWrite ? (
-              <button type="button" className="btn-primary py-2 text-sm" onClick={() => openCreateModal()}>
-                Crear contrato
-              </button>
-            ) : (
-              <a href="/settings/budget-scopes" className="btn-secondary py-2 text-sm no-underline">
-                Ver ámbitos de presupuesto
-              </a>
-            )
-          }
-        />
+        {contracts.length === 0 && !loading ? (
+          <div className="surface-card p-4 sm:p-5">
+            <div
+              className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
+              role="status"
+            >
+              <p className="font-medium text-foreground">No hay contratos registrados</p>
+              <p className="mt-1">Aún no se han configurado contratos ni presupuestos en el sistema.</p>
+              {canWrite ? (
+                <div className="mt-4 flex justify-center">
+                  <button type="button" className="btn-primary py-2 text-sm" onClick={openCreateModal}>
+                    Crear primer contrato
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <DataTable
+            data={budgetRows}
+            columns={budgetColumns}
+            globalFilterPlaceholder="Buscar por contrato, ámbito o cliente…"
+            pageSize={20}
+            emptyTitle="Sin contratos"
+            emptyDescription="Añade contratos con «Nuevo contrato»."
+            emptyAction={
+              canWrite ? (
+                <button type="button" className="btn-primary py-2 text-sm" onClick={() => openCreateModal()}>
+                  Crear contrato
+                </button>
+              ) : (
+                <a href="/settings/budget-scopes" className="btn-secondary py-2 text-sm no-underline">
+                  Ver ámbitos de presupuesto
+                </a>
+              )
+            }
+          />
+        )}
       </div>
     </>
   );

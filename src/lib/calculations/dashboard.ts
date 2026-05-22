@@ -113,6 +113,61 @@ export const calculateDashboardMetrics = (
     Object.assign(hoursByPerson, hoursByPersonMinutes);
   }
 
+  // Calcular métricas de salud por proyecto/cliente
+  const projectHealthData = [];
+  if (context?.clients?.length) {
+    for (const client of context.clients) {
+      if (!client.active) continue;
+      
+      const clientReqs = requirements.filter(r => r.clientId === client.id);
+      const clientEntries = entries.filter(e => {
+        if (e.clientId === client.id) return true;
+        if (e.requirementId) {
+          const req = requirementById.get(e.requirementId);
+          return req?.clientId === client.id;
+        }
+        if (e.contractId && contractById) {
+          const contract = contractById.get(e.contractId);
+          return contract?.clientId === client.id;
+        }
+        return false;
+      });
+      
+      const clientBudgets = budgets.filter(b => {
+        const contract = contractById?.get(b.projectId); // En este contexto projectId de budget es contractId
+        return contract?.clientId === client.id;
+      });
+
+      const clientUsedMinutes = calculateBudgetUsedMinutes(clientEntries);
+      const clientQuotedMinutes = calculateBudgetQuotedMinutes(clientBudgets);
+      const clientConsumptionPercentage = calculateConsumptionPercentage(clientQuotedMinutes, clientUsedMinutes);
+      
+      const clientHoursWithoutReq = clientEntries
+        .filter(e => !e.requirementId)
+        .reduce((acc, e) => acc + e.durationMinutes, 0) / 60;
+        
+      const blockedReqs = clientReqs.filter(r => r.status === "BLOCKED").length;
+      
+      let oldestDays = 0;
+      const openClientReqs = clientReqs.filter(r => r.status !== "DONE_PROD");
+      if (openClientReqs.length > 0) {
+        const oldestDate = new Date(Math.min(...openClientReqs.map(r => new Date(r.createdAt).getTime())));
+        oldestDays = Math.floor((new Date().getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      if (clientReqs.length > 0 || clientEntries.length > 0 || clientBudgets.length > 0) {
+        projectHealthData.push({
+          clientId: client.id,
+          clientName: client.name,
+          consumptionPercentage: clientConsumptionPercentage,
+          hoursWithoutRequirement: clientHoursWithoutReq,
+          oldestRequirementDays: oldestDays,
+          blockedRequirements: blockedReqs,
+        });
+      }
+    }
+  }
+
   return {
     totalRequirements,
     openRequirements,
@@ -128,6 +183,7 @@ export const calculateDashboardMetrics = (
     hoursByCategory: groupHoursByCategory(entries),
     hoursByClient,
     billingEstimateByClient,
+    projectHealthData,
     roleViews: {
       adminView: {
         kpis: {

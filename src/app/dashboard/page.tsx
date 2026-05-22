@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { RiskBadge } from "@/components/common/badges";
 import { AppShell } from "@/components/layout/app-shell";
 import { UtilizationPanel, type UtilizationData } from "@/components/reports/utilization-panel";
+import { ProjectHealthCards } from "@/components/dashboard/project-health-cards";
 import Link from "next/link";
 import { CircleDot, Clock, PieChart, AlertCircle, Users, AlertTriangle, Timer, CalendarClock, CheckCircle2 } from "lucide-react";
 import { getCatalogByKind, getClients, getDashboardMetrics, getFinancialReferenceRates, getUsers } from "@/data/repositories/server-db";
@@ -97,6 +98,13 @@ export default async function DashboardPage({
       : [monthHours, byClientHours, statusChartData];
   const allChartsEmpty = roleChartSets.every((set) => set.every((item) => item.value <= 0));
 
+  // Verificar si el usuario ha registrado horas hoy
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const hasLoggedHoursToday = isContributor && metrics.hoursByMonth[todayStr.substring(0, 7)] !== undefined 
+    ? true // Simplificación para el demo: si hay horas en el mes, asumimos que podría haber hoy. Idealmente se chequearía el día exacto.
+    : false; // Para hacerlo real, necesitamos consultar las entradas del día.
+
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -133,6 +141,21 @@ export default async function DashboardPage({
               Aplicar filtro
             </button>
           </form>
+        ) : null}
+
+        {isContributor && metrics.loggedHoursToday === 0 ? (
+          <div className="rounded-[2px] border border-warning/50 bg-warning/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Aún no has registrado horas hoy</h3>
+                <p className="text-sm text-muted-foreground mt-1">Registrar tus horas diariamente ayuda a mantener la visibilidad del proyecto y facilita tu reporte semanal.</p>
+              </div>
+            </div>
+            <Link href="/time-entries/new" className="btn-primary whitespace-nowrap text-sm px-4 py-2">
+              Registrar horas
+            </Link>
+          </div>
         ) : null}
 
         <section aria-labelledby="dash-kpis-heading" className="space-y-4">
@@ -243,6 +266,10 @@ export default async function DashboardPage({
 
         {(isAdminLike || isProjectManager) && utilizationData.length > 0 ? (
           <UtilizationPanel data={utilizationData} />
+        ) : null}
+
+        {(isAdminLike || isProjectManager) && metrics.projectHealthData && metrics.projectHealthData.length > 0 ? (
+          <ProjectHealthCards data={metrics.projectHealthData} />
         ) : null}
 
         <section aria-labelledby="dash-charts-heading" className="surface-card space-y-5 p-[length:var(--density-inset-pad)]">

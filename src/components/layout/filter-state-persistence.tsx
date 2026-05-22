@@ -15,6 +15,11 @@ const RULES: PersistRule[] = [
   { path: "/requirements", params: ["clientId"] },
   { path: "/requirements/kanban", params: ["clientId"] },
   { path: "/reports", params: ["clientId"] },
+  { path: "/time-entries", params: ["clientId", "projectId", "userId", "category"] },
+  { path: "/time-entries/weekly", params: ["userId"] },
+  { path: "/budgets", params: ["clientId"] },
+  { path: "/team", params: ["role"] },
+  { path: "/notifications", params: ["status"] },
 ];
 
 function storageKey(path: string, param: string): string {

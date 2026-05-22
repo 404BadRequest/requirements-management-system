@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/common/command-palette";
 import { ChatDockAssistant } from "@/components/chat/chat-dock-assistant";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserMenu } from "@/components/layout/user-menu";
+import { QuickActionsMenu } from "@/components/layout/quick-actions-menu";
 import type { AppSessionUser } from "@/lib/auth/session";
 import type { CommandNavItem } from "@/lib/navigation/filter-nav";
 import { isNavActive, type MainNavClientLink } from "@/components/layout/nav-links";
@@ -83,6 +84,7 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, 
         <div className="hidden md:block">
           <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadCount} placement="header" />
         </div>
+        <QuickActionsMenu />
         <UserMenu user={sessionUser} />
       </div>
 
