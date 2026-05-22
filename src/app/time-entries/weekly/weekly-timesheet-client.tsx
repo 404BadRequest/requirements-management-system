@@ -147,6 +147,9 @@ export function WeeklyTimesheetClient({
     return getMonday(new Date());
   });
 
+  // ── Weekend visibility (default: Mon–Fri only) ───────────────────────────
+  const [showWeekend, setShowWeekend] = useState(false);
+
   // ── Modal state ──────────────────────────────────────────────────────────
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [newEntryDate, setNewEntryDate] = useState<string | null>(null);
@@ -170,11 +173,19 @@ export function WeeklyTimesheetClient({
   }, []);
 
   // ── Derived data ─────────────────────────────────────────────────────────
+  // All 7 days — needed to compute weekend totals even when hidden
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
   const weekDatesStr = useMemo(() => weekDays.map(toDateStr), [weekDays]);
+
+  // Days actually rendered in the grid (Mon–Fri or Mon–Sun)
+  const visibleDays = useMemo(
+    () => (showWeekend ? weekDays : weekDays.slice(0, 5)),
+    [weekDays, showWeekend],
+  );
+  const visibleDatesStr = useMemo(() => visibleDays.map(toDateStr), [visibleDays]);
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
   const requirementById = useMemo(
@@ -200,15 +211,33 @@ export function WeeklyTimesheetClient({
     return map;
   }, [entries, weekDatesStr]);
 
+  // Totals only for visible days (used in headers)
   const dailyTotals = useMemo(
     () =>
-      weekDatesStr.map((d) =>
+      visibleDatesStr.map((d) =>
         (entriesByDay.get(d) ?? []).reduce((s, e) => s + e.durationMinutes, 0),
+      ),
+    [entriesByDay, visibleDatesStr],
+  );
+
+  // Full weekly total (all 7 days, regardless of visibility)
+  const weeklyTotal = useMemo(
+    () =>
+      weekDatesStr.reduce(
+        (sum, d) => sum + (entriesByDay.get(d) ?? []).reduce((s, e) => s + e.durationMinutes, 0),
+        0,
       ),
     [entriesByDay, weekDatesStr],
   );
 
-  const weeklyTotal = dailyTotals.reduce((a, b) => a + b, 0);
+  // Weekend-entry total — shown as a badge when weekend is hidden
+  const weekendTotal = useMemo(() => {
+    if (showWeekend) return 0;
+    return weekDatesStr.slice(5).reduce(
+      (sum, d) => sum + (entriesByDay.get(d) ?? []).reduce((s, e) => s + e.durationMinutes, 0),
+      0,
+    );
+  }, [entriesByDay, weekDatesStr, showWeekend]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const navigate = useCallback(
@@ -316,6 +345,25 @@ export function WeeklyTimesheetClient({
             </div>
           )}
 
+          {/* Weekend toggle */}
+          <button
+            type="button"
+            onClick={() => setShowWeekend((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-[2px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              showWeekend
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:border-border hover:text-foreground"
+            }`}
+            title={showWeekend ? "Ocultar fin de semana" : "Mostrar fin de semana"}
+          >
+            {showWeekend ? "Ocultar fds" : "Ver fin de semana"}
+            {!showWeekend && weekendTotal > 0 && (
+              <span className="ml-0.5 rounded-[2px] bg-amber-500/20 px-1 py-px text-[10px] font-semibold text-amber-700">
+                {formatMinutes(weekendTotal)}
+              </span>
+            )}
+          </button>
+
           <div className="flex items-center gap-1.5 rounded-[2px] border border-primary/30 bg-primary/5 px-3 py-1.5">
             <CalendarDays className="h-3.5 w-3.5 text-primary/70" aria-hidden />
             <span className="text-xs font-semibold text-primary">
@@ -330,13 +378,13 @@ export function WeeklyTimesheetClient({
         {/* Day headers row */}
         <div
           className="grid border-b border-border"
-          style={{ gridTemplateColumns: "3.5rem repeat(7, minmax(7rem, 1fr))" }}
+          style={{ gridTemplateColumns: `3.5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}
         >
           {/* Gutter header */}
           <div className="border-r border-border/50 bg-muted/20 py-3" />
 
-          {weekDays.map((day, i) => {
-            const dateStr = weekDatesStr[i];
+          {visibleDays.map((day, i) => {
+            const dateStr = visibleDatesStr[i];
             const isToday = dateStr === todayStr;
             const dayTotal = dailyTotals[i];
             return (
@@ -385,7 +433,7 @@ export function WeeklyTimesheetClient({
           <div
             className="grid"
             style={{
-              gridTemplateColumns: "3.5rem repeat(7, minmax(7rem, 1fr))",
+              gridTemplateColumns: `3.5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))`,
               height: `${TIMELINE_PX}px`,
             }}
           >
@@ -402,9 +450,9 @@ export function WeeklyTimesheetClient({
               ))}
             </div>
 
-            {/* 7 day columns */}
-            {weekDays.map((day, colIdx) => {
-              const dateStr = weekDatesStr[colIdx];
+            {/* Day columns (5 or 7 depending on showWeekend) */}
+            {visibleDays.map((day, colIdx) => {
+              const dateStr = visibleDatesStr[colIdx];
               const isToday = dateStr === todayStr;
               const dayEntries = entriesByDay.get(dateStr) ?? [];
               const layout = layoutDay(dayEntries);
