@@ -175,6 +175,7 @@ function mapFinancialSettings(r: Row): FinancialReferenceRates {
     id: String(r.id),
     ufToClp: Number(r.uf_to_clp),
     usdToClp: Number(r.usd_to_clp),
+    weeklyCapacityHours: r.weekly_capacity_hours != null ? Number(r.weekly_capacity_hours) : 40,
     updatedAt: String(r.updated_at),
   };
 }
@@ -734,8 +735,8 @@ export class PostgresDataProvider implements AppDataProvider {
     if (!rows[0]) {
       const now = new Date().toISOString();
       const inserted = await queryPg<Row>(
-        `insert into rms_financial_settings (id, uf_to_clp, usd_to_clp, updated_at)
-         values ('default', 39500, 950, $1)
+        `insert into rms_financial_settings (id, uf_to_clp, usd_to_clp, weekly_capacity_hours, updated_at)
+         values ('default', 39500, 950, 40, $1)
          returning *`,
         [now],
       );
@@ -746,12 +747,13 @@ export class PostgresDataProvider implements AppDataProvider {
   async updateFinancialReferenceRates(input: FinancialReferenceRatesUpdateInput): Promise<FinancialReferenceRates> {
     const now = new Date().toISOString();
     const { rows } = await queryPg<Row>(
-      `insert into rms_financial_settings (id, uf_to_clp, usd_to_clp, updated_at)
-       values ('default', $1, $2, $3)
+      `insert into rms_financial_settings (id, uf_to_clp, usd_to_clp, weekly_capacity_hours, updated_at)
+       values ('default', $1, $2, $3, $4)
        on conflict (id)
-       do update set uf_to_clp = excluded.uf_to_clp, usd_to_clp = excluded.usd_to_clp, updated_at = excluded.updated_at
+       do update set uf_to_clp = excluded.uf_to_clp, usd_to_clp = excluded.usd_to_clp,
+                     weekly_capacity_hours = excluded.weekly_capacity_hours, updated_at = excluded.updated_at
        returning *`,
-      [input.ufToClp, input.usdToClp, now],
+      [input.ufToClp, input.usdToClp, input.weeklyCapacityHours, now],
     );
     return mapFinancialSettings(rows[0]);
   }

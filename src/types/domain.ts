@@ -78,11 +78,13 @@ export interface Profile {
   updatedAt: string;
 }
 
-/** Fila única de referencia para lecturas cruzadas (UF y USD en pesos). */
+/** Fila única de referencia para lecturas cruzadas (UF y USD en pesos) y parámetros de equipo. */
 export interface FinancialReferenceRates {
   id: string;
   ufToClp: number;
   usdToClp: number;
+  /** Capacidad laboral semanal estándar en horas por persona (defecto: 40). */
+  weeklyCapacityHours: number;
   updatedAt: string;
 }
 

@@ -18,7 +18,6 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { buildSpendReport, summarizeSpendReport } from "@/lib/reports/spend-report";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
-import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 
 function defaultDateRange(): { from: string; to: string } {
   const now = new Date();
@@ -104,7 +103,7 @@ export default async function ReportsPage({
   // Utilization per person in the selected period
   const periodMs = Math.max(1, new Date(to).getTime() - new Date(from).getTime() + 86400000);
   const periodWeeks = periodMs / (7 * 24 * 3600 * 1000);
-  const periodCapacityHours = Math.round(periodWeeks * WEEKLY_CAPACITY_HOURS);
+  const periodCapacityHours = Math.round(periodWeeks * referenceRates.weeklyCapacityHours);
   const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
   const requirementMap = new Map(requirements.map((r) => [r.id, r]));
   const minutesByUser = new Map<string, number>();
@@ -227,7 +226,7 @@ export default async function ReportsPage({
       <SpendReportTable rows={rows} />
 
       {utilizationData.length > 0 ? (
-        <UtilizationPanel data={utilizationData} />
+        <UtilizationPanel data={utilizationData} weeklyCapacityHours={referenceRates.weeklyCapacityHours} />
       ) : null}
     </AppShell>
   );

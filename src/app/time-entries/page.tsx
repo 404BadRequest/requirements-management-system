@@ -3,12 +3,12 @@ import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
 import { PersonalUtilizationBanner } from "@/components/time-entries/personal-utilization-banner";
-import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
   getContractProfileAllocations,
+  getFinancialReferenceRates,
   getProfiles,
   getRequirements,
   getTimeEntries,
@@ -36,7 +36,7 @@ export default async function TimeEntriesPage({
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
   const prefillRequirementId = requirementIdParam && !duplicateId ? requirementIdParam : "";
   const prefillUserId = userIdParam && !duplicateId && canPickAnyOwner ? userIdParam : "";
-  const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
+  const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations, referenceRates] = await Promise.all([
     getTimeEntries(),
     getUsers(),
     getRequirements(),
@@ -45,6 +45,7 @@ export default async function TimeEntriesPage({
     getContractBudgets(),
     getProfiles(),
     getContractProfileAllocations(),
+    getFinancialReferenceRates(),
   ]);
   const categoryLabelByCode = new Map(
     timeCategories.filter((c) => c.active).map((c) => [c.code, formatCatalogLabel(c.code, c.label)]),
@@ -174,7 +175,7 @@ export default async function TimeEntriesPage({
       userName,
       role: profileName ?? user.role,
       loggedHours,
-      capacityHours: WEEKLY_CAPACITY_HOURS,
+      capacityHours: referenceRates.weeklyCapacityHours,
       weekLabel: `${formatWeek(monday)} – ${formatWeek(sunday)}`,
     };
   })();

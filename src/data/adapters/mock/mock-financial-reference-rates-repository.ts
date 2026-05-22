@@ -15,6 +15,7 @@ export class MockFinancialReferenceRatesRepository {
       ...row,
       ufToClp: input.ufToClp,
       usdToClp: input.usdToClp,
+      weeklyCapacityHours: input.weeklyCapacityHours,
       updatedAt: now,
     };
     return { ...row };

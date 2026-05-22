@@ -14,8 +14,8 @@ export default async function SettingsExchangeRatesPage() {
     <>
       <SettingsPageIntro
         eyebrow="Equipo y datos"
-        title="UF y dólar (referencia)"
-        description="Montos de referencia en pesos chilenos para 1 UF y 1 USD. Se usan para calcular el equivalente CLP en reportes y en el estimado facturable del dashboard cuando un perfil cotiza en UF o USD."
+        title="Tasas y capacidad"
+        description="Tasas de referencia UF/USD en CLP para reportes y estimados facturables, y capacidad laboral semanal estándar del equipo usada en indicadores de utilización."
       />
       <SettingsExchangeRatesPanel rates={rates} canWrite={canWrite} updatedLabel={updatedLabel} />
     </>

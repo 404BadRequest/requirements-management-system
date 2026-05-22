@@ -5,5 +5,6 @@ export const financialReferenceRatesSeed: FinancialReferenceRates = {
   id: "default",
   ufToClp: 39500,
   usdToClp: 950,
+  weeklyCapacityHours: 40,
   updatedAt: seedNow,
 };

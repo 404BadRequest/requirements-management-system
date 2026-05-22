@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { Users, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 
 export type UtilizationData = {
   userId: string;
@@ -12,7 +11,7 @@ export type UtilizationData = {
   capacityHours: number;
 };
 
-export function UtilizationPanel({ data }: { data: UtilizationData[] }) {
+export function UtilizationPanel({ data, weeklyCapacityHours = 40 }: { data: UtilizationData[]; weeklyCapacityHours?: number }) {
   const sortedData = useMemo(() => {
     return [...data].sort((a, b) => {
       const utilA = a.capacityHours > 0 ? a.loggedHours / a.capacityHours : 0;
@@ -46,7 +45,7 @@ export function UtilizationPanel({ data }: { data: UtilizationData[] }) {
             Capacidad y Utilización del Equipo
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Basado en {WEEKLY_CAPACITY_HOURS}h semanales por persona.
+            Basado en {weeklyCapacityHours}h semanales por persona.
           </p>
         </div>
         <div className="text-right">

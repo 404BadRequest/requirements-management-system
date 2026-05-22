@@ -231,6 +231,7 @@ function mapFinancialSettings(r: Row): FinancialReferenceRates {
     id: String(r.id),
     ufToClp: Number(r.uf_to_clp),
     usdToClp: Number(r.usd_to_clp),
+    weeklyCapacityHours: r.weekly_capacity_hours != null ? Number(r.weekly_capacity_hours) : 40,
     updatedAt: String(r.updated_at),
   };
 }
@@ -743,7 +744,7 @@ export class RmsDataAccess {
     if (error) throw error;
     if (!data) {
       const now = new Date().toISOString();
-      const seed = { id: "default", uf_to_clp: 39500, usd_to_clp: 950, updated_at: now };
+      const seed = { id: "default", uf_to_clp: 39500, usd_to_clp: 950, weekly_capacity_hours: 40, updated_at: now };
       const { data: inserted, error: insertError } = await this.sb.from("rms_financial_settings").insert(seed).select("*").single();
       if (insertError) throw insertError;
       return mapFinancialSettings(inserted as Row);
@@ -757,6 +758,7 @@ export class RmsDataAccess {
       id: "default",
       uf_to_clp: input.ufToClp,
       usd_to_clp: input.usdToClp,
+      weekly_capacity_hours: input.weeklyCapacityHours,
       updated_at: now,
     };
     const { data, error } = await this.sb.from("rms_financial_settings").upsert(row, { onConflict: "id" }).select("*").single();

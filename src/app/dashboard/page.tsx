@@ -13,7 +13,6 @@ import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
-import { MONTHLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 import type { SettingsCatalogEntry } from "@/types/domain";
 
 function catalogLabelByCode(catalog: SettingsCatalogEntry[], code: string): string {
@@ -88,7 +87,7 @@ export default async function DashboardPage({
       userName: name,
       role: user?.role ?? "Desconocido",
       loggedHours: minutes / 60,
-      capacityHours: MONTHLY_CAPACITY_HOURS,
+      capacityHours: referenceRates.weeklyCapacityHours * 4,
     };
   });
 
@@ -260,7 +259,7 @@ export default async function DashboardPage({
         ) : null}
 
         {(isAdminLike || isProjectManager) && utilizationData.length > 0 ? (
-          <UtilizationPanel data={utilizationData} />
+          <UtilizationPanel data={utilizationData} weeklyCapacityHours={referenceRates.weeklyCapacityHours} />
         ) : null}
 
         {(isAdminLike || isProjectManager) && metrics.projectHealthData && metrics.projectHealthData.length > 0 ? (

@@ -25,7 +25,7 @@ const groups: {
       { href: "/settings/profiles", label: "Perfiles y tarifas", icon: BadgeCheck },
       { href: "/settings/users", label: "Usuarios", icon: Users },
       { href: "/settings/clients", label: "Clientes", icon: Building2 },
-      { href: "/settings/exchange-rates", label: "UF y dólar (referencia)", icon: Banknote },
+      { href: "/settings/exchange-rates", label: "Tasas y capacidad", icon: Banknote },
     ],
   },
   {

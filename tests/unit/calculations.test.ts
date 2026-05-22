@@ -144,7 +144,7 @@ describe("calculations", () => {
       },
     ];
     const clientsById = new Map(clients.map((c) => [c.id, c]));
-    const referenceRates = { id: "default", ufToClp: 40000, usdToClp: 1000, updatedAt: "" };
+    const referenceRates = { id: "default", ufToClp: 40000, usdToClp: 1000, weeklyCapacityHours: 40, updatedAt: "" };
     const rows = aggregateBillingEstimateByClient(
       entries,
       reqMap,
@@ -161,7 +161,7 @@ describe("calculations", () => {
   });
 
   it("convierte montos UF y USD a CLP con tasas de referencia", () => {
-    const rates = { id: "default", ufToClp: 40_000, usdToClp: 900, updatedAt: "" };
+    const rates = { id: "default", ufToClp: 40_000, usdToClp: 900, weeklyCapacityHours: 40, updatedAt: "" };
     expect(convertBillingAmountToClp(5, "UF", rates)).toBe(200_000);
     expect(convertBillingAmountToClp(2, "USD", rates)).toBe(1800);
     expect(convertBillingAmountToClp(100, "CLP", rates)).toBe(100);

@@ -418,15 +418,20 @@ export async function updateFinancialReferenceRatesAction(formData: FormData) {
   await requireSettingsWrite();
   const ufRaw = String(formData.get("ufToClp") ?? "").trim().replace(/\s/g, "").replace(",", ".");
   const usdRaw = String(formData.get("usdToClp") ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  const capacityRaw = String(formData.get("weeklyCapacityHours") ?? "").trim().replace(",", ".");
   const uf = Number(ufRaw);
   const usd = Number(usdRaw);
+  const capacity = Number(capacityRaw);
   if (!Number.isFinite(uf) || uf < 0) {
     redirectSettingsError("/settings/exchange-rates", "Valor de UF en CLP inválido: use un número mayor o igual a 0.");
   }
   if (!Number.isFinite(usd) || usd < 0) {
     redirectSettingsError("/settings/exchange-rates", "Valor del dólar en CLP inválido: use un número mayor o igual a 0.");
   }
-  await updateFinancialReferenceRates({ ufToClp: uf, usdToClp: usd });
+  if (!Number.isFinite(capacity) || capacity <= 0 || capacity > 80) {
+    redirectSettingsError("/settings/exchange-rates", "Capacidad semanal inválida: ingrese un valor entre 1 y 80 horas.");
+  }
+  await updateFinancialReferenceRates({ ufToClp: uf, usdToClp: usd, weeklyCapacityHours: capacity });
   refreshDataViews();
 }
 
