@@ -50,8 +50,8 @@ export default async function WeeklyTimesheetPage({
   return (
     <AppShell>
       <PageHeader
-        title="Timesheet Semanal"
-        description="Carga rápida de horas por semana"
+        title="Vista semanal"
+        description="Bloques de tiempo de lunes a domingo — haz clic para registrar o editar"
       />
       <WeeklyTimesheetClient
         entries={userEntries}

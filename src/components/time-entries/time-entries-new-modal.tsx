@@ -108,31 +108,43 @@ function NewTimeEntryModalForm({
 export function TimeEntriesNewModal({
   autoOpen,
   defaultValues,
+  open: externalOpen,
+  onOpenChange,
 }: {
   autoOpen: boolean;
   defaultValues?: Partial<TimeEntryInput>;
+  /** Controlled mode: when provided, the modal is externally managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(autoOpen);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(autoOpen);
   const [formKey, setFormKey] = useState(0);
   const [prefillValues, setPrefillValues] = useState<Partial<TimeEntryInput> | undefined>(defaultValues);
 
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? (v: boolean) => onOpenChange?.(v) : setInternalOpen;
+
   useEffect(() => {
+    if (isControlled) return;
     if (!autoOpen) return;
     setFormKey((k) => k + 1);
-    setOpen(true);
-  }, [autoOpen]);
+    setInternalOpen(true);
+  }, [autoOpen, isControlled]);
 
   useEffect(() => {
     setPrefillValues(defaultValues);
   }, [defaultValues]);
 
   useEffect(() => {
+    if (isControlled) return;
     if (!autoOpen) return;
     router.replace("/time-entries", { scroll: false });
-  }, [autoOpen, router]);
+  }, [autoOpen, isControlled, router]);
 
   const stripNuevaQuery = () => {
+    if (isControlled) return;
     if (typeof window !== "undefined" && window.location.search.includes("nueva=")) {
       router.replace("/time-entries", { scroll: false });
     }
@@ -146,14 +158,16 @@ export function TimeEntriesNewModal({
   const openFresh = () => {
     setFormKey((k) => k + 1);
     setPrefillValues(undefined);
-    setOpen(true);
+    setInternalOpen(true);
   };
 
   return (
     <>
-      <button type="button" className="btn-primary" onClick={() => openFresh()}>
-        Nueva hora
-      </button>
+      {!isControlled ? (
+        <button type="button" className="btn-primary" onClick={() => openFresh()}>
+          Nueva hora
+        </button>
+      ) : null}
       <SettingsModal
         open={open}
         onClose={handleClose}
