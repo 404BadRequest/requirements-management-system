@@ -290,8 +290,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         </article>
       </section>
 
-      <RequirementActivityTimeline events={activityEvents} />
-
       <section id="hours-section">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-foreground">Horas registradas</h2>
@@ -328,42 +326,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             canPost={canPostObservations}
           />
         </div>
-        <details id="status-history-section" className="surface-card p-4 lg:col-span-2">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-            <h3 className="font-medium text-foreground">Historial de estado</h3>
-            <span className="rounded-[2px] border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {history.length} evento{history.length === 1 ? "" : "s"}
-            </span>
-          </summary>
-          {history.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">Sin cambios de estado registrados.</p>
-          ) : (
-            <ol className="relative mt-3 ml-1 border-l border-border/70 pl-4 text-sm">
-              {history.map((event) => (
-                <li key={event.id} className="relative mb-4 last:mb-0">
-                  <span
-                    className="absolute -left-[1.15rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background"
-                    aria-hidden
-                  />
-                  <div className="rounded-[2px] border border-border bg-muted/30 p-3">
-                    <p className="font-medium text-foreground">
-                      <span>{requirementStatusLabel(requirementStatuses, event.fromStatus)}</span>
-                      <span className="mx-1.5 text-muted-foreground">→</span>
-                      <span>{requirementStatusLabel(requirementStatuses, event.toStatus)}</span>
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {userById.get(event.changedById)?.name ?? event.changedById}
-                      {" · "}
-                      <time dateTime={event.changedAt}>
-                        {new Date(event.changedAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
-                      </time>
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </details>
+        <div id="activity-section" className="min-h-0 lg:col-span-2">
+          <RequirementActivityTimeline events={activityEvents} />
+        </div>
       </section>
     </AppShell>
   );

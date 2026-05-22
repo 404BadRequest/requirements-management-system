@@ -45,7 +45,7 @@ export function UtilizationPanel({ data }: { data: UtilizationData[] }) {
             Capacidad y Utilización del Equipo
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Basado en una capacidad teórica de 40h semanales por persona.
+            Basado en 40h semanales por persona.
           </p>
         </div>
         <div className="text-right">

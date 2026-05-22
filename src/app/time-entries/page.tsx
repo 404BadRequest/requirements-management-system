@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
+import { PersonalUtilizationBanner } from "@/components/time-entries/personal-utilization-banner";
 import {
   getCatalogByKind,
   getClients,
@@ -135,6 +136,40 @@ export default async function TimeEntriesPage({
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
   })();
 
+  // Utilización personal de la semana actual (no aplica para Admin)
+  const showUtilization = user.role !== "Admin";
+  const personalUtilization = (() => {
+    if (!showUtilization) return null;
+    const now = new Date();
+    // Lunes de la semana actual
+    const day = now.getDay(); // 0=Dom, 1=Lun...
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    const weekFrom = monday.toISOString().slice(0, 10);
+    const weekTo = sunday.toISOString().slice(0, 10);
+    const weekEntries = entries.filter(
+      (e) => e.userId === currentDirectoryUserId && e.date >= weekFrom && e.date <= weekTo,
+    );
+    const loggedMinutes = weekEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
+    const loggedHours = loggedMinutes / 60;
+    const directoryUser = users.find((u) => u.id === currentDirectoryUserId);
+    const userName = directoryUser?.name ?? user.name ?? "—";
+    const formatWeek = (d: Date) =>
+      d.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
+    return {
+      userName,
+      role: user.role,
+      loggedHours,
+      capacityHours: 40,
+      weekLabel: `${formatWeek(monday)} – ${formatWeek(sunday)}`,
+    };
+  })();
+
   const clientCell = (requirementId: string | null) => {
     if (!requirementId) return "Sin requerimiento";
     const requirement = requirementMap.get(requirementId);
@@ -159,6 +194,15 @@ export default async function TimeEntriesPage({
           </div>
         }
       />
+      {personalUtilization ? (
+        <PersonalUtilizationBanner
+          userName={personalUtilization.userName}
+          role={personalUtilization.role}
+          loggedHours={personalUtilization.loggedHours}
+          capacityHours={personalUtilization.capacityHours}
+          weekLabel={personalUtilization.weekLabel}
+        />
+      ) : null}
       <form
         className="surface-card mb-4 flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)]"
         action="/time-entries"
