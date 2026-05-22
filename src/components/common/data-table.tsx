@@ -39,6 +39,11 @@ type Props<TData> = {
   emptyAction?: ReactNode;
   /** Mostrar pista de deslizamiento horizontal en móvil. */
   mobileScrollHint?: boolean;
+  /** Estado de selección de filas (opcional) */
+  rowSelection?: Record<string, boolean>;
+  onRowSelectionChange?: (updater: any) => void;
+  enableRowSelection?: boolean;
+  getRowId?: (originalRow: TData, index: number, parent?: any) => string;
 };
 
 function SortGlyph({ state }: { state: false | "asc" | "desc" }) {
@@ -59,6 +64,9 @@ export function DataTable<TData>({
   emptyDescription = "No hay filas que mostrar con los criterios actuales.",
   emptyAction,
   mobileScrollHint = true,
+  rowSelection,
+  onRowSelectionChange,
+  enableRowSelection = false,
 }: Props<TData>) {
   const density = useUiStore((s) => s.density);
   const compact = density === "compact";
@@ -68,9 +76,14 @@ export function DataTable<TData>({
   const table = useReactTable({
     data,
     columns,
-    state: enableGlobalFilter ? { sorting, globalFilter } : { sorting },
+    state: { 
+      sorting, 
+      ...(enableGlobalFilter ? { globalFilter } : {}),
+      ...(enableRowSelection && rowSelection ? { rowSelection } : {})
+    },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    ...(enableRowSelection && onRowSelectionChange ? { onRowSelectionChange } : {}),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -78,6 +91,8 @@ export function DataTable<TData>({
     globalFilterFn: "includesString",
     enableSorting,
     enableGlobalFilter,
+    enableRowSelection,
+    getRowId,
     initialState: { pagination: { pageSize } },
   });
 

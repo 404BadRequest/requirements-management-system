@@ -360,6 +360,51 @@ export async function deleteTimeEntryAction(id: string) {
   return deleted;
 }
 
+export async function deleteTimeEntriesBatchAction(ids: string[]) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "time_entries.write");
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+
+  const users = await getUsers();
+  const activeUsers = users.filter((u) => u.active);
+  const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
+  const requirements = await getRequirements();
+  const pickAny = canPickEncargadoForOthers(user.role);
+
+  let deletedCount = 0;
+  for (const id of ids) {
+    const current = await getTimeEntryById(id);
+    if (!current) continue;
+
+    if (!pickAny) {
+      if (current.userId !== resolvedId) {
+        continue; // Skip if not owner and can't delete others
+      }
+      if (current.requirementId) {
+        const linkedRequirement = requirements.find((r) => r.id === current.requirementId);
+        if (!linkedRequirement || linkedRequirement.ownerId !== resolvedId) {
+          continue; // Skip if not owner of requirement
+        }
+      }
+    }
+
+    const deleted = await deleteTimeEntry(id);
+    if (deleted) {
+      deletedCount++;
+    }
+  }
+
+  revalidatePath("/time-entries");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/team");
+  revalidatePath("/budgets");
+  
+  return deletedCount;
+}
+
 export async function completeTimeEntryNowAction(input: { id: string; endTime: string }) {
   const endTime = input.endTime?.trim();
   if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
