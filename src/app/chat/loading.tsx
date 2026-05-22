@@ -6,6 +6,7 @@ export default function ChatLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Chat interno"
+        loading
         description="Cargando conversaciones, presencia y mensajes recientes…"
       />
       <section className="grid gap-4 lg:grid-cols-[310px,minmax(0,1fr)]">

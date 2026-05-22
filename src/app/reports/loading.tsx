@@ -6,6 +6,7 @@ export default function ReportsLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Reportes"
+        loading
         description="Cargando horas, costos y agregaciones por periodo…"
         actions={
           <div className="flex flex-wrap gap-2">

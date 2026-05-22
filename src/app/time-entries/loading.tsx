@@ -6,6 +6,7 @@ export default function TimeEntriesLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Registro de horas"
+        loading
         description="Cargando horas, personas y categorías…"
         actions={
           <div className="flex flex-wrap gap-2">

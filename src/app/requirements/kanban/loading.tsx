@@ -6,6 +6,7 @@ export default function RequirementsKanbanLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Kanban de requerimientos"
+        loading
         description="Cargando columnas por estado y tarjetas del flujo…"
         actions={<span className="skeleton-shimmer h-9 w-28 rounded-[2px]" />}
       />

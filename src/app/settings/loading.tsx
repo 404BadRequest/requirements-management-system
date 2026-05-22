@@ -6,6 +6,7 @@ export default function SettingsLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Configuración"
+        loading
         description="Cargando catálogos, personas y parámetros del sistema…"
       />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">

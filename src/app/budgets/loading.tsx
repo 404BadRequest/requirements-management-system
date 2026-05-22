@@ -6,6 +6,7 @@ export default function BudgetsLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Presupuestos"
+        loading
         description="Cargando asignaciones, consumo y capacidad por perfil…"
         actions={
           <div className="flex gap-2">

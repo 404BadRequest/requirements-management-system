@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/common/page-header";
 export default function AccountLoading() {
   return (
     <AppShellSkeleton>
-      <PageHeader title="Mi cuenta" description="Cargando información de sesión y perfil actual…" />
+      <PageHeader title="Mi cuenta"
+        loading
+        description="Cargando información de sesión y perfil actual…" />
       <section className="surface-card grid max-w-lg gap-3 p-[length:var(--density-inset-pad)] sm:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index}>

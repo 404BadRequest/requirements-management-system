@@ -6,6 +6,7 @@ export default function TimeEntryDetailLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Ficha de horas"
+        loading
         description="Cargando detalle de la hora y sus relaciones…"
         actions={<span className="skeleton-shimmer h-9 w-32 rounded-[2px]" />}
       />

@@ -6,6 +6,7 @@ export default function RequirementsLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Requerimientos"
+        loading
         description="Cargando catálogo de requerimientos y responsables…"
         actions={
           <div className="flex flex-wrap gap-2">

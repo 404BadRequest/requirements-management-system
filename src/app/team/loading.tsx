@@ -6,6 +6,7 @@ export default function TeamLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Equipo"
+        loading
         description="Cargando directorio, horas y métricas por persona…"
         actions={
           <div className="flex gap-2">

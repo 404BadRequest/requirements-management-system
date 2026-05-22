@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/common/page-header";
 export default function NotificationsLoading() {
   return (
     <AppShellSkeleton>
-      <PageHeader title="Avisos" description="Cargando alertas y estados de lectura para tus requerimientos…" />
+      <PageHeader title="Avisos"
+        loading
+        description="Cargando alertas y estados de lectura para tus requerimientos…" />
       <section className="space-y-3">
         {Array.from({ length: 6 }).map((_, index) => (
           <article key={index} className="surface-card p-4">

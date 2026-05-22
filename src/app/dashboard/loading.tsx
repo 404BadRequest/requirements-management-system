@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/common/page-header";
 export default function DashboardLoading() {
   return (
     <AppShellSkeleton>
-      <PageHeader title="Dashboard general" description="Cargando indicadores y métricas consolidadas…" />
+      <PageHeader title="Dashboard general"
+        loading
+        description="Cargando indicadores y métricas consolidadas…" />
       <section className="surface-card p-[length:var(--density-inset-pad)]">
         <div className="flex flex-wrap items-end gap-4">
           <div className="w-full max-w-md space-y-2">

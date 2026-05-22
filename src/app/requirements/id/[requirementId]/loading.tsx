@@ -6,6 +6,7 @@ export default function RequirementDetailLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Detalle de requerimiento"
+        loading
         description="Cargando historial, actividad y horas relacionadas…"
         actions={<span className="skeleton-shimmer h-9 w-44 rounded-[2px]" />}
       />

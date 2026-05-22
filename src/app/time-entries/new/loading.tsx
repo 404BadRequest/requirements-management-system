@@ -6,6 +6,7 @@ export default function NewTimeEntryLoading() {
     <AppShellSkeleton>
       <PageHeader
         title="Nueva hora"
+        loading
         description="Preparando formulario de registro de horas…"
         actions={<span className="skeleton-shimmer h-9 w-32 rounded-[2px]" />}
       />
