@@ -324,34 +324,6 @@ export function RequirementsPageClient({
         loadingLabel="Actualizando requerimientos…"
       />
 
-      {requirements.length === 0 && !listLoading && !clientId ? (
-        <EmptyState
-          title="No hay requerimientos"
-          description="Aún no se han registrado requerimientos en el sistema. Crea uno nuevo para comenzar a gestionar tareas."
-          action={
-            canWrite ? (
-              <button type="button" className="btn-primary py-2 text-sm" onClick={() => openNewRequirementModal()}>
-                Crear primer requerimiento
-              </button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <DataTable
-          data={requirements}
-          columns={columns}
-          emptyTitle="Sin requerimientos"
-          emptyDescription="No hay requerimientos que mostrar con los criterios actuales."
-          emptyAction={
-            canWrite ? (
-              <button type="button" className="btn-secondary py-2 text-sm" onClick={() => openNewRequirementModal()}>
-                Nuevo requerimiento
-              </button>
-            ) : undefined
-          }
-        />
-      )}
-
       {canWrite ? (
         <SettingsModal
           open={newModalOpen}
