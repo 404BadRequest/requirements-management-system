@@ -67,6 +67,7 @@ export function DataTable<TData>({
   rowSelection,
   onRowSelectionChange,
   enableRowSelection = false,
+  getRowId,
 }: Props<TData>) {
   const density = useUiStore((s) => s.density);
   const compact = density === "compact";
@@ -92,7 +93,7 @@ export function DataTable<TData>({
     enableSorting,
     enableGlobalFilter,
     enableRowSelection,
-    getRowId,
+    ...(getRowId ? { getRowId } : {}),
     initialState: { pagination: { pageSize } },
   });
 

@@ -97,6 +97,7 @@ function mapTimeEntry(r: Row): TimeEntry {
   return {
     id: String(r.id),
     projectId: String(r.project_id),
+    clientId: r.client_id ? String(r.client_id) : null,
     requirementId: r.requirement_id ? String(r.requirement_id) : null,
     contractId: r.contract_id ? String(r.contract_id) : null,
     contractProfileId: r.contract_profile_id ? String(r.contract_profile_id) : null,
@@ -533,12 +534,13 @@ export class PostgresDataProvider implements AppDataProvider {
     const duration = calculateDurationMinutes(input.startTime, input.endTime);
     const { rows } = await queryPg<Row>(
       `insert into rms_time_entries
-       (id, project_id, requirement_id, contract_id, contract_profile_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       (id, project_id, client_id, requirement_id, contract_id, contract_profile_id, category, task_description, date, start_time, end_time, duration_minutes, user_id, observations, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        returning *`,
       [
         id,
         input.projectId,
+        input.clientId ?? null,
         input.requirementId,
         input.contractId ?? null,
         input.contractProfileId ?? null,
@@ -563,6 +565,7 @@ export class PostgresDataProvider implements AppDataProvider {
     const end = input.endTime === undefined ? current.endTime : input.endTime;
     const patch = {
       projectId: input.projectId ?? current.projectId,
+      clientId: input.clientId === undefined ? current.clientId : input.clientId,
       requirementId: input.requirementId === undefined ? current.requirementId : input.requirementId,
       category: input.category ?? current.category,
       taskDescription: input.taskDescription ?? current.taskDescription,
@@ -577,23 +580,25 @@ export class PostgresDataProvider implements AppDataProvider {
     const { rows } = await queryPg<Row>(
       `update rms_time_entries
        set project_id = $2,
-           requirement_id = $3,
-           contract_id = $4,
-           contract_profile_id = $5,
-           category = $6,
-           task_description = $7,
-           date = $8,
-           start_time = $9,
-           end_time = $10,
-           duration_minutes = $11,
-           user_id = $12,
-           observations = $13,
-           updated_at = $14
+           client_id = $3,
+           requirement_id = $4,
+           contract_id = $5,
+           contract_profile_id = $6,
+           category = $7,
+           task_description = $8,
+           date = $9,
+           start_time = $10,
+           end_time = $11,
+           duration_minutes = $12,
+           user_id = $13,
+           observations = $14,
+           updated_at = $15
        where id = $1
        returning *`,
       [
         id,
         patch.projectId,
+        patch.clientId,
         patch.requirementId,
         input.contractId === undefined ? current.contractId : input.contractId,
         input.contractProfileId === undefined ? current.contractProfileId : input.contractProfileId,

@@ -30,6 +30,7 @@ export const timeEntriesMock: TimeEntry[] = Array.from({ length: 210 }, (_, inde
   return {
     id: `time-${String(index + 1).padStart(3, "0")}`,
     projectId: "proj-main",
+    clientId: withoutRequirement ? null : requirement.clientId,
     requirementId: withoutRequirement ? null : requirement.id,
     contractId: null,
     contractProfileId: null,

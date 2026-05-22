@@ -81,12 +81,18 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
 
     let clientKey: string;
 
-    if (!entry.requirementId) {
-      clientKey = "__no_req__";
-    } else {
+    if (entry.clientId) {
+      clientKey = entry.clientId;
+    } else if (entry.requirementId) {
       const req = requirementById.get(entry.requirementId);
       if (!req) continue;
       clientKey = req.clientId;
+    } else if (entry.contractId) {
+      const contract = contractById.get(entry.contractId);
+      if (!contract) continue;
+      clientKey = contract.clientId;
+    } else {
+      clientKey = "__no_req__";
     }
 
     if (clientIdFilter && clientKey !== clientIdFilter) continue;

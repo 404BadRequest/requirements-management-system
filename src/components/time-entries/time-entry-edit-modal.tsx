@@ -65,6 +65,7 @@ export function TimeEntryEditModal({
           submitLabel="Guardar cambios"
           defaultValues={{
             projectId: entry.projectId,
+            clientId: entry.clientId,
             requirementId: entry.requirementId,
             contractId: entry.contractId,
             contractProfileId: entry.contractProfileId,

@@ -81,6 +81,7 @@ create table if not exists public.rms_requirements (
 create table if not exists public.rms_time_entries (
   id text primary key,
   project_id text not null,
+  client_id text references public.rms_clients (id) on delete set null,
   requirement_id text references public.rms_requirements (id),
   category text not null,
   task_description text not null,

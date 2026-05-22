@@ -153,6 +153,7 @@ function mapTimeEntry(r: Row): TimeEntry {
   return {
     id: String(r.id),
     projectId: String(r.project_id),
+    clientId: r.client_id ? String(r.client_id) : null,
     requirementId: r.requirement_id ? String(r.requirement_id) : null,
     contractId: r.contract_id ? String(r.contract_id) : null,
     contractProfileId: r.contract_profile_id ? String(r.contract_profile_id) : null,
@@ -567,6 +568,7 @@ export class RmsDataAccess {
     const row = {
       id,
       project_id: input.projectId,
+      client_id: input.clientId ?? null,
       requirement_id: input.requirementId,
       contract_id: input.contractId ?? null,
       contract_profile_id: input.contractProfileId ?? null,
@@ -595,6 +597,7 @@ export class RmsDataAccess {
     const end = input.endTime === undefined ? cur.endTime : input.endTime;
     const patch = {
       project_id: input.projectId ?? cur.projectId,
+      client_id: input.clientId === undefined ? cur.clientId : input.clientId,
       requirement_id: input.requirementId === undefined ? cur.requirementId : input.requirementId,
       contract_id: input.contractId === undefined ? cur.contractId : input.contractId,
       contract_profile_id: input.contractProfileId === undefined ? cur.contractProfileId : input.contractProfileId,

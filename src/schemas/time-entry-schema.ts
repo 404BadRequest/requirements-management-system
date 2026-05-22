@@ -5,6 +5,7 @@ const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export const timeEntrySchema = z
   .object({
     projectId: z.string().min(1),
+    clientId: z.string().nullable(),
     requirementId: z.string().nullable(),
     contractId: z.string().nullable(),
     contractProfileId: z.string().nullable(),
@@ -36,6 +37,7 @@ export const timeEntryBatchBlockSchema = z
 
 export const timeEntryBatchSchema = z.object({
   projectId: z.string().min(1),
+  clientId: z.string().nullable(),
   requirementId: z.string().nullable(),
   contractId: z.string().nullable(),
   contractProfileId: z.string().nullable(),

@@ -89,6 +89,7 @@ export interface FinancialReferenceRates {
 export interface TimeEntry {
   id: string;
   projectId: string;
+  clientId: string | null;
   requirementId: string | null;
   contractId: string | null;
   contractProfileId: string | null;

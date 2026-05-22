@@ -207,6 +207,7 @@ export async function createTimeEntriesBatchAction(input: TimeEntryBatchInput) {
     try {
       await createTimeEntryAction({
         projectId: payload.projectId,
+        clientId: payload.clientId,
         requirementId: payload.requirementId,
         contractId: payload.contractId,
         contractProfileId: payload.contractProfileId,
@@ -424,6 +425,7 @@ export async function completeTimeEntryNowAction(input: { id: string; endTime: s
 
   return updateTimeEntryAction(input.id, {
     projectId: current.projectId,
+    clientId: current.clientId,
     requirementId: current.requirementId,
     contractId: current.contractId,
     contractProfileId: current.contractProfileId,
@@ -520,6 +522,7 @@ export async function importTimeEntriesCsvAction(input: { csvText: string }) {
     const cell = (name: string) => row[headerIndex.get(name) ?? -1] ?? "";
     const payload: TimeEntryInput = {
       projectId: cell("projectId").trim(),
+      clientId: normalizeNullable(cell("clientId")),
       requirementId: normalizeNullable(cell("requirementId")),
       contractId: normalizeNullable(cell("contractId")),
       contractProfileId: normalizeNullable(cell("contractProfileId")),

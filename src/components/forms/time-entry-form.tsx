@@ -49,6 +49,7 @@ export const TimeEntryForm = ({
     resolver: zodResolver(timeEntrySchema),
     defaultValues: {
       projectId: "proj-main",
+      clientId: null,
       requirementId: null,
       contractId: null,
       contractProfileId: null,
@@ -116,7 +117,7 @@ export const TimeEntryForm = ({
     () => requirements.find((requirement) => requirement.id === selectedRequirementId) ?? null,
     [requirements, selectedRequirementId],
   );
-  const initialClientId = selectedRequirement?.clientId ?? contracts.find((contract) => contract.id === selectedContractId)?.clientId ?? clients[0]?.id ?? "";
+  const initialClientId = defaultValues?.clientId ?? selectedRequirement?.clientId ?? contracts.find((contract) => contract.id === selectedContractId)?.clientId ?? clients[0]?.id ?? "";
   const [selectedClientId, setSelectedClientId] = useState(initialClientId);
   const filteredRequirements = useMemo(
     () => requirements.filter((requirement) => requirement.clientId === selectedClientId),
@@ -162,16 +163,18 @@ export const TimeEntryForm = ({
     <form
       className="grid gap-3"
       onSubmit={form.handleSubmit(async (values) => {
+        const payload = { ...values, clientId: selectedClientId || null };
         if (entryMode === "multi" && enableMultiBlock && onSubmitBatch) {
           const parsed = timeEntryBatchSchema.safeParse({
-            projectId: values.projectId,
-            requirementId: values.requirementId,
-            contractId: values.contractId,
-            contractProfileId: values.contractProfileId,
-            category: values.category,
-            taskDescription: values.taskDescription,
-            userId: values.userId,
-            observations: values.observations,
+            projectId: payload.projectId,
+            clientId: payload.clientId,
+            requirementId: payload.requirementId,
+            contractId: payload.contractId,
+            contractProfileId: payload.contractProfileId,
+            category: payload.category,
+            taskDescription: payload.taskDescription,
+            userId: payload.userId,
+            observations: payload.observations,
             blocks: batchBlocks,
           });
           if (!parsed.success) {
@@ -184,7 +187,7 @@ export const TimeEntryForm = ({
           return;
         }
         setBatchError(null);
-        await onSubmit(values);
+        await onSubmit(payload);
       })}
     >
       {enableMultiBlock ? (

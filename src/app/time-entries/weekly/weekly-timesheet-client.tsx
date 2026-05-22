@@ -103,7 +103,7 @@ export function WeeklyTimesheetClient({
       if (!existingRows.has(key)) {
         const req = requirements.find(r => r.id === entry.requirementId);
         const contract = contracts.find(c => c.id === entry.contractId);
-        const clientId = req?.clientId || contract?.clientId || "";
+        const clientId = entry.clientId || req?.clientId || contract?.clientId || "";
 
         existingRows.set(key, {
           id: `row-${crypto.randomUUID()}`,
@@ -249,6 +249,7 @@ export function WeeklyTimesheetClient({
         if (blocks.length > 0) {
           await createTimeEntriesBatchAction({
             projectId: row.projectId,
+            clientId: row.clientId || null,
             requirementId: row.requirementId,
             contractId: row.contractId,
             contractProfileId: row.contractProfileId,

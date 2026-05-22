@@ -117,6 +117,7 @@ describe("calculations", () => {
       {
         id: "e1",
         projectId: "p1",
+        clientId: null,
         requirementId: "r1",
         contractId: null,
         contractProfileId: null,
