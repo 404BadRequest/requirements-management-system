@@ -11,6 +11,7 @@ import { BudgetForm } from "@/components/forms/budget-form";
 import { RiskBadge } from "@/components/common/badges";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
 import { loadBudgetsPageData, createBudgetAction, deleteBudgetAction, updateBudgetAction } from "@/app/budgets/data-actions";
@@ -97,6 +98,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ContractBudget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BudgetRow | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -220,46 +222,29 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
       { accessorKey: "risk", header: "Riesgo", cell: ({ row }) => <RiskBadge risk={row.original.risk} /> },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) =>
           canWrite ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-secondary px-2.5 py-1 text-xs"
-                onClick={() => {
-                  const target = contracts.find((contract) => contract.id === row.original.id) ?? null;
-                  if (!target) return;
-                  setEditTarget(target);
-                  setEditOpen(true);
-                }}
-              >
-                Editar
-              </button>
-              <ConfirmDialog
-                label="Eliminar"
-                title="¿Eliminar contrato?"
-                onConfirm={() => {
-                  void (async () => {
-                    try {
-                      scheduleUndoableAction({
-                        pendingMessage: "Contrato marcado para eliminar.",
-                        successMessage: "Contrato eliminado.",
-                        errorMessage: "No se pudo eliminar el contrato.",
-                        onCommit: async () => {
-                          await deleteBudgetAction(row.original.id);
-                          await reload();
-                        },
-                      });
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "No se pudo eliminar el contrato.");
-                    }
-                  })();
-                }}
-              />
-            </div>
+            <RowActionMenu
+              items={[
+                {
+                  label: "Editar",
+                  onClick: () => {
+                    const target = contracts.find((contract) => contract.id === row.original.id) ?? null;
+                    if (!target) return;
+                    setEditTarget(target);
+                    setEditOpen(true);
+                  },
+                },
+                {
+                  label: "Eliminar",
+                  danger: true,
+                  onClick: () => setDeleteTarget(row.original),
+                },
+              ]}
+            />
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           ),
@@ -508,6 +493,35 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
             />
           ) : null}
         </SettingsModal>
+      ) : null}
+
+      {/* Controlled delete confirmation — triggered by RowActionMenu */}
+      {canWrite && deleteTarget ? (
+        <ConfirmDialog
+          label="Eliminar"
+          title={`¿Eliminar contrato «${deleteTarget.name}»?`}
+          open={true}
+          onOpenChange={(v) => {
+            if (!v) setDeleteTarget(null);
+          }}
+          onConfirm={() => {
+            const id = deleteTarget.id;
+            setDeleteTarget(null);
+            try {
+              scheduleUndoableAction({
+                pendingMessage: "Contrato marcado para eliminar.",
+                successMessage: "Contrato eliminado.",
+                errorMessage: "No se pudo eliminar el contrato.",
+                onCommit: async () => {
+                  await deleteBudgetAction(id);
+                  await reload();
+                },
+              });
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "No se pudo eliminar el contrato.");
+            }
+          }}
+        />
       ) : null}
 
       <div className="mt-6 space-y-3">

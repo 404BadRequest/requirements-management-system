@@ -9,6 +9,7 @@ import type { Role, User } from "@/types/domain";
 import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-confirm";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { SettingsTableToolbar } from "@/components/settings/settings-table-toolbar";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 
 const ROLES: Role[] = ["Admin", "Project Manager", "Contributor", "Viewer"];
 
@@ -25,6 +26,7 @@ export function SettingsUsersPanel({
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p.name])), [profiles]);
 
   const columns = useMemo<ColumnDef<User>[]>(
@@ -79,23 +81,16 @@ export function SettingsUsersPanel({
       },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditUser(row.original)}>
-              Editar
-            </button>
-            <SettingsDeleteConfirm
-              title="¿Eliminar este usuario?"
-              summary="No podrás eliminarlo si tiene requerimientos como responsable."
-              action={deleteUserAction.bind(null, row.original.id)}
-              pendingMessage="Usuario marcado para eliminar."
-              successMessage="Usuario eliminado."
-              errorMessage="No se pudo eliminar el usuario."
-            />
-          </div>
+          <RowActionMenu
+            items={[
+              { label: "Editar", onClick: () => setEditUser(row.original) },
+              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+            ]}
+          />
         ),
       },
     ],
@@ -104,6 +99,20 @@ export function SettingsUsersPanel({
 
   return (
     <section className="surface-card flex flex-col gap-5 p-[length:var(--density-inset-pad)]">
+      {deleteTarget ? (
+        <SettingsDeleteConfirm
+          title="¿Eliminar este usuario?"
+          summary="No podrás eliminarlo si tiene requerimientos como responsable."
+          action={deleteUserAction.bind(null, deleteTarget.id)}
+          pendingMessage="Usuario marcado para eliminar."
+          successMessage="Usuario eliminado."
+          errorMessage="No se pudo eliminar el usuario."
+          open
+          onOpenChange={(v) => {
+            if (!v) setDeleteTarget(null);
+          }}
+        />
+      ) : null}
       <SettingsTableToolbar
         title="Usuarios del sistema"
         description="Tabla principal de personas: busca, ordena y gestiona altas, ediciones y bajas."

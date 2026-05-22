@@ -20,6 +20,8 @@ export function TimeEntryEditModal({
   canPickAnyOwner,
   triggerLabel = "Editar hora",
   triggerClassName = "btn-secondary py-2 text-sm",
+  open: externalOpen,
+  onOpenChange,
 }: {
   entry: TimeEntry;
   users: { id: string; name: string }[];
@@ -32,17 +34,25 @@ export function TimeEntryEditModal({
   canPickAnyOwner: boolean;
   triggerLabel?: string;
   triggerClassName?: string;
+  /** Controlled mode: when provided the modal is externally managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? (v: boolean) => onOpenChange?.(v) : setInternalOpen;
 
   if (!canEdit) return null;
 
   return (
     <>
-      <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
-        {triggerLabel}
-      </button>
+      {!isControlled ? (
+        <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
+          {triggerLabel}
+        </button>
+      ) : null}
       <SettingsModal
         open={open}
         onClose={() => setOpen(false)}

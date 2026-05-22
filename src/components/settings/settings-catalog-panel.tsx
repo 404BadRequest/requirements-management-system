@@ -9,6 +9,7 @@ import type { SettingsCatalogEntry, SettingsCatalogKind } from "@/types/domain";
 import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-confirm";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { SettingsTableToolbar } from "@/components/settings/settings-table-toolbar";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 
 export function SettingsCatalogPanel({
   kind,
@@ -23,6 +24,7 @@ export function SettingsCatalogPanel({
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editRow, setEditRow] = useState<SettingsCatalogEntry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SettingsCatalogEntry | null>(null);
 
   const columns = useMemo<ColumnDef<SettingsCatalogEntry>[]>(
     () => [
@@ -50,23 +52,16 @@ export function SettingsCatalogPanel({
       },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditRow(row.original)}>
-              Editar
-            </button>
-            <SettingsDeleteConfirm
-              title="¿Eliminar esta entrada?"
-              summary="Solo es posible si no está en uso en requerimientos, horas o presupuesto."
-              action={deleteCatalogAction.bind(null, row.original.id)}
-              pendingMessage="Entrada marcada para eliminar."
-              successMessage="Entrada eliminada."
-              errorMessage="No se pudo eliminar la entrada."
-            />
-          </div>
+          <RowActionMenu
+            items={[
+              { label: "Editar", onClick: () => setEditRow(row.original) },
+              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+            ]}
+          />
         ),
       },
     ],
@@ -75,6 +70,20 @@ export function SettingsCatalogPanel({
 
   return (
     <section className="surface-card flex flex-col gap-5 p-[length:var(--density-inset-pad)]">
+      {deleteTarget ? (
+        <SettingsDeleteConfirm
+          title="¿Eliminar esta entrada?"
+          summary="Solo es posible si no está en uso en requerimientos, horas o presupuesto."
+          action={deleteCatalogAction.bind(null, deleteTarget.id)}
+          pendingMessage="Entrada marcada para eliminar."
+          successMessage="Entrada eliminada."
+          errorMessage="No se pudo eliminar la entrada."
+          open
+          onOpenChange={(v) => {
+            if (!v) setDeleteTarget(null);
+          }}
+        />
+      ) : null}
       <SettingsTableToolbar
         title={title}
         description={description}

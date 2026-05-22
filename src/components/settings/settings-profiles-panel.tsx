@@ -10,6 +10,7 @@ import type { Profile } from "@/types/domain";
 import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-confirm";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { SettingsTableToolbar } from "@/components/settings/settings-table-toolbar";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 
 export type ProfileTableRow = Profile & { linkedCount: number };
 
@@ -23,6 +24,7 @@ const PRESET_UNITS = [
 export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[] }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<ProfileTableRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProfileTableRow | null>(null);
 
   const columns = useMemo<ColumnDef<ProfileTableRow>[]>(
     () => [
@@ -56,23 +58,16 @@ export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[
       },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-quiet px-2 py-1 text-xs" onClick={() => setEditProfile(row.original)}>
-              Editar
-            </button>
-            <SettingsDeleteConfirm
-              title="¿Eliminar este perfil?"
-              summary="No podrás eliminarlo si hay usuarios asignados."
-              action={deleteProfileAction.bind(null, row.original.id)}
-              pendingMessage="Perfil marcado para eliminar."
-              successMessage="Perfil eliminado."
-              errorMessage="No se pudo eliminar el perfil."
-            />
-          </div>
+          <RowActionMenu
+            items={[
+              { label: "Editar", onClick: () => setEditProfile(row.original) },
+              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+            ]}
+          />
         ),
       },
     ],
@@ -81,6 +76,20 @@ export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[
 
   return (
     <section className="surface-card flex flex-col gap-5 p-[length:var(--density-inset-pad)]">
+      {deleteTarget ? (
+        <SettingsDeleteConfirm
+          title="¿Eliminar este perfil?"
+          summary="No podrás eliminarlo si hay usuarios asignados."
+          action={deleteProfileAction.bind(null, deleteTarget.id)}
+          pendingMessage="Perfil marcado para eliminar."
+          successMessage="Perfil eliminado."
+          errorMessage="No se pudo eliminar el perfil."
+          open
+          onOpenChange={(v) => {
+            if (!v) setDeleteTarget(null);
+          }}
+        />
+      ) : null}
       <SettingsTableToolbar
         title="Perfiles y tarifas"
         description="Cada usuario debe tener un perfil. La tarifa alimenta el estimado facturable."

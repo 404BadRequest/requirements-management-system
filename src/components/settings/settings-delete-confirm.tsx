@@ -13,6 +13,8 @@ export function SettingsDeleteConfirm({
   pendingMessage = "Elemento marcado para eliminar.",
   successMessage = "Elemento eliminado.",
   errorMessage = "No se pudo eliminar el elemento.",
+  open: externalOpen,
+  onOpenChange,
 }: {
   title: string;
   summary?: string;
@@ -22,16 +24,24 @@ export function SettingsDeleteConfirm({
   pendingMessage?: string;
   successMessage?: string;
   errorMessage?: string;
+  /** Controlled mode: when provided the dialog is externally managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? (v: boolean) => onOpenChange?.(v) : setInternalOpen;
   const [pending, setPending] = useState(false);
 
   return (
     <>
-      <button type="button" className="btn-danger-ghost text-xs" onClick={() => setOpen(true)}>
-        {buttonLabel}
-      </button>
+      {!isControlled ? (
+        <button type="button" className="btn-danger-ghost text-xs" onClick={() => setOpen(true)}>
+          {buttonLabel}
+        </button>
+      ) : null}
       <SettingsModal
         open={open}
         onClose={() => {

@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
-import { TimeEntryCompleteNowButton } from "@/components/time-entries/time-entry-complete-now-button";
-import { TimeEntryDeleteButton } from "@/components/time-entries/time-entry-delete-button";
-import { deleteTimeEntriesBatchAction } from "@/app/time-entries/new/data-actions";
+import { deleteTimeEntriesBatchAction, deleteTimeEntryAction, completeTimeEntryNowAction } from "@/app/time-entries/new/data-actions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 import type { TimeEntry } from "@/types/domain";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+function currentLocalTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
 
 export type TimeEntryRow = {
   id: string;
@@ -48,8 +53,12 @@ export function TimeEntriesTable({
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
+  const router = useRouter();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+  const [completeEntry, setCompleteEntry] = useState<{ id: string; startTime: string } | null>(null);
 
   const handleBulkDelete = async () => {
     const selectedIds = Object.keys(rowSelection);
@@ -139,42 +148,32 @@ export function TimeEntriesTable({
       { accessorKey: "clientLabel", header: "Cliente" },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => {
           if (!row.original.entry || (!row.original.canEdit && !row.original.canDelete)) {
             return <span className="text-xs text-muted-foreground">—</span>;
           }
+          const entry = row.original.entry;
+          const isOpen = !entry.endTime;
           return (
-            <div className="flex flex-wrap gap-2">
-              <TimeEntryCompleteNowButton
-                entryId={row.original.entry.id}
-                startTime={row.original.entry.startTime}
-                canEdit={Boolean(row.original.canEdit)}
-                isOpenEntry={!row.original.entry.endTime}
-              />
-              <Link
-                href={`/time-entries?nueva=1&duplicateId=${encodeURIComponent(row.original.entry.id)}`}
-                className="btn-secondary px-2.5 py-1 text-xs no-underline"
-              >
-                Duplicar
-              </Link>
-              <TimeEntryEditModal
-                entry={row.original.entry}
-                users={users}
-                clients={clients}
-                requirements={requirements}
-                contracts={contracts}
-                contractProfiles={contractProfiles}
-                categories={categories}
-                canEdit={Boolean(row.original.canEdit)}
-                canPickAnyOwner={canPickAnyOwner}
-                triggerLabel="Editar"
-                triggerClassName="btn-secondary px-2.5 py-1 text-xs"
-              />
-              <TimeEntryDeleteButton entryId={row.original.entry.id} canDelete={Boolean(row.original.canDelete)} />
-            </div>
+            <RowActionMenu
+              items={[
+                ...(row.original.canEdit && isOpen
+                  ? [{ label: "Terminar ahora", onClick: () => setCompleteEntry({ id: entry.id, startTime: entry.startTime }) }]
+                  : []),
+                ...(row.original.canEdit
+                  ? [
+                      { label: "Duplicar", onClick: () => router.push(`/time-entries?nueva=1&duplicateId=${encodeURIComponent(entry.id)}`) },
+                      { label: "Editar", onClick: () => setEditEntry(entry) },
+                    ]
+                  : []),
+                ...(row.original.canDelete
+                  ? [{ label: "Eliminar", danger: true, onClick: () => setDeleteEntryId(entry.id) }]
+                  : []),
+              ]}
+            />
           );
         },
       },
@@ -184,6 +183,82 @@ export function TimeEntriesTable({
 
   return (
     <div className="space-y-3">
+      {/* Page-level edit modal — controlled by editEntry state */}
+      {editEntry ? (
+        <TimeEntryEditModal
+          key={editEntry.id}
+          entry={editEntry}
+          users={users}
+          clients={clients}
+          requirements={requirements}
+          contracts={contracts}
+          contractProfiles={contractProfiles}
+          categories={categories}
+          canEdit
+          canPickAnyOwner={canPickAnyOwner}
+          open
+          onOpenChange={(v) => {
+            if (!v) setEditEntry(null);
+          }}
+        />
+      ) : null}
+
+      {/* Page-level delete confirmation — controlled by deleteEntryId state */}
+      {deleteEntryId ? (
+        <ConfirmDialog
+          label="Eliminar"
+          title="¿Eliminar hora?"
+          open
+          onOpenChange={(v) => {
+            if (!v) setDeleteEntryId(null);
+          }}
+          onConfirm={() => {
+            const id = deleteEntryId;
+            setDeleteEntryId(null);
+            scheduleUndoableAction({
+              pendingMessage: "Hora marcada para eliminar.",
+              successMessage: "Hora eliminada.",
+              errorMessage: "No se pudo eliminar la hora.",
+              onCommit: async () => {
+                await deleteTimeEntryAction(id);
+                router.refresh();
+              },
+            });
+          }}
+        />
+      ) : null}
+
+      {/* Page-level complete-now confirmation — controlled by completeEntry state */}
+      {completeEntry ? (
+        <ConfirmDialog
+          label="Terminar ahora"
+          title="¿Confirmas cerrar esta hora con la hora actual?"
+          open
+          confirmLabel="Sí, terminar ahora"
+          confirmLoadingLabel="Cerrando..."
+          onOpenChange={(v) => {
+            if (!v) setCompleteEntry(null);
+          }}
+          onConfirm={async () => {
+            const { id, startTime } = completeEntry;
+            const now = currentLocalTime();
+            if (now <= startTime) {
+              toast.error(`La hora actual (${now}) debe ser posterior al inicio (${startTime}).`);
+              return;
+            }
+            const loadingId = toast.loading("Cerrando hora...");
+            try {
+              await completeTimeEntryNowAction({ id, endTime: now });
+              toast.success(`Hora cerrada a las ${now}.`, { id: loadingId });
+              router.refresh();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "No se pudo cerrar la hora.", { id: loadingId });
+            }
+            setCompleteEntry(null);
+          }}
+        />
+      ) : null}
+
       {Object.keys(rowSelection).length > 0 && (
         <div className="flex items-center justify-between rounded-[2px] border border-border bg-muted/30 px-4 py-2">
           <span className="text-sm font-medium text-muted-foreground">

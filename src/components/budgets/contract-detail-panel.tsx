@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { RiskBadge } from "@/components/common/badges";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
 import type { TimeEntry } from "@/types/domain";
 
@@ -90,6 +91,8 @@ export function ContractDetailPanel({
   topRiskProfiles: TopRiskProfileRow[];
   topRequirementRows: TopRequirementRow[];
 }) {
+  const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
+
   const allocationColumns = useMemo<ColumnDef<ProfileAllocationRow>[]>(
     () => [
       { accessorKey: "profileName", header: "Perfil" },
@@ -125,23 +128,13 @@ export function ContractDetailPanel({
       { accessorKey: "status", header: "Estado" },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) =>
           row.original.canEdit ? (
-            <TimeEntryEditModal
-              entry={row.original.entry}
-              users={users}
-              clients={clients}
-              requirements={requirements}
-              contracts={contracts}
-              contractProfiles={contractProfiles}
-              categories={categories}
-              canEdit={row.original.canEdit}
-              canPickAnyOwner={canPickAnyOwner}
-              triggerLabel="Editar"
-              triggerClassName="btn-secondary px-2.5 py-1 text-xs"
+            <RowActionMenu
+              items={[{ label: "Editar", onClick: () => setEditEntry(row.original.entry) }]}
             />
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
@@ -185,6 +178,24 @@ export function ContractDetailPanel({
 
   return (
     <div className="space-y-4">
+      {editEntry ? (
+        <TimeEntryEditModal
+          key={editEntry.id}
+          entry={editEntry}
+          users={users}
+          clients={clients}
+          requirements={requirements}
+          contracts={contracts}
+          contractProfiles={contractProfiles}
+          categories={categories}
+          canEdit
+          canPickAnyOwner={canPickAnyOwner}
+          open
+          onOpenChange={(v) => {
+            if (!v) setEditEntry(null);
+          }}
+        />
+      ) : null}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">Horas mal asignadas</p>

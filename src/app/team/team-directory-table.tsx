@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable } from "@/components/common/data-table";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 
 export type TeamDirectoryRow = {
   id: string;
@@ -59,35 +59,33 @@ export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
       { accessorKey: "activeLabel", header: "Estado" },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => {
           const email = row.original.email;
           return (
-            <div className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                className="btn-secondary px-2 py-1 text-xs"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(email);
-                    toast.success("Correo copiado al portapapeles");
-                  } catch {
-                    toast.error("No se pudo copiar (permiso del navegador o contexto inseguro)");
-                  }
-                }}
-              >
-                Copiar correo
-              </button>
-              <a
-                href={`mailto:${email}`}
-                className="btn-secondary inline-flex items-center gap-1 px-2 py-1 text-xs no-underline"
-              >
-                <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Redactar
-              </a>
-            </div>
+            <RowActionMenu
+              items={[
+                {
+                  label: "Copiar correo",
+                  onClick: async () => {
+                    try {
+                      await navigator.clipboard.writeText(email);
+                      toast.success("Correo copiado al portapapeles");
+                    } catch {
+                      toast.error("No se pudo copiar (permiso del navegador o contexto inseguro)");
+                    }
+                  },
+                },
+                {
+                  label: "Redactar correo",
+                  onClick: () => {
+                    window.open(`mailto:${email}`, "_blank");
+                  },
+                },
+              ]}
+            />
           );
         },
       },

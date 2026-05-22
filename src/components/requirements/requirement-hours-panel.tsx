@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import { DataTable } from "@/components/common/data-table";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
-import { TimeEntryDeleteButton } from "@/components/time-entries/time-entry-delete-button";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { RowActionMenu } from "@/components/common/row-action-menu";
+import { scheduleUndoableAction } from "@/components/common/undoable-action";
+import { deleteTimeEntryAction } from "@/app/time-entries/new/data-actions";
 import type { TimeEntry } from "@/types/domain";
 
 export type RequirementHoursRow = {
@@ -52,6 +57,10 @@ export function RequirementHoursPanel({
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
 }) {
+  const router = useRouter();
+  const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+
   const columns = useMemo<ColumnDef<RequirementHoursRow>[]>(
     () => [
       {
@@ -88,7 +97,7 @@ export function RequirementHoursPanel({
       },
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => {
@@ -96,22 +105,12 @@ export function RequirementHoursPanel({
             return <span className="text-xs text-muted-foreground">—</span>;
           }
           return (
-            <div className="flex flex-wrap gap-2">
-              <TimeEntryEditModal
-                entry={row.original.entry}
-                users={users}
-                clients={clients}
-                requirements={requirements}
-                contracts={contracts}
-                contractProfiles={contractProfiles}
-                categories={categories}
-                canEdit={row.original.canEdit}
-                canPickAnyOwner={canPickAnyOwner}
-                triggerLabel="Editar"
-                triggerClassName="btn-secondary px-2.5 py-1 text-xs"
-              />
-              <TimeEntryDeleteButton entryId={row.original.id} canDelete={row.original.canDelete} />
-            </div>
+            <RowActionMenu
+              items={[
+                ...(row.original.canEdit ? [{ label: "Editar", onClick: () => setEditEntry(row.original.entry) }] : []),
+                ...(row.original.canDelete ? [{ label: "Eliminar", danger: true, onClick: () => setDeleteEntryId(row.original.id) }] : []),
+              ]}
+            />
           );
         },
       },
@@ -132,6 +131,48 @@ export function RequirementHoursPanel({
   }
 
   return (
+    <>
+      {editEntry ? (
+        <TimeEntryEditModal
+          key={editEntry.id}
+          entry={editEntry}
+          users={users}
+          clients={clients}
+          requirements={requirements}
+          contracts={contracts}
+          contractProfiles={contractProfiles}
+          categories={categories}
+          canEdit
+          canPickAnyOwner={canPickAnyOwner}
+          open
+          onOpenChange={(v) => {
+            if (!v) setEditEntry(null);
+          }}
+        />
+      ) : null}
+      {deleteEntryId ? (
+        <ConfirmDialog
+          label="Eliminar"
+          title="¿Eliminar hora?"
+          open
+          onOpenChange={(v) => {
+            if (!v) setDeleteEntryId(null);
+          }}
+          onConfirm={() => {
+            const id = deleteEntryId;
+            setDeleteEntryId(null);
+            scheduleUndoableAction({
+              pendingMessage: "Hora marcada para eliminar.",
+              successMessage: "Hora eliminada.",
+              errorMessage: "No se pudo eliminar la hora.",
+              onCommit: async () => {
+                await deleteTimeEntryAction(id);
+                router.refresh();
+              },
+            });
+          }}
+        />
+      ) : null}
     <article className="surface-card flex flex-col gap-6 p-[length:var(--density-inset-pad)]">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
         <div>
@@ -195,5 +236,6 @@ export function RequirementHoursPanel({
         />
       </div>
     </article>
+    </>
   );
 }
