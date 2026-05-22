@@ -159,11 +159,14 @@ export default async function TimeEntriesPage({
     const loggedHours = loggedMinutes / 60;
     const directoryUser = users.find((u) => u.id === currentDirectoryUserId);
     const userName = directoryUser?.name ?? user.name ?? "—";
+    const profileName = directoryUser
+      ? (profiles.find((p) => p.id === directoryUser.profileId)?.name ?? null)
+      : null;
     const formatWeek = (d: Date) =>
       d.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
     return {
       userName,
-      role: user.role,
+      role: profileName ?? user.role,
       loggedHours,
       capacityHours: 40,
       weekLabel: `${formatWeek(monday)} – ${formatWeek(sunday)}`,
