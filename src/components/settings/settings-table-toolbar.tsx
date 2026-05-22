@@ -12,7 +12,7 @@ export function SettingsTableToolbar({
   title: string;
   description?: string;
   actionLabel: string;
-  onAction: () => void;
+  onAction?: () => void;
   extra?: ReactNode;
 }) {
   return (
@@ -21,12 +21,16 @@ export function SettingsTableToolbar({
         <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
         {description ? <p className="max-w-prose text-xs leading-relaxed text-muted-foreground sm:text-sm">{description}</p> : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {extra}
-        <button type="button" className="btn-primary text-sm" onClick={onAction}>
-          {actionLabel}
-        </button>
-      </div>
+      {(onAction || extra) ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {extra}
+          {onAction ? (
+            <button type="button" className="btn-primary text-sm" onClick={onAction}>
+              {actionLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

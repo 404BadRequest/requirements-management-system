@@ -18,11 +18,13 @@ export function SettingsUsersPanel({
   profiles,
   showCredentialStatus,
   credentialsByUserId,
+  canWrite = false,
 }: {
   users: User[];
   profiles: { id: string; name: string }[];
   showCredentialStatus: boolean;
   credentialsByUserId: Record<string, boolean>;
+  canWrite?: boolean;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -79,22 +81,26 @@ export function SettingsUsersPanel({
             <span className="text-muted-foreground">—</span>
           ),
       },
-      {
-        id: "actions",
-        header: "",
-        enableSorting: false,
-        enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <RowActionMenu
-            items={[
-              { label: "Editar", onClick: () => setEditUser(row.original) },
-              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
-            ]}
-          />
-        ),
-      },
+      ...(canWrite
+        ? [
+            {
+              id: "actions",
+              header: "",
+              enableSorting: false,
+              enableGlobalFilter: false,
+              cell: ({ row }: { row: { original: User } }) => (
+                <RowActionMenu
+                  items={[
+                    { label: "Editar", onClick: () => setEditUser(row.original) },
+                    { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+                  ]}
+                />
+              ),
+            } satisfies ColumnDef<User>,
+          ]
+        : []),
     ],
-    [credentialsByUserId, profileById, showCredentialStatus],
+    [canWrite, credentialsByUserId, profileById, showCredentialStatus],
   );
 
   return (
@@ -117,7 +123,7 @@ export function SettingsUsersPanel({
         title="Usuarios del sistema"
         description="Tabla principal de personas: busca, ordena y gestiona altas, ediciones y bajas."
         actionLabel="Nuevo usuario"
-        onAction={() => setCreateOpen(true)}
+        onAction={canWrite ? () => setCreateOpen(true) : undefined}
       />
       <DataTable
         data={users}

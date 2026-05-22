@@ -12,7 +12,7 @@ import { SettingsTableToolbar } from "@/components/settings/settings-table-toolb
 import { toast } from "sonner";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 
-export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
+export function SettingsClientsPanel({ clients, canWrite = false }: { clients: Client[]; canWrite?: boolean }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
@@ -46,43 +46,43 @@ export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
             const token = await getPortalTokenAction(clientId);
             return `${window.location.origin}/public/project/${token}`;
           };
-          return (
-            <RowActionMenu
-              items={[
-                {
-                  label: "Copiar enlace portal",
-                  onClick: async () => {
-                    try {
-                      const url = await getPortalUrl();
-                      await navigator.clipboard.writeText(url);
-                      toast.success("Enlace público copiado al portapapeles");
-                    } catch {
-                      toast.error("No se pudo copiar el enlace");
-                    }
-                  },
-                },
-                {
-                  label: "Abrir portal",
-                  onClick: async () => {
-                    try {
-                      const url = await getPortalUrl();
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    } catch {
-                      toast.error("No se pudo abrir el portal");
-                    }
-                  },
-                },
+          const portalItems = [
+            {
+              label: "Copiar enlace portal",
+              onClick: async () => {
+                try {
+                  const url = await getPortalUrl();
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Enlace público copiado al portapapeles");
+                } catch {
+                  toast.error("No se pudo copiar el enlace");
+                }
+              },
+            },
+            {
+              label: "Abrir portal",
+              onClick: async () => {
+                try {
+                  const url = await getPortalUrl();
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } catch {
+                  toast.error("No se pudo abrir el portal");
+                }
+              },
+            },
+          ];
+          const writeItems = canWrite
+            ? [
                 { label: "Editar", onClick: () => setEditClient(row.original) },
-                { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
-              ]}
-            />
-          );
+                { label: "Eliminar", danger: true as const, onClick: () => setDeleteTarget(row.original) },
+              ]
+            : [];
+          return <RowActionMenu items={[...portalItems, ...writeItems]} />;
         },
       },
     ],
-    // setEditClient and setDeleteTarget are stable setState refs — no need to include
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [canWrite],
   );
 
   return (
@@ -105,7 +105,7 @@ export function SettingsClientsPanel({ clients }: { clients: Client[] }) {
         title="Clientes"
         description="Directorio usado en requerimientos y reportes de horas."
         actionLabel="Nuevo cliente"
-        onAction={() => setCreateOpen(true)}
+        onAction={canWrite ? () => setCreateOpen(true) : undefined}
       />
       <DataTable
         data={clients}

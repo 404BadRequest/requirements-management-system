@@ -177,7 +177,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: `${requirementStatusLabel(requirementStatuses, event.fromStatus)} → ${requirementStatusLabel(requirementStatuses, event.toStatus)}`,
       description: `Cambio realizado por ${userById.get(event.changedById)?.name ?? event.changedById}.`,
       at: event.changedAt,
-      href: "#status-history-section",
+      href: "#activity-section",
     })),
     ...comments.map((comment) => ({
       id: `comment-${comment.id}`,

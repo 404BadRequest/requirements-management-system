@@ -172,8 +172,8 @@ export function NotificationsPageClient({ initialItems }: { initialItems: AppNot
                         <Link href={n.href} className="btn-primary px-3 py-1.5 text-xs no-underline">
                           Ver detalles
                         </Link>
-                        {n.href.includes("/requirements/") && !n.href.includes("?view=kanban") && (
-                          <Link href={`${n.href.split('?')[0]}?view=kanban`} className="btn-secondary px-3 py-1.5 text-xs no-underline">
+                        {n.href.includes("/requirements/") && (
+                          <Link href="/requirements/kanban" className="btn-secondary px-3 py-1.5 text-xs no-underline">
                             Ver en Kanban
                           </Link>
                         )}

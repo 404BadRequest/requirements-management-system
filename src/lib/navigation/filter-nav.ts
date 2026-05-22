@@ -9,6 +9,7 @@ export const COMMAND_NAV_ITEMS: CommandNavItem[] = [
   { label: "Ir a Requerimientos", href: "/requirements", requiredPermission: "requirements.read" },
   { label: "Ir a Kanban", href: "/requirements/kanban", requiredPermission: "requirements.read" },
   { label: "Ir a Horas", href: "/time-entries", requiredPermission: "time_entries.read" },
+  { label: "Ir a Vista Semanal", href: "/time-entries/weekly", requiredPermission: "time_entries.read" },
   { label: "Ir a Reportes", href: "/reports", requiredPermission: "reports.read" },
   { label: "Ir a Presupuesto", href: "/budgets", requiredPermission: "budgets.read" },
   { label: "Ir a Equipo", href: "/team", requiredPermission: "team.read" },

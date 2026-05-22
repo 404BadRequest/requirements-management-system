@@ -16,11 +16,13 @@ export function SettingsCatalogPanel({
   title,
   description,
   rows,
+  canWrite = false,
 }: {
   kind: SettingsCatalogKind;
   title: string;
   description: string;
   rows: SettingsCatalogEntry[];
+  canWrite?: boolean;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editRow, setEditRow] = useState<SettingsCatalogEntry | null>(null);
@@ -50,22 +52,26 @@ export function SettingsCatalogPanel({
             <span className="rounded-[2px] border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactivo</span>
           ),
       },
-      {
-        id: "actions",
-        header: "",
-        enableSorting: false,
-        enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <RowActionMenu
-            items={[
-              { label: "Editar", onClick: () => setEditRow(row.original) },
-              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
-            ]}
-          />
-        ),
-      },
+      ...(canWrite
+        ? [
+            {
+              id: "actions",
+              header: "",
+              enableSorting: false,
+              enableGlobalFilter: false,
+              cell: ({ row }: { row: { original: SettingsCatalogEntry } }) => (
+                <RowActionMenu
+                  items={[
+                    { label: "Editar", onClick: () => setEditRow(row.original) },
+                    { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+                  ]}
+                />
+              ),
+            } satisfies ColumnDef<SettingsCatalogEntry>,
+          ]
+        : []),
     ],
-    [],
+    [canWrite],
   );
 
   return (
@@ -88,7 +94,7 @@ export function SettingsCatalogPanel({
         title={title}
         description={description}
         actionLabel="Nueva entrada"
-        onAction={() => setCreateOpen(true)}
+        onAction={canWrite ? () => setCreateOpen(true) : undefined}
       />
       <DataTable
         data={rows}

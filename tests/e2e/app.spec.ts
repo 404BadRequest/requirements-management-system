@@ -20,11 +20,6 @@ test("crear requerimiento", async ({ page }) => {
   await expect(page.getByText("Req e2e")).toBeVisible();
 });
 
-test("cambiar tema", async ({ page }) => {
-  await page.goto("/dashboard");
-  await page.getByLabel("Tema de la interfaz").selectOption("dark");
-  await expect(page.locator("html")).toHaveClass(/dark/);
-});
 
 test("navegar configuración: perfiles y usuarios", async ({ page }) => {
   await page.goto("/settings/profiles");

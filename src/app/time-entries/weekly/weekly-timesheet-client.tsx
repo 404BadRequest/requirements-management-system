@@ -428,6 +428,23 @@ export function WeeklyTimesheetClient({
           })}
         </div>
 
+        {/* Empty-week guidance */}
+        {weeklyTotal === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 border-b border-border/50 bg-muted/10 px-6 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">Sin horas registradas esta semana</p>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Haz clic en cualquier área del calendario para agregar una hora, o usa el botón "Nueva" en cada columna.
+            </p>
+            <button
+              type="button"
+              onClick={() => openNewEntry(toDateStr(visibleDays[0] ?? weekDays[0]))}
+              className="btn-primary mt-1 text-xs"
+            >
+              + Registrar primera hora
+            </button>
+          </div>
+        )}
+
         {/* Timeline scroll area */}
         <div ref={timelineRef} className="overflow-y-auto" style={{ maxHeight: "640px" }}>
           <div

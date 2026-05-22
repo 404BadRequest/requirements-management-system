@@ -13,6 +13,7 @@ import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
+import { MONTHLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 import type { SettingsCatalogEntry } from "@/types/domain";
 
 function catalogLabelByCode(catalog: SettingsCatalogEntry[], code: string): string {
@@ -87,7 +88,7 @@ export default async function DashboardPage({
       userName: name,
       role: user?.role ?? "Desconocido",
       loggedHours: minutes / 60,
-      capacityHours: 160, // En un sistema real esto vendría de la configuración del usuario
+      capacityHours: MONTHLY_CAPACITY_HOURS,
     };
   });
 
@@ -97,12 +98,6 @@ export default async function DashboardPage({
       ? [monthHours, byPersonHours, statusChartData]
       : [monthHours, byClientHours, statusChartData];
   const allChartsEmpty = roleChartSets.every((set) => set.every((item) => item.value <= 0));
-
-  // Verificar si el usuario ha registrado horas hoy
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const hasLoggedHoursToday = isContributor && metrics.hoursByMonth[todayStr.substring(0, 7)] !== undefined 
-    ? true // Simplificación para el demo: si hay horas en el mes, asumimos que podría haber hoy. Idealmente se chequearía el día exacto.
-    : false; // Para hacerlo real, necesitamos consultar las entradas del día.
 
 
   return (
@@ -298,7 +293,7 @@ export default async function DashboardPage({
                       : "Crea requerimientos y registra horas para activar la lectura ejecutiva de cartera."}
                 </p>
                 <div className="pt-1">
-                  <Link href={isContributor ? "/time-entries/new" : "/requirements/new"} className="btn-secondary text-xs">
+                  <Link href={isContributor ? "/time-entries/new" : "/requirements?nueva=1"} className="btn-secondary text-xs">
                     {isContributor ? "Registrar mi primera hora" : "Crear requerimiento"}
                   </Link>
                 </div>

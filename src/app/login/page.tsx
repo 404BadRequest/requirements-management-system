@@ -38,7 +38,7 @@ export default async function LoginPage({
             </div>
           </div>
           <h1 className="mt-6 max-w-[18ch] text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Gestion de requerimientos TI con foco operativo y control contractual.
+            Gestión de requerimientos TI con foco operativo y control contractual.
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             Centraliza requerimientos, horas, contratos y trazabilidad en un solo flujo para equipos de tecnologia y
@@ -64,7 +64,7 @@ export default async function LoginPage({
         </section>
 
         <section className="surface-card w-full p-6 shadow-soft sm:p-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Iniciar sesion</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Iniciar sesión</h2>
           <p className="mt-2 text-sm text-muted-foreground">Accede para gestionar requerimientos TI y presupuesto contractual.</p>
           {error ? (
             <p className="mt-4 rounded-[2px] border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-foreground" role="alert">

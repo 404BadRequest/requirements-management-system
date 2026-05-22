@@ -12,14 +12,14 @@ export const timeEntrySchema = z
     category: z.string().min(1, "Categoría requerida"),
     taskDescription: z.string().min(3, "Tarea requerida"),
     date: z.string().min(1, "Fecha obligatoria"),
-    startTime: z.string().regex(timeRegex, "Hora inicio invalida"),
-    endTime: z.string().regex(timeRegex, "Hora termino invalida").or(z.literal("")).nullable(),
+    startTime: z.string().regex(timeRegex, "Hora inicio inválida"),
+    endTime: z.string().regex(timeRegex, "Hora término inválida").or(z.literal("")).nullable(),
     userId: z.string().min(1, "Encargado obligatorio"),
     observations: z.string(),
   })
   .refine((value) => !value.endTime || value.endTime > value.startTime, {
     path: ["endTime"],
-    message: "Hora termino debe ser posterior a hora inicio",
+    message: "Hora término debe ser posterior a hora inicio",
   });
 
 export type TimeEntryInput = z.infer<typeof timeEntrySchema>;
@@ -27,12 +27,12 @@ export type TimeEntryInput = z.infer<typeof timeEntrySchema>;
 export const timeEntryBatchBlockSchema = z
   .object({
     date: z.string().min(1, "Fecha obligatoria"),
-    startTime: z.string().regex(timeRegex, "Hora inicio invalida"),
-    endTime: z.string().regex(timeRegex, "Hora termino invalida"),
+    startTime: z.string().regex(timeRegex, "Hora inicio inválida"),
+    endTime: z.string().regex(timeRegex, "Hora término inválida"),
   })
   .refine((value) => value.endTime > value.startTime, {
     path: ["endTime"],
-    message: "Hora termino debe ser posterior a hora inicio",
+    message: "Hora término debe ser posterior a hora inicio",
   });
 
 export const timeEntryBatchSchema = z.object({

@@ -472,7 +472,7 @@ export function RequirementsPageClient({
               </button>
             ) : (
               <a href="/settings/clients" className="btn-secondary py-2 text-sm no-underline">
-                Revisar configuracion
+                Revisar configuración
               </a>
             )
           }

@@ -21,7 +21,7 @@ const PRESET_UNITS = [
   { value: "__custom__", label: "Otra" },
 ] as const;
 
-export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[] }) {
+export function SettingsProfilesPanel({ profiles, canWrite = false }: { profiles: ProfileTableRow[]; canWrite?: boolean }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<ProfileTableRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProfileTableRow | null>(null);
@@ -56,22 +56,26 @@ export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[
             <span className="rounded-[2px] border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactivo</span>
           ),
       },
-      {
-        id: "actions",
-        header: "",
-        enableSorting: false,
-        enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <RowActionMenu
-            items={[
-              { label: "Editar", onClick: () => setEditProfile(row.original) },
-              { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
-            ]}
-          />
-        ),
-      },
+      ...(canWrite
+        ? [
+            {
+              id: "actions",
+              header: "",
+              enableSorting: false,
+              enableGlobalFilter: false,
+              cell: ({ row }: { row: { original: ProfileTableRow } }) => (
+                <RowActionMenu
+                  items={[
+                    { label: "Editar", onClick: () => setEditProfile(row.original) },
+                    { label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) },
+                  ]}
+                />
+              ),
+            } satisfies ColumnDef<ProfileTableRow>,
+          ]
+        : []),
     ],
-    [],
+    [canWrite],
   );
 
   return (
@@ -94,7 +98,7 @@ export function SettingsProfilesPanel({ profiles }: { profiles: ProfileTableRow[
         title="Perfiles y tarifas"
         description="Cada usuario debe tener un perfil. La tarifa alimenta el estimado facturable."
         actionLabel="Nuevo perfil"
-        onAction={() => setCreateOpen(true)}
+        onAction={canWrite ? () => setCreateOpen(true) : undefined}
       />
       <DataTable
         data={profiles}

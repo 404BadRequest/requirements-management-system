@@ -423,9 +423,25 @@ export function ChatPageClient({ initialData, initialThreadId = "" }: ChatPageCl
             </p>
           ) : null}
           {!selectedThreadId ? (
-            <p className="rounded-[2px] border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-              Selecciona una conversación para empezar.
-            </p>
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              {bootstrap.threads.length === 0 ? (
+                <>
+                  <div className="rounded-full border border-border bg-muted/30 p-4">
+                    <svg className="h-8 w-8 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Aún no tienes conversaciones</p>
+                  <p className="max-w-xs text-xs text-muted-foreground">
+                    Crea un chat directo con un compañero o inicia un canal de equipo usando los controles de la izquierda.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Selecciona una conversación para empezar.
+                </p>
+              )}
+            </div>
           ) : null}
         </div>
 

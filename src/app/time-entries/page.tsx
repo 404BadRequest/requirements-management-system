@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
 import { PersonalUtilizationBanner } from "@/components/time-entries/personal-utilization-banner";
+import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 import {
   getCatalogByKind,
   getClients,
@@ -21,7 +22,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function TimeEntriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string; duplicateId?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ clientId?: string; contractId?: string; contractStatus?: string; nueva?: string; duplicateId?: string; from?: string; to?: string; requirementId?: string; userId?: string }>;
 }) {
   const user = await requirePermission("time_entries.read");
   const canCreate = roleHasPermission(user.role, "time_entries.write");
@@ -29,10 +30,12 @@ export default async function TimeEntriesPage({
   const canPickAnyOwner = canEditAnyEntry;
   const ownScope = user.role === "Contributor";
   const canExport = roleHasPermission(user.role, "exports.run");
-  const { clientId = "", contractId = "", contractStatus = "", nueva, duplicateId = "", from = "", to = "" } = await searchParams;
+  const { clientId = "", contractId = "", contractStatus = "", nueva, duplicateId = "", from = "", to = "", requirementId: requirementIdParam = "", userId: userIdParam = "" } = await searchParams;
   const selectedFrom = from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : "";
   const selectedTo = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
+  const prefillRequirementId = requirementIdParam && !duplicateId ? requirementIdParam : "";
+  const prefillUserId = userIdParam && !duplicateId && canPickAnyOwner ? userIdParam : "";
   const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
     getTimeEntries(),
     getUsers(),
@@ -105,11 +108,14 @@ export default async function TimeEntriesPage({
     };
   })();
 
+  const selectedUserId = canPickAnyOwner && users.some((u) => u.id === userIdParam) ? userIdParam : "";
   const filteredEntries = entries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
+    if (selectedUserId && entry.userId !== selectedUserId) return false;
     if (selectedClientId) {
       const requirement = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
-      if (requirement?.clientId !== selectedClientId) return false;
+      const entryClientId = requirement?.clientId ?? entry.clientId;
+      if (entryClientId !== selectedClientId) return false;
     }
     if (selectedContractId && entry.contractId !== selectedContractId) {
       return false;
@@ -168,7 +174,7 @@ export default async function TimeEntriesPage({
       userName,
       role: profileName ?? user.role,
       loggedHours,
-      capacityHours: 40,
+      capacityHours: WEEKLY_CAPACITY_HOURS,
       weekLabel: `${formatWeek(monday)} – ${formatWeek(sunday)}`,
     };
   })();
@@ -188,7 +194,12 @@ export default async function TimeEntriesPage({
         description="Horas por persona, categoría y requerimiento"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {canCreate ? <TimeEntriesNewModal autoOpen={openNewModal} defaultValues={duplicateDefaultValues} /> : null}
+            {canCreate ? (
+            <TimeEntriesNewModal
+              autoOpen={openNewModal}
+              defaultValues={duplicateDefaultValues ?? (prefillRequirementId || prefillUserId ? { requirementId: prefillRequirementId || null, userId: prefillUserId || undefined } : undefined)}
+            />
+          ) : null}
             {canExport ? (
               <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
                 Exportar CSV
@@ -289,7 +300,10 @@ export default async function TimeEntriesPage({
             <p className="mt-1">Aún no se han registrado horas en el sistema. Comienza registrando tu trabajo.</p>
             {canCreate ? (
               <div className="mt-4 flex justify-center">
-                <TimeEntriesNewModal autoOpen={openNewModal} defaultValues={duplicateDefaultValues} />
+                <TimeEntriesNewModal
+                  autoOpen={openNewModal}
+                  defaultValues={duplicateDefaultValues ?? (prefillRequirementId || prefillUserId ? { requirementId: prefillRequirementId || null, userId: prefillUserId || undefined } : undefined)}
+                />
               </div>
             ) : null}
           </div>

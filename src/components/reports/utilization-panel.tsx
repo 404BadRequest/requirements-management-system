@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Users, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 
 export type UtilizationData = {
   userId: string;
@@ -45,7 +46,7 @@ export function UtilizationPanel({ data }: { data: UtilizationData[] }) {
             Capacidad y Utilización del Equipo
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Basado en 40h semanales por persona.
+            Basado en {WEEKLY_CAPACITY_HOURS}h semanales por persona.
           </p>
         </div>
         <div className="text-right">

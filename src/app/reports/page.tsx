@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { SpendReportTable } from "@/app/reports/spend-report-table";
+import { UtilizationPanel, type UtilizationData } from "@/components/reports/utilization-panel";
 import Link from "next/link";
 import {
   getCatalogByKind,
@@ -17,6 +18,7 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { buildSpendReport, summarizeSpendReport } from "@/lib/reports/spend-report";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
+import { WEEKLY_CAPACITY_HOURS } from "@/lib/config/capacity";
 
 function defaultDateRange(): { from: string; to: string } {
   const now = new Date();
@@ -97,7 +99,34 @@ export default async function ReportsPage({
     referenceRates,
   });
 
-  const { totalHours, totalsByCurrency, totalClpDisplay, hasExcludedFromClpTotal } = summarizeSpendReport(rows);
+  const { totalHours, totalClpDisplay, hasExcludedFromClpTotal, totalRevenueClpDisplay, globalMarginPercentageDisplay } = summarizeSpendReport(rows);
+
+  // Utilization per person in the selected period
+  const periodMs = Math.max(1, new Date(to).getTime() - new Date(from).getTime() + 86400000);
+  const periodWeeks = periodMs / (7 * 24 * 3600 * 1000);
+  const periodCapacityHours = Math.round(periodWeeks * WEEKLY_CAPACITY_HOURS);
+  const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
+  const requirementMap = new Map(requirements.map((r) => [r.id, r]));
+  const minutesByUser = new Map<string, number>();
+  for (const entry of scopedEntries) {
+    if (entry.date < from || entry.date > to) continue;
+    if (selectedClientId) {
+      const req = entry.requirementId ? requirementMap.get(entry.requirementId) : undefined;
+      const clientId = req?.clientId ?? entry.clientId;
+      if (clientId !== selectedClientId) continue;
+    }
+    minutesByUser.set(entry.userId, (minutesByUser.get(entry.userId) ?? 0) + entry.durationMinutes);
+  }
+  const utilizationData: UtilizationData[] = users
+    .filter((u) => u.active && minutesByUser.has(u.id))
+    .map((u) => ({
+      userId: u.id,
+      userName: u.name,
+      role: profileNameById.get(u.profileId) ?? u.role,
+      loggedHours: (minutesByUser.get(u.id) ?? 0) / 60,
+      capacityHours: periodCapacityHours,
+    }))
+    .sort((a, b) => b.loggedHours - a.loggedHours);
 
   return (
     <AppShell>
@@ -181,13 +210,13 @@ export default async function ReportsPage({
         </article>
         <article className="surface-card border-emerald-500/20 bg-emerald-500/[0.06] p-4">
           <p className="text-xs text-emerald-700 dark:text-emerald-400">Venta Estimada (CLP)</p>
-          <p className="text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{summarizeSpendReport(rows).totalRevenueClpDisplay}</p>
+          <p className="text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{totalRevenueClpDisplay}</p>
         </article>
         <article className="surface-card border-amber-500/20 bg-amber-500/[0.06] p-4">
           <p className="text-xs text-amber-700 dark:text-amber-400">Margen Bruto</p>
           <div className="flex items-baseline gap-2">
             <p className="text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-              {summarizeSpendReport(rows).globalMarginPercentageDisplay}
+              {globalMarginPercentageDisplay}
             </p>
           </div>
         </article>
@@ -196,6 +225,10 @@ export default async function ReportsPage({
       <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{formatFinancialReferenceRatesFootnote(referenceRates)}</p>
 
       <SpendReportTable rows={rows} />
+
+      {utilizationData.length > 0 ? (
+        <UtilizationPanel data={utilizationData} />
+      ) : null}
     </AppShell>
   );
 }

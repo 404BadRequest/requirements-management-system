@@ -3,8 +3,12 @@ import { SettingsUsersPanel } from "@/components/settings/settings-users-panel";
 import { getProfiles, getUsers } from "@/data/repositories/server-db";
 import { getAuthCredentialStatusByUserIds } from "@/lib/auth/authjs-identities";
 import { getAuthProviderKind } from "@/lib/postgres/env";
+import { requirePermission } from "@/lib/auth/rsc-guard";
+import { roleHasPermission } from "@/lib/auth/permissions";
 
 export default async function SettingsUsersPage() {
+  const sessionUser = await requirePermission("settings.read");
+  const canWrite = roleHasPermission(sessionUser.role, "settings.write");
   const [users, profiles] = await Promise.all([getUsers(), getProfiles()]);
   const credentialsByUserId = await getAuthCredentialStatusByUserIds(users.map((u) => u.id));
   const sortedProfiles = [...profiles].sort((a, b) => a.name.localeCompare(b.name, "es"));
@@ -23,6 +27,7 @@ export default async function SettingsUsersPage() {
         profiles={sortedProfiles.map((p) => ({ id: p.id, name: p.name }))}
         showCredentialStatus={showCredentialStatus}
         credentialsByUserId={credentialsByUserId}
+        canWrite={canWrite}
       />
     </>
   );
