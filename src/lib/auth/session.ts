@@ -19,10 +19,21 @@ export type AppSession = {
 
 export async function getAppSession(): Promise<AppSession> {
   if (getAuthProviderKind() === "authjs") {
+    if (!isAuthMiddlewareEnabled()) {
+      return {
+        authenticated: false,
+        user: {
+          id: "dev-no-auth",
+          email: "dev@local",
+          name: "Desarrollo (auth desactivada)",
+          role: parseDevRole(process.env.DEV_APP_ROLE),
+        },
+      };
+    }
     const session = await auth();
     if (!session?.user) {
       return {
-        authenticated: isAuthMiddlewareEnabled(),
+        authenticated: true,
         user: null,
       };
     }

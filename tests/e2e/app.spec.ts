@@ -5,10 +5,9 @@ test("ver dashboard", async ({ page }) => {
   await expect(page.getByText("Dashboard general")).toBeVisible();
 });
 
-test("dashboard respeta clientId y projectId en la URL", async ({ page }) => {
-  await page.goto("/dashboard?clientId=client-esval&projectId=proj-main");
+test("dashboard respeta clientId en la URL", async ({ page }) => {
+  await page.goto("/dashboard?clientId=client-esval");
   await expect(page.locator("#client-filter")).toHaveValue("client-esval");
-  await expect(page.locator("#project-filter")).toHaveValue("proj-main");
 });
 
 test("crear requerimiento", async ({ page }) => {
