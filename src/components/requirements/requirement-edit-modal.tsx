@@ -19,6 +19,8 @@ export function RequirementEditModal({
   onUpdated,
   triggerLabel = "Editar",
   triggerClassName = "btn-secondary px-2.5 py-1 text-xs",
+  open: externalOpen,
+  onOpenChange,
 }: {
   requirement: Requirement;
   clients: { id: string; name: string }[];
@@ -30,17 +32,27 @@ export function RequirementEditModal({
   onUpdated?: () => void | Promise<void>;
   triggerLabel?: string;
   triggerClassName?: string;
+  /** Controlled mode: when provided the modal is externally managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled
+    ? (v: boolean) => onOpenChange?.(v)
+    : setInternalOpen;
 
   if (!canManageRequirement) return null;
 
   return (
     <>
-      <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
-        {triggerLabel}
-      </button>
+      {!isControlled ? (
+        <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
+          {triggerLabel}
+        </button>
+      ) : null}
       <SettingsModal
         open={open}
         onClose={() => setOpen(false)}

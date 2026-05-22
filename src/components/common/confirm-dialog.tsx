@@ -10,6 +10,8 @@ export const ConfirmDialog = ({
   confirmLabel = "Confirmar",
   confirmLoadingLabel = "Procesando...",
   onConfirm,
+  open: externalOpen,
+  onOpenChange,
 }: {
   label: string;
   title: string;
@@ -18,8 +20,16 @@ export const ConfirmDialog = ({
   confirmLabel?: string;
   confirmLoadingLabel?: string;
   onConfirm: () => void | Promise<void>;
+  /** Controlled mode: when provided the dialog is externally managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) => {
-  const [open, setOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled
+    ? (v: boolean) => onOpenChange?.(v)
+    : setInternalOpen;
   const [confirming, setConfirming] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -60,14 +70,16 @@ export const ConfirmDialog = ({
 
   return (
     <>
-      <button
-        className={triggerClassName}
-        onClick={() => setOpen(true)}
-        type="button"
-        disabled={disabled}
-      >
-        {label}
-      </button>
+      {!isControlled ? (
+        <button
+          className={triggerClassName}
+          onClick={() => setOpen(true)}
+          type="button"
+          disabled={disabled}
+        >
+          {label}
+        </button>
+      ) : null}
       {open ? (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4"

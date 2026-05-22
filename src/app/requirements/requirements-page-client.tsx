@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { SyncStatusBanner } from "@/components/common/sync-status-banner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { RowActionMenu } from "@/components/common/row-action-menu";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { PriorityBadge, StatusBadge } from "@/components/common/badges";
 import { RequirementForm } from "@/components/forms/requirement-form";
@@ -112,6 +113,8 @@ export function RequirementsPageClient({
   const [reassignTarget, setReassignTarget] = useState<Requirement | null>(null);
   const [reassignOwnerId, setReassignOwnerId] = useState("");
   const [isReassigning, setIsReassigning] = useState(false);
+  const [editTarget, setEditTarget] = useState<Requirement | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Requirement | null>(null);
 
   const reload = useCallback(async () => {
     setListLoading(true);
@@ -213,65 +216,32 @@ export function RequirementsPageClient({
       ...base,
       {
         id: "actions",
-        header: "Acciones",
+        header: "",
         enableSorting: false,
         enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <div className="flex gap-2">
-            {canWrite ? (
-              <>
-                {canReassignOwner ? (
-                  <button
-                    type="button"
-                    className="btn-secondary px-2.5 py-1 text-xs"
-                    onClick={() => {
-                      setReassignTarget(row.original);
-                      setReassignOwnerId(row.original.ownerId);
-                    }}
-                  >
-                    Reasignar
-                  </button>
-                ) : null}
-                <RequirementEditModal
-                  requirement={row.original}
-                  clients={activeClients.map((c) => ({ id: c.id, name: c.name }))}
-                  statusOptions={statusOpts}
-                  priorityOptions={priorityOpts}
-                  owners={owners}
-                  contracts={contracts}
-                  canManageRequirement={canManageRequirement}
-                  onUpdated={reload}
-                />
-              </>
-            ) : null}
-            {canDelete ? (
-              <ConfirmDialog
-                label="Eliminar"
-                title="¿Eliminar requerimiento?"
-                onConfirm={() => {
-                  void (async () => {
-                    try {
-                      scheduleUndoableAction({
-                        pendingMessage: "Requerimiento marcado para eliminar.",
-                        successMessage: "Requerimiento eliminado.",
-                        errorMessage: "No se pudo eliminar el requerimiento.",
-                        onCommit: async () => {
-                          await deleteRequirementAction(row.original.id);
-                          await reload();
-                        },
-                      });
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "No se pudo eliminar.");
-                    }
-                  })();
-                }}
-              />
-            ) : null}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const items = [
+            ...(canReassignOwner
+              ? [{
+                  label: "Reasignar",
+                  onClick: () => {
+                    setReassignTarget(row.original);
+                    setReassignOwnerId(row.original.ownerId);
+                  },
+                }]
+              : []),
+            ...(canWrite && canManageRequirement
+              ? [{ label: "Editar", onClick: () => setEditTarget(row.original) }]
+              : []),
+            ...(canDelete
+              ? [{ label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) }]
+              : []),
+          ];
+          return <RowActionMenu items={items} />;
+        },
       },
     ];
-  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById, activeClients, statusOpts, priorityOpts, owners, contracts, reload]);
+  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById]);
 
   const openNewRequirementModal = () => {
     setNewFormKey((k) => k + 1);
@@ -416,6 +386,50 @@ export function RequirementsPageClient({
             </form>
           )}
         </SettingsModal>
+      ) : null}
+
+      {/* Page-level edit modal — controlled by editTarget state */}
+      {canWrite && editTarget ? (
+        <RequirementEditModal
+          key={editTarget.id}
+          requirement={editTarget}
+          clients={activeClients.map((c) => ({ id: c.id, name: c.name }))}
+          statusOptions={statusOpts}
+          priorityOptions={priorityOpts}
+          owners={owners}
+          contracts={contracts}
+          canManageRequirement={canManageRequirement}
+          open={true}
+          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+          onUpdated={reload}
+        />
+      ) : null}
+
+      {/* Page-level delete confirm — controlled by deleteTarget state */}
+      {canDelete && deleteTarget ? (
+        <ConfirmDialog
+          label="Eliminar"
+          title={`¿Eliminar «${deleteTarget.title}»?`}
+          open={true}
+          onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+          onConfirm={() => {
+            const targetId = deleteTarget.id;
+            setDeleteTarget(null);
+            try {
+              scheduleUndoableAction({
+                pendingMessage: "Requerimiento marcado para eliminar.",
+                successMessage: "Requerimiento eliminado.",
+                errorMessage: "No se pudo eliminar el requerimiento.",
+                onCommit: async () => {
+                  await deleteRequirementAction(targetId);
+                  await reload();
+                },
+              });
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "No se pudo eliminar.");
+            }
+          }}
+        />
       ) : null}
 
       <form
