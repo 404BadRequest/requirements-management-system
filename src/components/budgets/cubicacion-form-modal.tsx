@@ -168,10 +168,10 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
                 <div className="flex items-center gap-2">
                   <input
                     id="construccionHours"
-                    type="number"
-                    min={0.01}
-                    step={0.25}
-                    required
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  required
                     value={values.construccionHours || ""}
                     onChange={(e) => set("construccionHours", Number(e.target.value))}
                     className="field-control w-28 tabular-nums"
