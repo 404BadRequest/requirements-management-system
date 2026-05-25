@@ -4,8 +4,6 @@ import { filterCommandNavForRole, filterMainNavForRole } from "@/lib/navigation/
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { getNotificationUnreadCountForSession } from "@/app/notifications/data-actions";
 import { AppShellClient } from "@/components/layout/app-shell-client";
-import { requireChatSession } from "@/app/chat/chat-auth";
-import { loadChatUnreadSummary } from "@/lib/chat/service";
 
 export async function AppShell({ children }: { children: ReactNode }) {
   const { user } = await getAppSession();
@@ -16,15 +14,6 @@ export async function AppShell({ children }: { children: ReactNode }) {
   if (user && roleHasPermission(user.role, "notifications.read")) {
     notificationUnread = await getNotificationUnreadCountForSession();
   }
-  let chatUnread = 0;
-  if (user && roleHasPermission(user.role, "chat.read")) {
-    try {
-      const { meUserId } = await requireChatSession("chat.read");
-      chatUnread = (await loadChatUnreadSummary(meUserId)).totalUnread;
-    } catch {
-      chatUnread = 0;
-    }
-  }
 
   return (
     <AppShellClient
@@ -32,7 +21,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
       commandItems={commandItems}
       sessionUser={user}
       notificationUnread={notificationUnread}
-      chatUnread={chatUnread}
+      chatUnread={0}
     >
       {children}
     </AppShellClient>

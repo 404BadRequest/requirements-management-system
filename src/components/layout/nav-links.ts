@@ -34,7 +34,7 @@ export const MAIN_NAV_LINK_DEFS: MainNavLinkDef[] = [
   { href: "/reports", label: "Reportes", iconKey: "report", requiredPermission: "reports.read" },
   { href: "/budgets", label: "Presupuesto", iconKey: "wallet", requiredPermission: "budgets.read" },
   { href: "/team", label: "Equipo", iconKey: "users", requiredPermission: "team.read" },
-  { href: "/chat", label: "Chat", iconKey: "chat", requiredPermission: "chat.read" },
+  // Chat oculto temporalmente — el módulo existe pero no aporta valor en esta fase
   { href: "/notifications", label: "Avisos", iconKey: "bell", requiredPermission: "notifications.read" },
   { href: "/settings", label: "Configuración", iconKey: "settings", requiredPermission: "settings.read" },
 ];
