@@ -3,6 +3,7 @@
 import {
   createBudget,
   createCubicacionItem,
+  createRequirement,
   deleteBudget,
   deleteCubicacionItem,
   getClients,
@@ -17,6 +18,7 @@ import {
   getUsers,
   updateBudget,
   updateCubicacionItem,
+  updateRequirement,
 } from "@/data/repositories/server-db";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
@@ -572,16 +574,68 @@ export async function deleteBudgetAction(id: string) {
   }
 }
 
+/**
+ * Crea una actividad de cubicación.
+ * Si no se proporciona `requirementId`, se crea automáticamente un Requirement
+ * en el sistema con el título de la actividad, vinculado al contrato.
+ */
 export async function createCubicacionItemAction(input: CubicacionItemCreateInput) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.write");
-  return createCubicacionItem(input);
+
+  let requirementId = input.requirementId;
+
+  if (!requirementId) {
+    const [contracts, users, statuses, priorities] = await Promise.all([
+      getContractBudgets(),
+      getUsers(),
+      getCatalogByKind("requirement_status"),
+      getCatalogByKind("requirement_priority"),
+    ]);
+    const contract = contracts.find((c) => c.id === input.contractId);
+    if (!contract) throw new Error("No se encontró el contrato.");
+
+    const defaultStatus = statuses.find((s) => s.active)?.code ?? "BACKLOG";
+    const defaultPriority = priorities.find((p) => p.active)?.code ?? "P2";
+    const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+
+    const newReq = await createRequirement({
+      projectId: contract.projectId,
+      clientId: contract.clientId,
+      contractId: contract.id,
+      origin: "Cubicación",
+      title: input.activityName,
+      description: input.activityName,
+      priority: defaultPriority,
+      ownerId,
+      status: defaultStatus,
+      notes: "",
+    });
+    requirementId = newReq.id;
+  }
+
+  return createCubicacionItem({ ...input, requirementId });
 }
 
-export async function updateCubicacionItemAction(id: string, input: CubicacionItemUpdateInput) {
+/**
+ * Actualiza una actividad de cubicación.
+ * Si cambia el nombre y la actividad tiene un requerimiento vinculado,
+ * también actualiza el título del requerimiento.
+ */
+export async function updateCubicacionItemAction(
+  id: string,
+  input: CubicacionItemUpdateInput & { currentRequirementId?: string | null },
+) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.write");
-  const updated = await updateCubicacionItem(id, input);
+
+  const { currentRequirementId, ...updateInput } = input;
+
+  if (input.activityName && currentRequirementId) {
+    await updateRequirement(currentRequirementId, { title: input.activityName });
+  }
+
+  const updated = await updateCubicacionItem(id, updateInput);
   if (!updated) throw new Error("No se encontró la actividad a actualizar.");
   return updated;
 }

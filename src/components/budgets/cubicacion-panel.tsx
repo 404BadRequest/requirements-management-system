@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -33,8 +34,6 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
   const [deleteTarget, setDeleteTarget] = useState<CubicacionItem | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const requirementMap = new Map(requirements.map((r) => [r.id, r.title]));
-
   const handleCreate = async (values: {
     activityName: string;
     requirementId: string | null;
@@ -58,7 +57,10 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
 
   const handleUpdate = async (values: typeof handleCreate extends (v: infer V) => unknown ? V : never) => {
     if (!editItem) return;
-    const updated = await updateCubicacionItemAction(editItem.id, values);
+    const updated = await updateCubicacionItemAction(editItem.id, {
+      ...values,
+      currentRequirementId: editItem.requirementId,
+    });
     setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     toast.success("Actividad actualizada.");
   };
@@ -148,12 +150,16 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                 return (
                   <tr key={item.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2.5">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-foreground leading-snug">{item.activityName}</span>
-                        {item.requirementId && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[220px]">
-                            REQ: {requirementMap.get(item.requirementId) ?? item.requirementId}
-                          </span>
+                      <div className="flex flex-col gap-0.5">
+                        {item.requirementId ? (
+                          <Link
+                            href={`/requirements/id/${item.requirementId}`}
+                            className="text-sm font-medium text-primary hover:underline leading-snug"
+                          >
+                            {item.activityName}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-medium text-foreground leading-snug">{item.activityName}</span>
                         )}
                         {!isDefault && (
                           <span className="text-[10px] text-amber-500 font-medium">% personalizados</span>

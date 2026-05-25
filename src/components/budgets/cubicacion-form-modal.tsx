@@ -154,11 +154,16 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
                   onChange={(e) => set("requirementId", e.target.value || null)}
                   className="field-control w-full"
                 >
-                  <option value="">Sin requerimiento</option>
+                  <option value="">Crear nuevo requerimiento</option>
                   {requirements.map((r) => (
                     <option key={r.id} value={r.id}>{r.title}</option>
                   ))}
                 </select>
+                {!values.requirementId && (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Se creará automáticamente un requerimiento con este nombre vinculado al contrato.
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
