@@ -7,8 +7,9 @@ import { DataTable } from "@/components/common/data-table";
 import { RiskBadge } from "@/components/common/badges";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
 import { RowActionMenu } from "@/components/common/row-action-menu";
+import { CubicacionPanel } from "@/components/budgets/cubicacion-panel";
 import { budgetRiskLevel } from "@/lib/calculations/budget";
-import type { TimeEntry } from "@/types/domain";
+import type { CubicacionItem, TimeEntry } from "@/types/domain";
 
 type ProfileAllocationRow = {
   id: string;
@@ -69,6 +70,8 @@ export function ContractDetailPanel({
   misallocationRisk,
   topRiskProfiles,
   topRequirementRows,
+  cubicacionItems,
+  requirementsForContract,
 }: {
   quotedMinutes: number;
   usedMinutes: number;
@@ -90,6 +93,8 @@ export function ContractDetailPanel({
   misallocationRisk: "verde" | "amarillo" | "rojo";
   topRiskProfiles: TopRiskProfileRow[];
   topRequirementRows: TopRequirementRow[];
+  cubicacionItems: CubicacionItem[];
+  requirementsForContract: { id: string; title: string }[];
 }) {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
 
@@ -312,6 +317,13 @@ export function ContractDetailPanel({
           emptyDescription="No hay horas pendientes de corrección para este contrato."
         />
       </article>
+
+      <CubicacionPanel
+        contractId={contractId}
+        initialItems={cubicacionItems}
+        requirements={requirementsForContract}
+        canWrite={canPickAnyOwner}
+      />
     </div>
   );
 }

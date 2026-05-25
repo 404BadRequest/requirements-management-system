@@ -2,10 +2,13 @@
 
 import {
   createBudget,
+  createCubicacionItem,
   deleteBudget,
+  deleteCubicacionItem,
   getClients,
   getContractBudgets,
   getContractProfileAllocations,
+  getCubicacionItems,
   getFinancialReferenceRates,
   getCatalogByKind,
   getProfiles,
@@ -13,6 +16,7 @@ import {
   getTimeEntries,
   getUsers,
   updateBudget,
+  updateCubicacionItem,
 } from "@/data/repositories/server-db";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
@@ -20,6 +24,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { SettingsCatalogEntry } from "@/types/domain";
 import type { BudgetInput } from "@/schemas/budget-schema";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import { calculateContractConsumptions } from "@/lib/calculations/contract-budget";
 import {
   type TrafficRisk,
@@ -261,7 +266,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.read");
 
-  const [contractsData, allocationsData, profilesData, entries, users, requirements, clientsData, referenceRates, timeCategories] = await Promise.all([
+  const [contractsData, allocationsData, profilesData, entries, users, requirements, clientsData, referenceRates, timeCategories, cubicacionItems] = await Promise.all([
     getContractBudgets(),
     getContractProfileAllocations(),
     getProfiles(),
@@ -271,6 +276,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
     getClients(),
     getFinancialReferenceRates(),
     getCatalogByKind("time_entry_category"),
+    getCubicacionItems(contractId),
   ]);
 
   const contract = contractsData.find((row) => row.id === contractId);
@@ -496,6 +502,8 @@ export async function loadBudgetContractDetailData(contractId: string) {
     contractProfiles: profilesData.map((p) => ({ id: p.id, label: p.name })),
     categories: timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: formatCatalogLabel(c.code, c.label) })),
     canPickAnyOwner,
+    cubicacionItems,
+    requirementsForContract: requirements.filter((r) => r.contractId === contractId).map((r) => ({ id: r.id, title: r.title })),
   };
 }
 
@@ -562,4 +570,26 @@ export async function deleteBudgetAction(id: string) {
     }
     throw error instanceof Error ? error : new Error("No se pudo eliminar el contrato.");
   }
+}
+
+export async function createCubicacionItemAction(input: CubicacionItemCreateInput) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "budgets.write");
+  return createCubicacionItem(input);
+}
+
+export async function updateCubicacionItemAction(id: string, input: CubicacionItemUpdateInput) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "budgets.write");
+  const updated = await updateCubicacionItem(id, input);
+  if (!updated) throw new Error("No se encontró la actividad a actualizar.");
+  return updated;
+}
+
+export async function deleteCubicacionItemAction(id: string) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "budgets.write");
+  const ok = await deleteCubicacionItem(id);
+  if (!ok) throw new Error("No se pudo eliminar la actividad.");
+  return ok;
 }

@@ -58,6 +58,12 @@ export class SupabaseDataProvider implements AppDataProvider {
   updateFinancialReferenceRates = (input: Parameters<RmsDataAccess["updateFinancialReferenceRates"]>[0]) =>
     this.access.updateFinancialReferenceRates(input);
 
+  getCubicacionItems = (contractId: string) => this.access.getCubicacionItems(contractId);
+  createCubicacionItem = (input: Parameters<RmsDataAccess["createCubicacionItem"]>[0]) => this.access.createCubicacionItem(input);
+  updateCubicacionItem = (id: string, input: Parameters<RmsDataAccess["updateCubicacionItem"]>[1]) =>
+    this.access.updateCubicacionItem(id, input);
+  deleteCubicacionItem = (id: string) => this.access.deleteCubicacionItem(id);
+
   listNotificationsForUser = (recipientUserId: string) => this.access.listNotificationsForUser(recipientUserId);
   getNotificationsUnreadCount = (recipientUserId: string) => this.access.getNotificationsUnreadCount(recipientUserId);
   createAppNotification = (input: Parameters<RmsDataAccess["createAppNotification"]>[0]) => this.access.createAppNotification(input);

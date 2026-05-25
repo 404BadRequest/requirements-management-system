@@ -7,6 +7,7 @@ import type { CreateAppNotificationInput } from "@/data/contracts/notifications-
 import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clients-contract";
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import { calculateDurationMinutes } from "@/lib/calculations/time";
 import { queryPg } from "@/lib/postgres/client";
 import type { AppDataProvider, AuditEntryInput } from "@/data/repositories/app-data-provider";
@@ -21,6 +22,7 @@ import type {
   Client,
   ContractBudget,
   ContractProfileAllocation,
+  CubicacionItem,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -176,6 +178,26 @@ function mapFinancialSettings(r: Row): FinancialReferenceRates {
     ufToClp: Number(r.uf_to_clp),
     usdToClp: Number(r.usd_to_clp),
     weeklyCapacityHours: r.weekly_capacity_hours != null ? Number(r.weekly_capacity_hours) : 40,
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapCubicacionItem(r: Row): CubicacionItem {
+  return {
+    id: String(r.id),
+    contractId: String(r.contract_id),
+    requirementId: r.requirement_id ? String(r.requirement_id) : null,
+    activityName: String(r.activity_name),
+    construccionHours: Number(r.construccion_hours),
+    levantamientoPct: Number(r.levantamiento_pct),
+    disenoPct: Number(r.diseno_pct),
+    qaAjustesPct: Number(r.qa_ajustes_pct),
+    puestaEnMarchaPct: Number(r.puesta_en_marcha_pct),
+    seniorPct: Number(r.senior_pct),
+    ingeneroPct: Number(r.ingenero_pct),
+    juniorPct: Number(r.junior_pct),
+    sortOrder: Number(r.sort_order),
+    createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
 }
@@ -991,6 +1013,64 @@ export class PostgresDataProvider implements AppDataProvider {
       [userId, now],
     );
     return mapChatPresence(rows[0]);
+  }
+
+  async getCubicacionItems(contractId: string): Promise<CubicacionItem[]> {
+    const { rows } = await queryPg<Row>(
+      "select * from rms_cubicacion_items where contract_id = $1 order by sort_order asc",
+      [contractId],
+    );
+    return rows.map(mapCubicacionItem);
+  }
+
+  async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
+    const now = new Date().toISOString();
+    const id = `cubi-${crypto.randomUUID().slice(0, 12)}`;
+    const { rows } = await queryPg<Row>(
+      `insert into rms_cubicacion_items
+         (id, contract_id, requirement_id, activity_name, construccion_hours,
+          levantamiento_pct, diseno_pct, qa_ajustes_pct, puesta_en_marcha_pct,
+          senior_pct, ingenero_pct, junior_pct, sort_order, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14)
+       returning *`,
+      [
+        id, input.contractId, input.requirementId ?? null, input.activityName,
+        input.construccionHours, input.levantamientoPct, input.disenoPct,
+        input.qaAjustesPct, input.puestaEnMarchaPct, input.seniorPct,
+        input.ingeneroPct, input.juniorPct, input.sortOrder, now,
+      ],
+    );
+    return mapCubicacionItem(rows[0]);
+  }
+
+  async updateCubicacionItem(id: string, input: CubicacionItemUpdateInput): Promise<CubicacionItem | undefined> {
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { updated_at: now };
+    if (input.requirementId !== undefined) patch.requirement_id = input.requirementId;
+    if (input.activityName !== undefined) patch.activity_name = input.activityName;
+    if (input.construccionHours !== undefined) patch.construccion_hours = input.construccionHours;
+    if (input.levantamientoPct !== undefined) patch.levantamiento_pct = input.levantamientoPct;
+    if (input.disenoPct !== undefined) patch.diseno_pct = input.disenoPct;
+    if (input.qaAjustesPct !== undefined) patch.qa_ajustes_pct = input.qaAjustesPct;
+    if (input.puestaEnMarchaPct !== undefined) patch.puesta_en_marcha_pct = input.puestaEnMarchaPct;
+    if (input.seniorPct !== undefined) patch.senior_pct = input.seniorPct;
+    if (input.ingeneroPct !== undefined) patch.ingenero_pct = input.ingeneroPct;
+    if (input.juniorPct !== undefined) patch.junior_pct = input.juniorPct;
+    if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+    const keys = Object.keys(patch);
+    const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
+    const values = [id, ...Object.values(patch)];
+    const { rows } = await queryPg<Row>(
+      `update rms_cubicacion_items set ${setClauses} where id = $1 returning *`,
+      values,
+    );
+    if (!rows[0]) return undefined;
+    return mapCubicacionItem(rows[0]);
+  }
+
+  async deleteCubicacionItem(id: string): Promise<boolean> {
+    const { rowCount } = await queryPg("delete from rms_cubicacion_items where id = $1", [id]);
+    return (rowCount ?? 0) > 0;
   }
 
   async appendAudit(entry: AuditEntryInput): Promise<void> {

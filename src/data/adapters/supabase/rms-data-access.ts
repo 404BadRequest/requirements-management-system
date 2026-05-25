@@ -17,6 +17,7 @@ import type {
   Client,
   ContractBudget,
   ContractProfileAllocation,
+  CubicacionItem,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -29,6 +30,7 @@ import type {
 } from "@/types/domain";
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
 import type { CreateAppNotificationInput } from "@/data/contracts/notifications-contract";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 
 type Row = Record<string, unknown>;
 
@@ -232,6 +234,26 @@ function mapFinancialSettings(r: Row): FinancialReferenceRates {
     ufToClp: Number(r.uf_to_clp),
     usdToClp: Number(r.usd_to_clp),
     weeklyCapacityHours: r.weekly_capacity_hours != null ? Number(r.weekly_capacity_hours) : 40,
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapCubicacionItem(r: Row): CubicacionItem {
+  return {
+    id: String(r.id),
+    contractId: String(r.contract_id),
+    requirementId: r.requirement_id ? String(r.requirement_id) : null,
+    activityName: String(r.activity_name),
+    construccionHours: Number(r.construccion_hours),
+    levantamientoPct: Number(r.levantamiento_pct),
+    disenoPct: Number(r.diseno_pct),
+    qaAjustesPct: Number(r.qa_ajustes_pct),
+    puestaEnMarchaPct: Number(r.puesta_en_marcha_pct),
+    seniorPct: Number(r.senior_pct),
+    ingeneroPct: Number(r.ingenero_pct),
+    juniorPct: Number(r.junior_pct),
+    sortOrder: Number(r.sort_order),
+    createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
 }
@@ -1086,6 +1108,72 @@ export class RmsDataAccess {
       .single();
     if (error) throw error;
     return mapChatPresence(data as Row);
+  }
+
+  async getCubicacionItems(contractId: string): Promise<CubicacionItem[]> {
+    const { data, error } = await this.sb
+      .from("rms_cubicacion_items")
+      .select("*")
+      .eq("contract_id", contractId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map(mapCubicacionItem);
+  }
+
+  async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
+    const now = new Date().toISOString();
+    const id = `cubi-${crypto.randomUUID().slice(0, 12)}`;
+    const row = {
+      id,
+      contract_id: input.contractId,
+      requirement_id: input.requirementId ?? null,
+      activity_name: input.activityName,
+      construccion_hours: input.construccionHours,
+      levantamiento_pct: input.levantamientoPct,
+      diseno_pct: input.disenoPct,
+      qa_ajustes_pct: input.qaAjustesPct,
+      puesta_en_marcha_pct: input.puestaEnMarchaPct,
+      senior_pct: input.seniorPct,
+      ingenero_pct: input.ingeneroPct,
+      junior_pct: input.juniorPct,
+      sort_order: input.sortOrder,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_cubicacion_items").insert(row).select("*").single();
+    if (error) throw error;
+    return mapCubicacionItem(data as Row);
+  }
+
+  async updateCubicacionItem(id: string, input: CubicacionItemUpdateInput): Promise<CubicacionItem | undefined> {
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { updated_at: now };
+    if (input.requirementId !== undefined) patch.requirement_id = input.requirementId;
+    if (input.activityName !== undefined) patch.activity_name = input.activityName;
+    if (input.construccionHours !== undefined) patch.construccion_hours = input.construccionHours;
+    if (input.levantamientoPct !== undefined) patch.levantamiento_pct = input.levantamientoPct;
+    if (input.disenoPct !== undefined) patch.diseno_pct = input.disenoPct;
+    if (input.qaAjustesPct !== undefined) patch.qa_ajustes_pct = input.qaAjustesPct;
+    if (input.puestaEnMarchaPct !== undefined) patch.puesta_en_marcha_pct = input.puestaEnMarchaPct;
+    if (input.seniorPct !== undefined) patch.senior_pct = input.seniorPct;
+    if (input.ingeneroPct !== undefined) patch.ingenero_pct = input.ingeneroPct;
+    if (input.juniorPct !== undefined) patch.junior_pct = input.juniorPct;
+    if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+    const { data, error } = await this.sb
+      .from("rms_cubicacion_items")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return undefined;
+    return mapCubicacionItem(data as Row);
+  }
+
+  async deleteCubicacionItem(id: string): Promise<boolean> {
+    const { error, count } = await this.sb.from("rms_cubicacion_items").delete({ count: "exact" }).eq("id", id);
+    if (error) throw error;
+    return (count ?? 0) > 0;
   }
 
   async appendAudit(entry: {

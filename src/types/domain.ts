@@ -146,6 +146,29 @@ export interface ContractProfileAllocation {
   updatedAt: string;
 }
 
+/** Una fila de la cubicación asociada a un contrato. */
+export interface CubicacionItem {
+  id: string;
+  contractId: string;
+  /** Requerimiento al que pertenece esta actividad (opcional). */
+  requirementId: string | null;
+  activityName: string;
+  /** Horas brutas de construcción ingresadas por el PM (el único input manual). */
+  construccionHours: number;
+  /** Porcentajes de fase (ajustables por fila). */
+  levantamientoPct: number;
+  disenoPct: number;
+  qaAjustesPct: number;
+  puestaEnMarchaPct: number;
+  /** Porcentajes de distribución por perfil (ajustables por fila). */
+  seniorPct: number;
+  ingeneroPct: number;
+  juniorPct: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RequirementComment {
   id: string;
   requirementId: string;

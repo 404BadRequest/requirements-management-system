@@ -6,6 +6,7 @@ import type { CreateAppNotificationInput } from "@/data/contracts/notifications-
 import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clients-contract";
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import type {
   AppNotification,
   BudgetAllocation,
@@ -17,6 +18,7 @@ import type {
   Client,
   ContractBudget,
   ContractProfileAllocation,
+  CubicacionItem,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -79,6 +81,11 @@ export interface AppDataProvider {
   updateBudget(id: string, input: BudgetPatchInput): Promise<ContractBudget | undefined>;
   deleteBudget(id: string): Promise<boolean>;
   getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]>;
+
+  getCubicacionItems(contractId: string): Promise<CubicacionItem[]>;
+  createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem>;
+  updateCubicacionItem(id: string, input: CubicacionItemUpdateInput): Promise<CubicacionItem | undefined>;
+  deleteCubicacionItem(id: string): Promise<boolean>;
 
   getFinancialReferenceRates(): Promise<FinancialReferenceRates>;
   updateFinancialReferenceRates(input: FinancialReferenceRatesUpdateInput): Promise<FinancialReferenceRates>;

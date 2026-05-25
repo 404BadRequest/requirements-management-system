@@ -65,6 +65,8 @@ export default async function BudgetContractDetailPage({
         topRiskProfiles={data.topRiskProfiles}
         topRequirementRows={data.topRequirementRows}
         clients={data.clients}
+        cubicacionItems={data.cubicacionItems}
+        requirementsForContract={data.requirementsForContract}
       />
     </AppShell>
   );

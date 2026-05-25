@@ -4,6 +4,7 @@ import { MockFinancialReferenceRatesRepository } from "@/data/adapters/mock/mock
 import { MockNotificationsRepository } from "@/data/adapters/mock/mock-notifications-repository";
 import { MockBudgetsRepository } from "@/data/adapters/mock/mock-budgets-repository";
 import { MockClientsRepository } from "@/data/adapters/mock/mock-clients-repository";
+import { MockCubicacionRepository } from "@/data/adapters/mock/mock-cubicacion-repository";
 import { MockProfilesRepository } from "@/data/adapters/mock/mock-profiles-repository";
 import { MockRequirementsRepository } from "@/data/adapters/mock/mock-requirements-repository";
 import { MockSettingsCatalogRepository } from "@/data/adapters/mock/mock-settings-catalog-repository";
@@ -14,6 +15,7 @@ import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/pr
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
 import type { CreateAppNotificationInput } from "@/data/contracts/notifications-contract";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import { projectsMock } from "@/data/mock/projects";
 import { getServerDataProvider } from "@/data/repositories/server-provider";
 import { calculateDashboardMetrics } from "@/lib/calculations/dashboard";
@@ -40,6 +42,7 @@ const clientsRepository = new MockClientsRepository();
 const settingsCatalogRepository = new MockSettingsCatalogRepository();
 const financialReferenceRatesRepository = new MockFinancialReferenceRatesRepository();
 const notificationsRepository = new MockNotificationsRepository();
+const cubicacionRepository = new MockCubicacionRepository();
 
 async function rms() {
   return getServerDataProvider();
@@ -363,6 +366,30 @@ export const markNotificationReadForUser = async (notificationId: string, recipi
   const remote = await rms();
   if (remote) return remote.markNotificationReadForUser(notificationId, recipientUserId);
   return notificationsRepository.markRead(notificationId, recipientUserId);
+};
+
+export const getCubicacionItems = async (contractId: string) => {
+  const remote = await rms();
+  if (remote) return remote.getCubicacionItems(contractId);
+  return cubicacionRepository.listByContract(contractId);
+};
+
+export const createCubicacionItem = async (input: CubicacionItemCreateInput) => {
+  const remote = await rms();
+  if (remote) return remote.createCubicacionItem(input);
+  return cubicacionRepository.create(input);
+};
+
+export const updateCubicacionItem = async (id: string, input: CubicacionItemUpdateInput) => {
+  const remote = await rms();
+  if (remote) return remote.updateCubicacionItem(id, input);
+  return cubicacionRepository.update(id, input);
+};
+
+export const deleteCubicacionItem = async (id: string) => {
+  const remote = await rms();
+  if (remote) return remote.deleteCubicacionItem(id);
+  return cubicacionRepository.delete(id);
 };
 
 export const getChatThreadsForUser = async (userId: string): Promise<ChatThread[]> => {

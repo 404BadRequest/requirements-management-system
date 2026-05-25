@@ -6,9 +6,11 @@ import type { CreateAppNotificationInput } from "@/data/contracts/notifications-
 import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clients-contract";
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
+import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import { pushAuditMemory } from "@/lib/audit/memory";
 import { MockBudgetsRepository } from "@/data/adapters/mock/mock-budgets-repository";
 import { MockClientsRepository } from "@/data/adapters/mock/mock-clients-repository";
+import { MockCubicacionRepository } from "@/data/adapters/mock/mock-cubicacion-repository";
 import { MockFinancialReferenceRatesRepository } from "@/data/adapters/mock/mock-financial-reference-rates-repository";
 import { MockNotificationsRepository } from "@/data/adapters/mock/mock-notifications-repository";
 import { MockProfilesRepository } from "@/data/adapters/mock/mock-profiles-repository";
@@ -28,6 +30,7 @@ import type {
   Client,
   ContractBudget,
   ContractProfileAllocation,
+  CubicacionItem,
   FinancialReferenceRates,
   Profile,
   Requirement,
@@ -49,6 +52,7 @@ export class MockDataProvider implements AppDataProvider {
   private readonly settingsCatalogRepository = new MockSettingsCatalogRepository();
   private readonly financialReferenceRatesRepository = new MockFinancialReferenceRatesRepository();
   private readonly notificationsRepository = new MockNotificationsRepository();
+  private readonly cubicacionRepository = new MockCubicacionRepository();
   private readonly chatThreads: ChatThread[] = [];
   private readonly chatMembers: ChatThreadMember[] = [];
   private readonly chatMessages: ChatMessage[] = [];
@@ -210,6 +214,19 @@ export class MockDataProvider implements AppDataProvider {
   }
   async updateFinancialReferenceRates(input: FinancialReferenceRatesUpdateInput): Promise<FinancialReferenceRates> {
     return this.financialReferenceRatesRepository.update(input);
+  }
+
+  async getCubicacionItems(contractId: string): Promise<CubicacionItem[]> {
+    return this.cubicacionRepository.listByContract(contractId);
+  }
+  async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
+    return this.cubicacionRepository.create(input);
+  }
+  async updateCubicacionItem(id: string, input: CubicacionItemUpdateInput): Promise<CubicacionItem | undefined> {
+    return this.cubicacionRepository.update(id, input);
+  }
+  async deleteCubicacionItem(id: string): Promise<boolean> {
+    return this.cubicacionRepository.delete(id);
   }
 
   async listNotificationsForUser(recipientUserId: string): Promise<AppNotification[]> {
