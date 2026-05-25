@@ -10,7 +10,6 @@ import {
   Layers,
   ListTree,
   PiggyBank,
-  Upload,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -35,7 +34,6 @@ const groups: {
       { href: "/settings/priorities", label: "Prioridades", icon: Layers },
       { href: "/settings/time-categories", label: "Categorías de horas", icon: Clock },
       { href: "/settings/budget-scopes", label: "Scopes presupuesto", icon: PiggyBank },
-      { href: "/settings/bulk-loads", label: "Cargas masivas", icon: Upload },
     ],
   },
 ];

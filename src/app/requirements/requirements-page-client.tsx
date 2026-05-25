@@ -15,6 +15,7 @@ import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { PriorityBadge, StatusBadge } from "@/components/common/badges";
 import { RequirementForm } from "@/components/forms/requirement-form";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
+import { RequirementsBulkUploadModal } from "@/components/requirements/requirements-bulk-upload-modal";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import {
   createRequirementAction,
@@ -105,7 +106,8 @@ export function RequirementsPageClient({
   const [statusCatalog, setStatusCatalog] = useState<SettingsCatalogEntry[]>([]);
   const [priorityCatalog, setPriorityCatalog] = useState<SettingsCatalogEntry[]>([]);
   const [contracts, setContracts] = useState<{ id: string; clientId: string; label: string }[]>([]);
-  const [newModalOpen, setNewModalOpen] = useState(Boolean(autoOpenNewModal && canWrite));
+  const [newModalOpen, setNewModalOpen]   = useState(Boolean(autoOpenNewModal && canWrite));
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [newFormKey, setNewFormKey] = useState(0);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -268,9 +270,19 @@ export function RequirementsPageClient({
               </Link>
             ) : null}
             {canWrite ? (
-              <button type="button" className="btn-secondary py-2 text-sm" onClick={() => openNewRequirementModal()}>
-                Nuevo requerimiento
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary py-2 text-sm inline-flex items-center gap-1.5"
+                  onClick={() => setBulkModalOpen(true)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Carga masiva
+                </button>
+                <button type="button" className="btn-secondary py-2 text-sm" onClick={() => openNewRequirementModal()}>
+                  Nuevo requerimiento
+                </button>
+              </>
             ) : null}
             <Link href={kanbanHref} className="btn-primary py-2 text-sm no-underline">
               Ver Kanban
@@ -387,6 +399,20 @@ export function RequirementsPageClient({
           )}
         </SettingsModal>
       ) : null}
+
+      {/* Bulk upload modal */}
+      {canWrite && bulkModalOpen && (
+        <RequirementsBulkUploadModal
+          clients={activeClients.map((c) => ({ id: c.id, name: c.name }))}
+          contracts={contracts}
+          onClose={() => setBulkModalOpen(false)}
+          onImported={(newReqs) => {
+            setRequirements((prev) => [...prev, ...newReqs]);
+            setBulkModalOpen(false);
+            toast.success(`${newReqs.length} requerimiento${newReqs.length !== 1 ? "s" : ""} importado${newReqs.length !== 1 ? "s" : ""} correctamente.`);
+          }}
+        />
+      )}
 
       {/* Page-level edit modal — controlled by editTarget state */}
       {canWrite && editTarget ? (

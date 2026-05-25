@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { CubicacionFormModal } from "@/components/budgets/cubicacion-form-modal";
+import { CubicacionBulkUploadModal } from "@/components/budgets/cubicacion-bulk-upload-modal";
 import { calcCubicacionRow, calcCubicacionTotals, CUBICACION_DEFAULTS } from "@/lib/calculations/cubicacion";
 import {
   createCubicacionItemAction,
@@ -30,6 +31,7 @@ interface CubicacionPanelProps {
 export function CubicacionPanel({ contractId, initialItems, requirements, canWrite }: CubicacionPanelProps) {
   const [items, setItems] = useState<CubicacionItem[]>(initialItems);
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkOpen, setBulkOpen]   = useState(false);
   const [editItem, setEditItem] = useState<CubicacionItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CubicacionItem | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -96,14 +98,24 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
           </p>
         </div>
         {canWrite && (
-          <button
-            type="button"
-            onClick={() => { setEditItem(null); setModalOpen(true); }}
-            className="btn-primary flex items-center gap-1.5 text-xs"
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Agregar actividad
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="btn-secondary flex items-center gap-1.5 text-xs"
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden />
+              Carga masiva
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditItem(null); setModalOpen(true); }}
+              className="btn-primary flex items-center gap-1.5 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Agregar actividad
+            </button>
+          </div>
         )}
       </div>
 
@@ -223,6 +235,17 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
         requirements={requirements}
         title={editItem ? "Editar actividad" : "Nueva actividad"}
       />
+
+      {bulkOpen && (
+        <CubicacionBulkUploadModal
+          contractId={contractId}
+          onClose={() => setBulkOpen(false)}
+          onImported={(newItems) => {
+            setItems((prev) => [...prev, ...newItems]);
+            setBulkOpen(false);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteTarget}

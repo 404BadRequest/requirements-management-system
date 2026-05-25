@@ -392,3 +392,86 @@ export async function importRequirementsCsvAction(input: { csvText: string }) {
     totalRows: rows.length - 1,
   };
 }
+
+// ─── Carga masiva (Excel/CSV) ─────────────────────────────────────────────────
+
+export interface BulkRequirementRowInput {
+  title: string;
+  description: string;
+  origin: string;
+  priority: string;
+  status: string;
+  notes: string;
+}
+
+export interface BulkRequirementResult {
+  created: number;
+  failed: number;
+  errors: Array<{ title: string; error: string }>;
+  newRequirements: Requirement[];
+}
+
+/**
+ * Crea múltiples Requerimientos en lote para un cliente/contrato.
+ * ownerId = usuario autenticado, projectId = "proj-main" (valor por defecto del sistema).
+ */
+export async function bulkCreateRequirementsAction(
+  clientId: string,
+  contractId: string | null,
+  rows: BulkRequirementRowInput[],
+): Promise<BulkRequirementResult> {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "requirements.write");
+
+  const [users, contracts] = await Promise.all([getUsers(), getContractBudgets()]);
+
+  const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+  const contract = contractId ? contracts.find((c) => c.id === contractId) : null;
+  const projectId = contract?.projectId ?? "proj-main";
+  const nowDate = new Date().toISOString().slice(0, 10);
+
+  const newRequirements: Requirement[] = [];
+  const errors: BulkRequirementResult["errors"] = [];
+
+  for (const row of rows) {
+    try {
+      const payload: RequirementInput = {
+        projectId,
+        clientId,
+        contractId: contractId ?? null,
+        origin: row.origin,
+        title: row.title,
+        description: row.description || row.title,
+        priority: row.priority,
+        ownerId,
+        status: row.status,
+        notes: row.notes,
+      };
+
+      const resolvedContractId = resolveContractIdByContext({
+        contractId: payload.contractId,
+        clientId: payload.clientId,
+        projectId: payload.projectId,
+        atDate: nowDate,
+        contracts,
+      });
+
+      const created = await createRequirement({ ...payload, contractId: resolvedContractId });
+      newRequirements.push(created);
+    } catch (err) {
+      errors.push({
+        title: row.title,
+        error: err instanceof Error ? err.message : "Error desconocido.",
+      });
+    }
+  }
+
+  revalidatePath("/requirements");
+
+  return {
+    created: newRequirements.length,
+    failed:  errors.length,
+    errors,
+    newRequirements,
+  };
+}

@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
+import { TimeEntriesBulkUploadButton } from "@/components/time-entries/time-entries-bulk-upload-modal";
 import { PersonalUtilizationBanner } from "@/components/time-entries/personal-utilization-banner";
 import {
   getCatalogByKind,
@@ -196,11 +197,14 @@ export default async function TimeEntriesPage({
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canCreate ? (
-            <TimeEntriesNewModal
-              autoOpen={openNewModal}
-              defaultValues={duplicateDefaultValues ?? (prefillRequirementId || prefillUserId ? { requirementId: prefillRequirementId || null, userId: prefillUserId || undefined } : undefined)}
-            />
-          ) : null}
+              <>
+                <TimeEntriesBulkUploadButton />
+                <TimeEntriesNewModal
+                  autoOpen={openNewModal}
+                  defaultValues={duplicateDefaultValues ?? (prefillRequirementId || prefillUserId ? { requirementId: prefillRequirementId || null, userId: prefillUserId || undefined } : undefined)}
+                />
+              </>
+            ) : null}
             {canExport ? (
               <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
                 Exportar CSV

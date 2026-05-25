@@ -562,3 +562,144 @@ export async function importTimeEntriesCsvAction(input: { csvText: string }) {
     totalRows: rows.length - 1,
   };
 }
+
+// ─── Carga masiva (Excel/CSV) ─────────────────────────────────────────────────
+
+export interface BulkTimeEntryRowInput {
+  date: string;
+  startTime: string;
+  endTime: string;
+  taskDescription: string;
+  requirementTitle: string;
+  category: string;
+  observations: string;
+}
+
+export interface BulkTimeEntryContext {
+  /** requirementId por defecto (si la fila no especifica uno propio) */
+  defaultRequirementId: string | null;
+  /** contractId por defecto */
+  defaultContractId: string | null;
+}
+
+export interface BulkTimeEntryResult {
+  created: number;
+  failed: number;
+  errors: Array<{ row: number; taskDescription: string; error: string }>;
+}
+
+/**
+ * Crea múltiples TimeEntries en lote.
+ * Si la fila incluye `requirementTitle`, se busca el requerimiento por título.
+ * Si no, se usa `defaultRequirementId` del contexto.
+ * userId = usuario autenticado.
+ */
+export async function bulkCreateTimeEntriesFromImportAction(
+  rows: BulkTimeEntryRowInput[],
+  context: BulkTimeEntryContext,
+): Promise<BulkTimeEntryResult> {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "time_entries.write");
+  if (!user) throw new Error("Debes iniciar sesión.");
+
+  const [users, requirements, contracts, categories] = await Promise.all([
+    getUsers(),
+    getRequirements(),
+    getContractBudgets(),
+    getCatalogByKind("time_entry_category"),
+  ]);
+
+  const userId   = resolveDirectoryUserIdForSession(user, users);
+  const validCategories = new Set(categories.map((c) => c.code));
+
+  // Mapa de requerimientos por título (lowercase) para lookup
+  const reqByTitle = new Map(
+    requirements.map((r) => [r.title.toLowerCase().trim(), r]),
+  );
+
+  const errors: BulkTimeEntryResult["errors"] = [];
+  let created = 0;
+
+  for (const [idx, row] of rows.entries()) {
+    try {
+      let requirementId: string | null = context.defaultRequirementId;
+      let clientId:       string | null = null;
+      let contractId:     string | null = context.defaultContractId;
+      let projectId = "proj-main";
+
+      if (row.requirementTitle) {
+        const matched = reqByTitle.get(row.requirementTitle.toLowerCase().trim());
+        if (matched) {
+          requirementId = matched.id;
+          clientId      = matched.clientId;
+          projectId     = matched.projectId;
+          contractId    = matched.contractId ?? context.defaultContractId;
+        } else {
+          errors.push({
+            row: idx + 1,
+            taskDescription: row.taskDescription,
+            error: `Requerimiento no encontrado: "${row.requirementTitle}".`,
+          });
+          continue;
+        }
+      }
+
+      if (!clientId && contractId) {
+        const contract = contracts.find((c) => c.id === contractId);
+        if (contract) {
+          clientId  = contract.clientId;
+          projectId = contract.projectId;
+        }
+      }
+
+      const category = validCategories.has(row.category) ? row.category : "Proyecto";
+
+      const resolvedContractId = resolveContractIdForTimeEntry({
+        requirementId,
+        contractId,
+        projectId,
+        date: row.date,
+        requirements,
+        contracts,
+      });
+
+      const payload: TimeEntryInput = {
+        projectId,
+        clientId,
+        requirementId,
+        contractId: resolvedContractId,
+        contractProfileId: null,
+        category,
+        taskDescription: row.taskDescription,
+        date:      row.date,
+        startTime: row.startTime,
+        endTime:   row.endTime,
+        userId,
+        observations: row.observations,
+      };
+
+      const validation = timeEntrySchema.safeParse(payload);
+      if (!validation.success) {
+        errors.push({
+          row: idx + 1,
+          taskDescription: row.taskDescription,
+          error: validation.error.issues[0]?.message ?? "Datos inválidos.",
+        });
+        continue;
+      }
+
+      await createTimeEntry(validation.data);
+      created++;
+    } catch (err) {
+      errors.push({
+        row: idx + 1,
+        taskDescription: row.taskDescription,
+        error: err instanceof Error ? err.message : "Error desconocido.",
+      });
+    }
+  }
+
+  revalidatePath("/time-entries");
+
+  return { created, failed: errors.length, errors };
+}

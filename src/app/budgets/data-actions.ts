@@ -647,3 +647,119 @@ export async function deleteCubicacionItemAction(id: string) {
   if (!ok) throw new Error("No se pudo eliminar la actividad.");
   return ok;
 }
+
+// ─── Carga masiva de cubicación ───────────────────────────────────────────────
+
+export interface BulkCubicacionRowInput {
+  activityName: string;
+  construccionHours: number;
+  levantamientoPct: number;
+  disenoPct: number;
+  qaAjustesPct: number;
+  puestaEnMarchaPct: number;
+  seniorPct: number;
+  ingeneroPct: number;
+  juniorPct: number;
+}
+
+export interface BulkCubicacionResult {
+  created: number;
+  failed: number;
+  errors: Array<{ activityName: string; error: string }>;
+  newItems: import("@/types/domain").CubicacionItem[];
+}
+
+/**
+ * Crea múltiples ítems de cubicación en lote para un contrato.
+ * Por cada ítem, crea automáticamente un Requirement en el sistema
+ * (a menos que ya exista un requerimiento con el mismo título en el contrato).
+ */
+export async function bulkCreateCubicacionItemsAction(
+  contractId: string,
+  rows: BulkCubicacionRowInput[],
+): Promise<BulkCubicacionResult> {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "budgets.write");
+
+  const [contracts, users, statuses, priorities, existingReqs, existingCubi] = await Promise.all([
+    getContractBudgets(),
+    getUsers(),
+    getCatalogByKind("requirement_status"),
+    getCatalogByKind("requirement_priority"),
+    getRequirements(),
+    getCubicacionItems(contractId),
+  ]);
+
+  const contract = contracts.find((c) => c.id === contractId);
+  if (!contract) throw new Error("No se encontró el contrato.");
+
+  const defaultStatus   = statuses.find((s) => s.active)?.code ?? "BACKLOG";
+  const defaultPriority = priorities.find((p) => p.active)?.code ?? "P2";
+  const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+
+  // Mapa de requerimientos ya existentes para este contrato (título normalizado → id)
+  const existingReqsByTitle = new Map(
+    existingReqs
+      .filter((r) => r.contractId === contractId)
+      .map((r) => [r.title.toLowerCase().trim(), r.id]),
+  );
+
+  // Siguiente sortOrder
+  let nextSortOrder = existingCubi.length + 1;
+
+  const newItems: import("@/types/domain").CubicacionItem[] = [];
+  const errors: BulkCubicacionResult["errors"] = [];
+
+  for (const row of rows) {
+    try {
+      // Reusar requerimiento existente si coincide por título (evitar duplicados)
+      let requirementId = existingReqsByTitle.get(row.activityName.toLowerCase().trim()) ?? null;
+
+      if (!requirementId) {
+        const newReq = await createRequirement({
+          projectId: contract.projectId,
+          clientId:  contract.clientId,
+          contractId: contract.id,
+          origin: "Cubicación",
+          title: row.activityName,
+          description: row.activityName,
+          priority: defaultPriority,
+          ownerId,
+          status: defaultStatus,
+          notes: "",
+        });
+        requirementId = newReq.id;
+        existingReqsByTitle.set(row.activityName.toLowerCase().trim(), requirementId);
+      }
+
+      const item = await createCubicacionItem({
+        contractId,
+        requirementId,
+        activityName:      row.activityName,
+        construccionHours: row.construccionHours,
+        levantamientoPct:  row.levantamientoPct,
+        disenoPct:         row.disenoPct,
+        qaAjustesPct:      row.qaAjustesPct,
+        puestaEnMarchaPct: row.puestaEnMarchaPct,
+        seniorPct:         row.seniorPct,
+        ingeneroPct:       row.ingeneroPct,
+        juniorPct:         row.juniorPct,
+        sortOrder:         nextSortOrder++,
+      });
+
+      newItems.push(item);
+    } catch (err) {
+      errors.push({
+        activityName: row.activityName,
+        error: err instanceof Error ? err.message : "Error desconocido.",
+      });
+    }
+  }
+
+  return {
+    created: newItems.length,
+    failed:  errors.length,
+    errors,
+    newItems,
+  };
+}
