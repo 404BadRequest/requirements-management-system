@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { calcCubicacionRow, CUBICACION_DEFAULTS } from "@/lib/calculations/cubicacion";
 import type { CubicacionItem } from "@/types/domain";
@@ -115,10 +116,10 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal>
       <div className="fixed inset-0 bg-black/40" aria-hidden onClick={onClose} />
-      <div className="relative z-10 w-full max-w-2xl rounded-[4px] border border-border bg-card shadow-lg">
+      <div className="relative z-10 w-full max-w-2xl overflow-y-auto max-h-[90vh] rounded-[4px] border border-border bg-card shadow-lg">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-lg leading-none">&times;</button>
@@ -252,6 +253,7 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
