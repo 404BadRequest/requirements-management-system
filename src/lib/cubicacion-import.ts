@@ -52,10 +52,21 @@ const COLUMN_ALIASES: [keyof CubicacionImportRow, string[]][] = [
 
 const REQUIRED_KEYS: Array<keyof CubicacionImportRow> = ["activityName", "construccionHours"];
 
-const PCT_KEYS: Array<keyof CubicacionImportRow> = [
-  "levantamientoPct", "disenoPct", "qaAjustesPct",
-  "puestaEnMarchaPct", "seniorPct", "ingeneroPct", "juniorPct",
+/** Porcentajes de FASE: controlan la distribución de horas por etapa del proyecto. */
+const PHASE_PCT_KEYS: Array<keyof CubicacionImportRow> = [
+  "levantamientoPct", "disenoPct", "qaAjustesPct", "puestaEnMarchaPct",
 ];
+
+/**
+ * Porcentajes de PERFIL: controlan cuántas horas trabaja cada perfil.
+ * Si el usuario especifica al menos uno, los vacíos se tratan como 0
+ * (no se aplican defaults del sistema). Si no especifica ninguno, se usan defaults.
+ */
+const PROFILE_PCT_KEYS: Array<keyof CubicacionImportRow> = [
+  "seniorPct", "ingeneroPct", "juniorPct",
+];
+
+const PCT_KEYS: Array<keyof CubicacionImportRow> = [...PHASE_PCT_KEYS, ...PROFILE_PCT_KEYS];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -180,9 +191,9 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
       errors.push(`Horas de construcción inválidas: "${rawHours}". Debe ser un número positivo.`);
     }
 
-    // Porcentajes: si están vacíos se usan defaults del sistema (fracciones decimales)
+    // ── Porcentajes de FASE: siempre usan defaults si están vacíos ──────────────
     const pcts: Partial<Record<keyof CubicacionImportRow, number>> = {};
-    for (const key of PCT_KEYS) {
+    for (const key of PHASE_PCT_KEYS) {
       const rawPct = getCell(row as unknown[], colMap.get(key));
       if (!rawPct) {
         pcts[key] = defaultPct(key);
@@ -191,6 +202,31 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
         if (n === null || n < 0 || n > 1) {
           errors.push(`Porcentaje inválido en "${key}": "${rawPct}". Ingresa un valor entre 0 y 100 (ej. 5 para 5%).`);
           pcts[key] = defaultPct(key);
+        } else {
+          pcts[key] = n;
+        }
+      }
+    }
+
+    // ── Porcentajes de PERFIL: lógica opt-in ─────────────────────────────────
+    // Si el usuario especifica AL MENOS UNO, los vacíos = 0 (no se aplican defaults).
+    // Si no especifica NINGUNO, se aplican los defaults del sistema para los tres.
+    const profileRaw: Partial<Record<keyof CubicacionImportRow, string>> = {};
+    for (const key of PROFILE_PCT_KEYS) {
+      profileRaw[key] = getCell(row as unknown[], colMap.get(key));
+    }
+    const anyProfileProvided = PROFILE_PCT_KEYS.some((k) => !!profileRaw[k]);
+
+    for (const key of PROFILE_PCT_KEYS) {
+      const rawPct = profileRaw[key] ?? "";
+      if (!rawPct) {
+        // Si el usuario proveyó algún perfil → vacío = 0; si no proveyó ninguno → default
+        pcts[key] = anyProfileProvided ? 0 : defaultPct(key);
+      } else {
+        const n = parsePctNum(rawPct);
+        if (n === null || n < 0 || n > 1) {
+          errors.push(`Porcentaje inválido en "${key}": "${rawPct}". Ingresa un valor entre 0 y 100 (ej. 70 para 70%).`);
+          pcts[key] = anyProfileProvided ? 0 : defaultPct(key);
         } else {
           pcts[key] = n;
         }
