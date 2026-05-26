@@ -42,9 +42,9 @@ export function calcCubicacionRow(item: Pick<
   const puestaEnMarcha = round2(c * puestaEnMarchaPct);
   const totalHoras = round2(levantamiento + diseno + c + qaAjustes + puestaEnMarcha);
 
-  const seniorHoras = round2(totalHoras * seniorPct - qaAjustes);
+  const seniorHoras = round2(Math.max(0, totalHoras * seniorPct - qaAjustes));
   const ingenieroHoras = round2(totalHoras * ingeneroPct);
-  const juniorHoras = round2(totalHoras * juniorPct - qaAjustes);
+  const juniorHoras = round2(Math.max(0, totalHoras * juniorPct - qaAjustes));
 
   return { levantamiento, diseno, qaAjustes, puestaEnMarcha, totalHoras, seniorHoras, ingenieroHoras, juniorHoras };
 }
