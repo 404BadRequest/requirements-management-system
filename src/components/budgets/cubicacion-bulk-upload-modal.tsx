@@ -229,14 +229,14 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                 <div className="divide-y divide-border">
                   {[
                     { col: "Actividad", req: true,  desc: "Nombre del requerimiento o actividad" },
-                    { col: "Horas Construcción", req: true,  desc: "Horas base de desarrollo (número positivo)" },
-                    { col: "Levantamiento %",   req: false, desc: "Porcentaje · default 5%" },
-                    { col: "Diseño %",          req: false, desc: "Porcentaje · default 20%" },
-                    { col: "QA+Ajustes %",      req: false, desc: "Porcentaje · default 15%" },
-                    { col: "Puesta en Marcha %",req: false, desc: "Porcentaje · default 10%" },
-                    { col: "Senior %",          req: false, desc: "Porcentaje del total · default 10%" },
-                    { col: "Ingeniero %",       req: false, desc: "Porcentaje del total · default 30%" },
-                    { col: "Junior %",          req: false, desc: "Porcentaje del total · default 60%" },
+                    { col: "Horas Construcción", req: true,  desc: "Horas base de desarrollo (ej. 8, 14.5)" },
+                    { col: "Levantamiento %",   req: false, desc: "Entero 0–100 · default 5" },
+                    { col: "Diseño %",          req: false, desc: "Entero 0–100 · default 20" },
+                    { col: "QA+Ajustes %",      req: false, desc: "Entero 0–100 · default 15" },
+                    { col: "Puesta en Marcha %",req: false, desc: "Entero 0–100 · default 10" },
+                    { col: "Senior %",          req: false, desc: "Entero 0–100 · default 70 (fórmula: Total×%−QA)" },
+                    { col: "Ingeniero %",       req: false, desc: "Entero 0–100 · default 30" },
+                    { col: "Junior %",          req: false, desc: "Entero 0–100 · default 60 (fórmula: Total×%−QA)" },
                   ].map(({ col, req, desc }) => (
                     <div key={col} className="px-4 py-2 flex items-center gap-3 text-xs">
                       <code className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded shrink-0">{col}</code>

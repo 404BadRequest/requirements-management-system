@@ -6,9 +6,10 @@ export interface CubicacionRowCalc {
   qaAjustes: number;
   puestaEnMarcha: number;
   totalHoras: number;
+  /** seniorHoras = (totalHoras × seniorPct) − qaAjustes  (fórmula: =(H4*0.7)−F4) */
   seniorHoras: number;
   ingenieroHoras: number;
-  /** juniorHoras = (totalHoras × juniorPct) − qaAjustes  (QA lo ejecuta el junior, se deduce para evitar doble conteo) */
+  /** juniorHoras = (totalHoras × juniorPct) − qaAjustes  (fórmula: =(H4*0.6)−F4) */
   juniorHoras: number;
 }
 
@@ -41,7 +42,7 @@ export function calcCubicacionRow(item: Pick<
   const puestaEnMarcha = round2(c * puestaEnMarchaPct);
   const totalHoras = round2(levantamiento + diseno + c + qaAjustes + puestaEnMarcha);
 
-  const seniorHoras = round2(totalHoras * seniorPct);
+  const seniorHoras = round2(totalHoras * seniorPct - qaAjustes);
   const ingenieroHoras = round2(totalHoras * ingeneroPct);
   const juniorHoras = round2(totalHoras * juniorPct - qaAjustes);
 
@@ -73,13 +74,13 @@ export function calcCubicacionTotals(items: CubicacionItem[]): CubicacionTotals 
   };
 }
 
-/** Porcentajes por defecto del sistema. */
+/** Porcentajes por defecto del sistema (fracciones decimales, ej. 0.05 = 5%). */
 export const CUBICACION_DEFAULTS = {
   levantamientoPct: 0.05,
   disenoPct: 0.2,
   qaAjustesPct: 0.15,
   puestaEnMarchaPct: 0.1,
-  seniorPct: 0.1,
+  seniorPct: 0.7,
   ingeneroPct: 0.3,
   juniorPct: 0.6,
 } as const;

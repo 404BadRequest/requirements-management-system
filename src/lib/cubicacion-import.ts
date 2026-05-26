@@ -93,15 +93,33 @@ function getCell(row: unknown[], idx: number | undefined): string {
   return String(val).trim();
 }
 
-function parseNum(raw: string): number | null {
+/**
+ * Parsea horas de construcción como número positivo sin conversión de porcentaje.
+ * "1" → 1 hora, "14.7" → 14.7 horas.
+ */
+function parseHoursNum(raw: string): number | null {
   if (!raw) return null;
-  // Acepta formatos como "25", "25%", "25,5", "0.25" (porcentaje decimal)
+  const cleaned = raw.replace(",", ".").trim();
+  const n = parseFloat(cleaned);
+  if (isNaN(n) || n <= 0) return null;
+  return n;
+}
+
+/**
+ * Parsea un porcentaje y lo normaliza siempre a fracción decimal (0–1).
+ * - "5"    → 0.05  (entero > 1 → dividir entre 100)
+ * - "0.05" → 0.05  (ya es fracción decimal → conservar)
+ * - "70"   → 0.7
+ * - "0.7"  → 0.7
+ * - "100"  → 1.0
+ */
+function parsePctNum(raw: string): number | null {
+  if (!raw) return null;
   const cleaned = raw.replace("%", "").replace(",", ".").trim();
   const n = parseFloat(cleaned);
-  if (isNaN(n)) return null;
-  // Si el valor es <= 1 y parece decimal (ej. 0.25) → convertir a porcentaje
-  if (n > 0 && n <= 1) return Math.round(n * 100);
-  return n;
+  if (isNaN(n) || n < 0) return null;
+  // Valores > 1 se interpretan como porcentaje entero (0-100) → normalizar a fracción
+  return n > 1 ? n / 100 : n;
 }
 
 function defaultPct(key: keyof CubicacionImportRow): number {
@@ -157,21 +175,21 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
 
     if (!activityName) errors.push("Nombre de actividad requerido.");
 
-    const construccionHours = parseNum(rawHours);
-    if (construccionHours === null || construccionHours <= 0) {
+    const construccionHours = parseHoursNum(rawHours);
+    if (construccionHours === null) {
       errors.push(`Horas de construcción inválidas: "${rawHours}". Debe ser un número positivo.`);
     }
 
-    // Porcentajes: si están vacíos se usan defaults
+    // Porcentajes: si están vacíos se usan defaults del sistema (fracciones decimales)
     const pcts: Partial<Record<keyof CubicacionImportRow, number>> = {};
     for (const key of PCT_KEYS) {
-      const raw = getCell(row as unknown[], colMap.get(key));
-      if (!raw) {
+      const rawPct = getCell(row as unknown[], colMap.get(key));
+      if (!rawPct) {
         pcts[key] = defaultPct(key);
       } else {
-        const n = parseNum(raw);
-        if (n === null || n < 0 || n > 100) {
-          errors.push(`Porcentaje inválido en "${key}": "${raw}". Debe ser un número entre 0 y 100.`);
+        const n = parsePctNum(rawPct);
+        if (n === null || n < 0 || n > 1) {
+          errors.push(`Porcentaje inválido en "${key}": "${rawPct}". Ingresa un valor entre 0 y 100 (ej. 5 para 5%).`);
           pcts[key] = defaultPct(key);
         } else {
           pcts[key] = n;
@@ -208,6 +226,9 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
  * Genera un archivo Excel (.xlsx) de plantilla con cabeceras y una fila de ejemplo.
  * Retorna un Blob listo para descarga.
  */
+/** Convierte fracción decimal a entero porcentual para la plantilla (0.05 → 5). */
+const pctToInt = (v: number) => Math.round(v * 100);
+
 export function generateCubicacionTemplate(): Blob {
   const ws = XLSX.utils.aoa_to_sheet([
     [
@@ -224,13 +245,13 @@ export function generateCubicacionTemplate(): Blob {
     [
       "Ejemplo: Modificar banner de inicio",
       8,
-      CUBICACION_DEFAULTS.levantamientoPct,
-      CUBICACION_DEFAULTS.disenoPct,
-      CUBICACION_DEFAULTS.qaAjustesPct,
-      CUBICACION_DEFAULTS.puestaEnMarchaPct,
-      CUBICACION_DEFAULTS.seniorPct,
-      CUBICACION_DEFAULTS.ingeneroPct,
-      CUBICACION_DEFAULTS.juniorPct,
+      pctToInt(CUBICACION_DEFAULTS.levantamientoPct),
+      pctToInt(CUBICACION_DEFAULTS.disenoPct),
+      pctToInt(CUBICACION_DEFAULTS.qaAjustesPct),
+      pctToInt(CUBICACION_DEFAULTS.puestaEnMarchaPct),
+      pctToInt(CUBICACION_DEFAULTS.seniorPct),
+      pctToInt(CUBICACION_DEFAULTS.ingeneroPct),
+      pctToInt(CUBICACION_DEFAULTS.juniorPct),
     ],
     ["Ejemplo: Reuniones semanales", 4, "", "", "", "", "", "", ""],
   ]);
