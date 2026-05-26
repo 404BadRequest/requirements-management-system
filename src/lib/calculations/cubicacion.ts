@@ -53,11 +53,17 @@ export function calcCubicacionRow(item: Pick<
   const diseno = round2(c * disenoPct);
   const qaAjustes = round2(c * qaAjustesPct);
   const puestaEnMarcha = round2(c * puestaEnMarchaPct);
-  const totalHoras = round2(levantamiento + diseno + c + qaAjustes + puestaEnMarcha);
 
-  const seniorHoras = round2(Math.max(0, totalHoras * seniorPct - qaAjustes));
-  const ingenieroHoras = round2(totalHoras * ingeneroPct);
-  const juniorHoras = round2(Math.max(0, totalHoras * juniorPct - qaAjustes));
+  // fasesHoras: base para los cálculos de porcentajes por perfil (Senior/Ing./Junior).
+  // No incluye Director ni Diseñador, ya que esos son pass-through.
+  const fasesHoras = round2(levantamiento + diseno + c + qaAjustes + puestaEnMarcha);
+
+  // totalHoras: horas totales del ítem incluyendo todos los perfiles.
+  const totalHoras = round2(fasesHoras + directorHours + disenadorHours);
+
+  const seniorHoras = round2(Math.max(0, fasesHoras * seniorPct - qaAjustes));
+  const ingenieroHoras = round2(fasesHoras * ingeneroPct);
+  const juniorHoras = round2(Math.max(0, fasesHoras * juniorPct - qaAjustes));
 
   return {
     levantamiento, diseno, qaAjustes, puestaEnMarcha, totalHoras,
