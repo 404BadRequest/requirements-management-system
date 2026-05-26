@@ -25,6 +25,8 @@ export class MockCubicacionRepository {
       seniorPct: input.seniorPct,
       ingeneroPct: input.ingeneroPct,
       juniorPct: input.juniorPct,
+      directorHours: input.directorHours,
+      disenadorHours: input.disenadorHours,
       sortOrder: input.sortOrder,
       createdAt: now,
       updatedAt: now,

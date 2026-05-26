@@ -47,6 +47,8 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
     seniorPct: number;
     ingeneroPct: number;
     juniorPct: number;
+    directorHours: number;
+    disenadorHours: number;
   }) => {
     const created = await createCubicacionItemAction({
       contractId,
@@ -135,7 +137,7 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
         </div>
       ) : (
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-sm">
+          <table className="w-full min-w-[1060px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Actividad</th>
@@ -148,6 +150,8 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                 <th className={headClass}>Senior</th>
                 <th className={headClass}>Ing.</th>
                 <th className={headClass}>Junior</th>
+                <th className={headClass}>Director</th>
+                <th className={headClass}>Diseñador</th>
                 {canWrite && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -187,6 +191,8 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                     <td className={colClass}>{row.seniorHoras.toFixed(2)}</td>
                     <td className={colClass}>{row.ingenieroHoras.toFixed(2)}</td>
                     <td className={colClass}>{row.juniorHoras.toFixed(2)}</td>
+                    <td className={colClass}>{row.directorHoras.toFixed(2)}</td>
+                    <td className={colClass}>{row.disenadorHoras.toFixed(2)}</td>
                     {canWrite && (
                       <td className="px-3 py-2.5">
                         <RowActionMenu
@@ -220,6 +226,8 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                 <td className={`${colClass} font-semibold`}>{totals.seniorHoras.toFixed(2)}</td>
                 <td className={`${colClass} font-semibold`}>{totals.ingenieroHoras.toFixed(2)}</td>
                 <td className={`${colClass} font-semibold`}>{totals.juniorHoras.toFixed(2)}</td>
+                <td className={`${colClass} font-semibold`}>{totals.directorHoras.toFixed(2)}</td>
+                <td className={`${colClass} font-semibold`}>{totals.disenadorHoras.toFixed(2)}</td>
                 {canWrite && <td />}
               </tr>
             </tfoot>

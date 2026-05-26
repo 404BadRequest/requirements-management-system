@@ -252,6 +252,8 @@ function mapCubicacionItem(r: Row): CubicacionItem {
     seniorPct: Number(r.senior_pct),
     ingeneroPct: Number(r.ingenero_pct),
     juniorPct: Number(r.junior_pct),
+    directorHours: Number(r.director_hours ?? 0),
+    disenadorHours: Number(r.disenador_hours ?? 0),
     sortOrder: Number(r.sort_order),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
@@ -1136,6 +1138,8 @@ export class RmsDataAccess {
       senior_pct: input.seniorPct,
       ingenero_pct: input.ingeneroPct,
       junior_pct: input.juniorPct,
+      director_hours: input.directorHours,
+      disenador_hours: input.disenadorHours,
       sort_order: input.sortOrder,
       created_at: now,
       updated_at: now,
@@ -1158,6 +1162,8 @@ export class RmsDataAccess {
     if (input.seniorPct !== undefined) patch.senior_pct = input.seniorPct;
     if (input.ingeneroPct !== undefined) patch.ingenero_pct = input.ingeneroPct;
     if (input.juniorPct !== undefined) patch.junior_pct = input.juniorPct;
+    if (input.directorHours !== undefined) patch.director_hours = input.directorHours;
+    if (input.disenadorHours !== undefined) patch.disenador_hours = input.disenadorHours;
     if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
     const { data, error } = await this.sb
       .from("rms_cubicacion_items")

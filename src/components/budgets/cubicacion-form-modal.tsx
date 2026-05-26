@@ -22,6 +22,10 @@ interface CubicacionFormValues {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
+  /** Horas directas del Director (sin cálculo de porcentajes). */
+  directorHours: number;
+  /** Horas directas del Diseñador (sin cálculo de porcentajes). */
+  disenadorHours: number;
 }
 
 interface CubicacionFormModalProps {
@@ -38,6 +42,8 @@ const DEFAULT_VALUES: CubicacionFormValues = {
   requirementId: null,
   construccionHours: 0,
   ...CUBICACION_DEFAULTS,
+  directorHours: 0,
+  disenadorHours: 0,
 };
 
 function PctInput({ id, label, value, onChange, disabled }: {
@@ -87,6 +93,8 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
         seniorPct: initialValues?.seniorPct ?? CUBICACION_DEFAULTS.seniorPct,
         ingeneroPct: initialValues?.ingeneroPct ?? CUBICACION_DEFAULTS.ingeneroPct,
         juniorPct: initialValues?.juniorPct ?? CUBICACION_DEFAULTS.juniorPct,
+        directorHours: initialValues?.directorHours ?? 0,
+        disenadorHours: initialValues?.disenadorHours ?? 0,
       });
       setAdvancedOpen(false);
       setError(null);
@@ -173,10 +181,10 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
                 <div className="flex items-center gap-2">
                   <input
                     id="construccionHours"
-                  type="number"
-                  min={0.01}
-                  step="any"
-                  required
+                    type="number"
+                    min={0.01}
+                    step="any"
+                    required
                     value={values.construccionHours || ""}
                     onChange={(e) => set("construccionHours", Number(e.target.value))}
                     className="field-control w-28 tabular-nums"
@@ -186,24 +194,83 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
               </div>
             </div>
 
+            {/* Horas directas de perfiles sin cálculo de porcentajes */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Horas directas por perfil
+              </p>
+              <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+                Estos perfiles se asignan directamente sin pasar por los porcentajes de fase.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="directorHours" className="text-xs font-medium text-muted-foreground">
+                    Director
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="directorHours"
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={values.directorHours || ""}
+                      onChange={(e) => set("directorHours", Number(e.target.value))}
+                      placeholder="0"
+                      className="field-control w-28 tabular-nums"
+                    />
+                    <span className="text-sm text-muted-foreground">h</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="disenadorHours" className="text-xs font-medium text-muted-foreground">
+                    Diseñador
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="disenadorHours"
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={values.disenadorHours || ""}
+                      onChange={(e) => set("disenadorHours", Number(e.target.value))}
+                      placeholder="0"
+                      className="field-control w-28 tabular-nums"
+                    />
+                    <span className="text-sm text-muted-foreground">h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Preview calculado */}
             {values.construccionHours > 0 && (
               <div className="rounded-[4px] border border-border/60 bg-muted/30 p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Desglose estimado</p>
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 mb-2">
                   {[
                     { label: "Levant.", value: preview.levantamiento },
                     { label: "Diseño", value: preview.diseno },
                     { label: "QA", value: preview.qaAjustes },
                     { label: "Puesta", value: preview.puestaEnMarcha },
                     { label: "TOTAL", value: preview.totalHoras, bold: true },
-                    { label: "Senior", value: preview.seniorHoras },
-                    { label: "Ing.", value: preview.ingenieroHoras },
-                    { label: "Junior", value: preview.juniorHoras },
                   ].map(({ label, value, bold }) => (
                     <div key={label} className="flex flex-col items-center">
                       <span className="text-[10px] text-muted-foreground">{label}</span>
                       <span className={`tabular-nums text-sm ${bold ? "font-semibold text-foreground" : "text-foreground"}`}>{value.toFixed(2)} h</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 border-t border-border/40 pt-2">
+                  {[
+                    { label: "Senior", value: preview.seniorHoras },
+                    { label: "Ing.", value: preview.ingenieroHoras },
+                    { label: "Junior", value: preview.juniorHoras },
+                    { label: "Director", value: preview.directorHoras },
+                    { label: "Diseñador", value: preview.disenadorHoras },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex flex-col items-center">
+                      <span className="text-[10px] text-muted-foreground">{label}</span>
+                      <span className="tabular-nums text-sm text-foreground">{value.toFixed(2)} h</span>
                     </div>
                   ))}
                 </div>

@@ -196,6 +196,8 @@ function mapCubicacionItem(r: Row): CubicacionItem {
     seniorPct: Number(r.senior_pct),
     ingeneroPct: Number(r.ingenero_pct),
     juniorPct: Number(r.junior_pct),
+    directorHours: Number(r.director_hours ?? 0),
+    disenadorHours: Number(r.disenador_hours ?? 0),
     sortOrder: Number(r.sort_order),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
@@ -1030,14 +1032,18 @@ export class PostgresDataProvider implements AppDataProvider {
       `insert into rms_cubicacion_items
          (id, contract_id, requirement_id, activity_name, construccion_hours,
           levantamiento_pct, diseno_pct, qa_ajustes_pct, puesta_en_marcha_pct,
-          senior_pct, ingenero_pct, junior_pct, sort_order, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14)
+          senior_pct, ingenero_pct, junior_pct,
+          director_hours, disenador_hours,
+          sort_order, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16)
        returning *`,
       [
         id, input.contractId, input.requirementId ?? null, input.activityName,
         input.construccionHours, input.levantamientoPct, input.disenoPct,
         input.qaAjustesPct, input.puestaEnMarchaPct, input.seniorPct,
-        input.ingeneroPct, input.juniorPct, input.sortOrder, now,
+        input.ingeneroPct, input.juniorPct,
+        input.directorHours, input.disenadorHours,
+        input.sortOrder, now,
       ],
     );
     return mapCubicacionItem(rows[0]);
@@ -1056,6 +1062,8 @@ export class PostgresDataProvider implements AppDataProvider {
     if (input.seniorPct !== undefined) patch.senior_pct = input.seniorPct;
     if (input.ingeneroPct !== undefined) patch.ingenero_pct = input.ingeneroPct;
     if (input.juniorPct !== undefined) patch.junior_pct = input.juniorPct;
+    if (input.directorHours !== undefined) patch.director_hours = input.directorHours;
+    if (input.disenadorHours !== undefined) patch.disenador_hours = input.disenadorHours;
     if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
     const keys = Object.keys(patch);
     const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");

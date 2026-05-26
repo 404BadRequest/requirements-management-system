@@ -660,6 +660,8 @@ export interface BulkCubicacionRowInput {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
+  directorHours: number;
+  disenadorHours: number;
 }
 
 export interface BulkCubicacionResult {
@@ -744,6 +746,8 @@ export async function bulkCreateCubicacionItemsAction(
         seniorPct:         row.seniorPct,
         ingeneroPct:       row.ingeneroPct,
         juniorPct:         row.juniorPct,
+        directorHours:     row.directorHours,
+        disenadorHours:    row.disenadorHours,
         sortOrder:         nextSortOrder++,
       });
 

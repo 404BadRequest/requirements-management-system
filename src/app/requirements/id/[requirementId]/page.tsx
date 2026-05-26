@@ -76,11 +76,13 @@ function buildHoursBreakdown(
 }
 
 /** Asigna el perfil del usuario a uno de los tres buckets de cubicación. */
-function mapProfileToBucket(profileName: string | undefined): "senior" | "ingeniero" | "junior" {
+function mapProfileToBucket(profileName: string | undefined): "senior" | "ingeniero" | "junior" | "director" | "disenador" {
   if (!profileName) return "ingeniero";
   const lower = profileName.toLowerCase();
   if (lower.includes("senior") || lower.includes("sr.")) return "senior";
   if (lower.includes("junior") || lower.includes("jr")) return "junior";
+  if (lower.includes("director")) return "director";
+  if (lower.includes("dise")) return "disenador";
   return "ingeniero";
 }
 
@@ -179,8 +181,8 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const linkedCubicacion = cubicacionItems.find((c) => c.requirementId === requirementId) ?? null;
   const cubicacionCalc   = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
 
-  // Horas usadas por bucket de perfil (Senior / Ingeniero / Junior)
-  const usedByBucket = { senior: 0, ingeniero: 0, junior: 0 };
+  // Horas usadas por bucket de perfil (Senior / Ingeniero / Junior / Director / Diseñador)
+  const usedByBucket = { senior: 0, ingeniero: 0, junior: 0, director: 0, disenador: 0 };
   for (const entry of requirementEntries) {
     const user    = userById.get(entry.userId);
     const profile = user ? profileById.get(user.profileId) : undefined;
@@ -309,6 +311,16 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             label: "Ingeniero Junior",
             allocatedHoras: cubicacionCalc.juniorHoras,
             usedHoras: Math.round(usedByBucket.junior * 100) / 100,
+          }}
+          director={{
+            label: "Director",
+            allocatedHoras: cubicacionCalc.directorHoras,
+            usedHoras: Math.round(usedByBucket.director * 100) / 100,
+          }}
+          disenador={{
+            label: "Diseñador",
+            allocatedHoras: cubicacionCalc.disenadorHoras,
+            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
           }}
         />
       )}

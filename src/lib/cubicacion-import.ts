@@ -23,6 +23,10 @@ export interface CubicacionImportRow {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
+  /** Horas directas del Director (sin cálculo de porcentajes). */
+  directorHours: number;
+  /** Horas directas del Diseñador (sin cálculo de porcentajes). */
+  disenadorHours: number;
 }
 
 export interface CubicacionImportRowWithError extends CubicacionImportRow {
@@ -42,12 +46,14 @@ const COLUMN_ALIASES: [keyof CubicacionImportRow, string[]][] = [
   ["activityName",       ["actividad", "requerimiento", "nombre", "descripcion", "descripción", "activity", "name"]],
   ["construccionHours",  ["construccion", "construcción", "horas construccion", "horas construcción", "horas", "hours", "construccionh", "hconstruccion"]],
   ["levantamientoPct",   ["levantamiento", "levantamiento%", "levantamientopct", "lev%", "lev"]],
-  ["disenoPct",          ["diseno", "diseño", "diseño%", "disenopct", "dis%", "dis"]],
+  ["disenoPct",          ["diseno fase", "diseño fase", "diseño%", "disenofase", "disenopct", "dis%"]],
   ["qaAjustesPct",       ["qa", "qa+ajustes", "qa ajustes", "qaajustes", "qa%", "qapct"]],
   ["puestaEnMarchaPct",  ["puesta en marcha", "puestaenmarcha", "pem", "pem%", "puesta marcha", "puestaenarchapct"]],
   ["seniorPct",          ["senior", "senior%", "ingeniero senior", "srpct", "sr%"]],
   ["ingeneroPct",        ["ingeniero", "ingeniero%", "ing", "ing%", "ingpct", "engineer"]],
   ["juniorPct",          ["junior", "junior%", "jr", "jr%", "juniorpct"]],
+  ["directorHours",      ["director", "horas director", "director hours", "directorh", "director h"]],
+  ["disenadorHours",     ["disenador", "diseñador", "horas diseñador", "horas disenador", "disenador hours", "diseñadorh"]],
 ];
 
 const REQUIRED_KEYS: Array<keyof CubicacionImportRow> = ["activityName", "construccionHours"];
@@ -83,13 +89,14 @@ function detectColumnMap(headers: string[]): Map<keyof CubicacionImportRow, numb
     if (idx !== -1) map.set(key, idx);
   }
 
-  // Fallback posicional si no se detectaron cabeceras: col0=actividad, col1=construcción, col2..8=porcentajes
+  // Fallback posicional si no se detectaron cabeceras: col0=actividad, col1=construcción, col2..8=porcentajes, col9=director, col10=diseñador
   if (!map.has("activityName") && !map.has("construccionHours")) {
     map.set("activityName", 0);
     map.set("construccionHours", 1);
     const pctOrder: Array<keyof CubicacionImportRow> = [
       "levantamientoPct", "disenoPct", "qaAjustesPct",
       "puestaEnMarchaPct", "seniorPct", "ingeneroPct", "juniorPct",
+      "directorHours", "disenadorHours",
     ];
     pctOrder.forEach((k, i) => map.set(k, i + 2));
   }
@@ -233,6 +240,13 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
       }
     }
 
+    // ── Horas directas (Director, Diseñador): siempre 0 si están vacías ─────
+    const rawDirectorHours = getCell(row as unknown[], colMap.get("directorHours"));
+    const directorHours = rawDirectorHours ? (parseHoursNum(rawDirectorHours) ?? 0) : 0;
+
+    const rawDisenadorHours = getCell(row as unknown[], colMap.get("disenadorHours"));
+    const disenadorHours = rawDisenadorHours ? (parseHoursNum(rawDisenadorHours) ?? 0) : 0;
+
     const importRow: CubicacionImportRow = {
       rowIndex,
       activityName: activityName || "",
@@ -244,6 +258,8 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
       seniorPct:         pcts.seniorPct!,
       ingeneroPct:       pcts.ingeneroPct!,
       juniorPct:         pcts.juniorPct!,
+      directorHours,
+      disenadorHours,
     };
 
     if (errors.length > 0) {
@@ -271,12 +287,14 @@ export function generateCubicacionTemplate(): Blob {
       "Actividad",
       "Horas Construcción",
       "Levantamiento %",
-      "Diseño %",
+      "Diseño Fase %",
       "QA+Ajustes %",
       "Puesta en Marcha %",
       "Senior %",
       "Ingeniero %",
       "Junior %",
+      "Director",
+      "Diseñador",
     ],
     [
       "Ejemplo: Modificar banner de inicio",
@@ -288,12 +306,14 @@ export function generateCubicacionTemplate(): Blob {
       pctToInt(CUBICACION_DEFAULTS.seniorPct),
       pctToInt(CUBICACION_DEFAULTS.ingeneroPct),
       pctToInt(CUBICACION_DEFAULTS.juniorPct),
+      0,
+      0,
     ],
-    ["Ejemplo: Reuniones semanales", 4, "", "", "", "", "", "", ""],
+    ["Ejemplo: Gestión del servicio", 0, "", "", "", "", "", "", "", 10, 0],
   ]);
 
   // Ancho de columnas
-  ws["!cols"] = [{ wch: 40 }, { wch: 18 }, ...Array(7).fill({ wch: 14 })];
+  ws["!cols"] = [{ wch: 40 }, { wch: 18 }, ...Array(7).fill({ wch: 14 }), { wch: 12 }, { wch: 12 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Cubicación");

@@ -7,9 +7,11 @@ const D = {
   disenoPct: 0.2,
   qaAjustesPct: 0.15,
   puestaEnMarchaPct: 0.1,
-  seniorPct: 0.1,
+  seniorPct: 0.7,
   ingeneroPct: 0.3,
   juniorPct: 0.6,
+  directorHours: 0,
+  disenadorHours: 0,
 };
 
 export const cubicacionItemsSeed: CubicacionItem[] = [

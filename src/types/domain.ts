@@ -164,6 +164,9 @@ export interface CubicacionItem {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
+  /** Horas directas para perfiles que no pasan por el cálculo de porcentajes. */
+  directorHours: number;
+  disenadorHours: number;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

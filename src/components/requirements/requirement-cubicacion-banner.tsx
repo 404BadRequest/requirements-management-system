@@ -18,6 +18,8 @@ export interface RequirementCubicacionBannerProps {
   senior: CubicacionProfileBucket;
   ingeniero: CubicacionProfileBucket;
   junior: CubicacionProfileBucket;
+  director: CubicacionProfileBucket;
+  disenador: CubicacionProfileBucket;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -119,13 +121,17 @@ export function RequirementCubicacionBanner({
   senior,
   ingeniero,
   junior,
+  director,
+  disenador,
 }: RequirementCubicacionBannerProps) {
   const totalPct = pct(usedHorasTotal, totalHoras);
   const totalOver = usedHorasTotal > totalHoras;
   const anyOver   = totalOver
     || senior.usedHoras > senior.allocatedHoras
     || ingeniero.usedHoras > ingeniero.allocatedHoras
-    || junior.usedHoras > junior.allocatedHoras;
+    || junior.usedHoras > junior.allocatedHoras
+    || director.usedHoras > director.allocatedHoras
+    || disenador.usedHoras > disenador.allocatedHoras;
 
   return (
     <section className="surface-card p-5 flex flex-col gap-5">
@@ -200,6 +206,23 @@ export function RequirementCubicacionBanner({
         <ProfileCard bucket={ingeniero} />
         <ProfileCard bucket={junior} />
       </div>
+
+      {/* ── Perfiles con horas directas ─────────────────────────────────────── */}
+      {(director.allocatedHoras > 0 || disenador.allocatedHoras > 0) && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+              Perfiles directos
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {director.allocatedHoras > 0 && <ProfileCard bucket={director} />}
+            {disenador.allocatedHoras > 0 && <ProfileCard bucket={disenador} />}
+          </div>
+        </>
+      )}
     </section>
   );
 }
