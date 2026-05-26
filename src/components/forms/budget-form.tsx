@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { budgetSchema, type BudgetInput } from "@/schemas/budget-schema";
 import { FormField } from "@/components/forms/form-field";
 
@@ -71,27 +72,38 @@ export const BudgetForm = ({
     name: "allocations",
   });
   const [hoursDraftByFieldId, setHoursDraftByFieldId] = useState<Record<string, string>>({});
+  const errors = form.formState.errors;
   const isSubmitting = form.formState.isSubmitting;
 
   return (
     <form
       className="grid gap-3"
-      onSubmit={form.handleSubmit(async (values) => {
-        await onSubmit({
-          ...values,
-          startDate: normalizeDate(values.startDate),
-          endDate: normalizeDate(values.endDate),
-          allocations: values.allocations.map((allocation) => ({
-            ...allocation,
-            quotedMinutes: Math.max(1, Math.round(allocation.quotedMinutes)),
-          })),
-        });
-      })}
+      onSubmit={form.handleSubmit(
+        async (values) => {
+          await onSubmit({
+            ...values,
+            startDate: normalizeDate(values.startDate),
+            endDate: normalizeDate(values.endDate),
+            allocations: values.allocations.map((allocation) => ({
+              ...allocation,
+              quotedMinutes: Math.max(1, Math.round(allocation.quotedMinutes)),
+            })),
+          });
+        },
+        (validationErrors) => {
+          const messages = Object.values(validationErrors)
+            .map((e) => (Array.isArray(e) ? e.map((item) => Object.values(item ?? {}).map((f) => (f as { message?: string })?.message)).flat() : [(e as { message?: string })?.message]))
+            .flat()
+            .filter(Boolean);
+          const summary = messages.length > 0 ? messages[0] : "Revisa los campos del formulario antes de guardar.";
+          toast.error(summary as string);
+        },
+      )}
     >
       <input type="hidden" {...form.register("projectId")} />
       <input type="hidden" {...form.register("code")} />
       <input type="hidden" {...form.register("rateUfPerHour", { valueAsNumber: true })} />
-      <FormField label="Cliente">
+      <FormField label="Cliente" error={errors.clientId?.message}>
         <select className="field-control w-full" {...form.register("clientId")}>
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
@@ -100,7 +112,7 @@ export const BudgetForm = ({
           ))}
         </select>
       </FormField>
-      <FormField label="Scope">
+      <FormField label="Scope" error={errors.scope?.message}>
         <select className="field-control w-full" {...form.register("scope")}>
           {scopes.map((scope) => (
             <option key={scope.code} value={scope.code}>
@@ -110,30 +122,30 @@ export const BudgetForm = ({
         </select>
       </FormField>
       <div className="grid gap-3 sm:grid-cols-1">
-        <FormField label="Nombre contrato">
+        <FormField label="Nombre contrato" error={errors.name?.message}>
           <input type="text" className="field-control w-full" {...form.register("name")} />
         </FormField>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Inicio vigencia">
+        <FormField label="Inicio vigencia" error={errors.startDate?.message}>
           <input
             type="date"
             className="field-control w-full"
             value={toDateInputValue(form.watch("startDate"))}
-            onChange={(event) => form.setValue("startDate", event.target.value)}
+            onChange={(event) => form.setValue("startDate", event.target.value, { shouldValidate: true })}
           />
         </FormField>
-        <FormField label="Término vigencia">
+        <FormField label="Término vigencia" error={errors.endDate?.message}>
           <input
             type="date"
             className="field-control w-full"
             value={toDateInputValue(form.watch("endDate"))}
-            onChange={(event) => form.setValue("endDate", event.target.value)}
+            onChange={(event) => form.setValue("endDate", event.target.value, { shouldValidate: true })}
           />
         </FormField>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Markup (Margen %) para estimar Venta">
+        <FormField label="Markup (Margen %) para estimar Venta" error={errors.markupPercentage?.message}>
           <input
             type="number"
             step="0.1"
@@ -142,7 +154,7 @@ export const BudgetForm = ({
             {...form.register("markupPercentage", { valueAsNumber: true })}
           />
         </FormField>
-        <FormField label="OPEX (%)">
+        <FormField label="OPEX (%)" error={errors.opexPercentage?.message}>
           <input
             type="number"
             step="0.1"
@@ -169,6 +181,9 @@ export const BudgetForm = ({
             Agregar perfil
           </button>
         </div>
+        {errors.allocations?.root?.message || errors.allocations?.message ? (
+          <p className="mb-2 text-xs text-danger">{errors.allocations.root?.message ?? errors.allocations.message}</p>
+        ) : null}
         <div className="space-y-2">
           {allocations.fields.map((field, index) => (
             <div key={field.id} className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]">
@@ -191,7 +206,7 @@ export const BudgetForm = ({
                   setHoursDraftByFieldId((prev) => ({ ...prev, [field.id]: raw }));
                   const hours = parseHoursInput(event.target.value);
                   const minutes = Number.isFinite(hours) ? Math.round(hours * 60) : 0;
-                  form.setValue(`allocations.${index}.quotedMinutes`, minutes);
+                  form.setValue(`allocations.${index}.quotedMinutes`, minutes, { shouldValidate: true });
                 }}
                 onBlur={() => {
                   setHoursDraftByFieldId((prev) => {
