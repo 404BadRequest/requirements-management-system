@@ -154,14 +154,28 @@ export async function updateRequirementAction(id: string, input: Parameters<type
     outcome: next ? "ok" : "error",
     detail: next ? undefined : "not_found",
   });
-  if (prev && next && prev.status !== next.status) {
-    void createAppNotification({
-      recipientUserId: next.ownerId,
-      title: "Cambio de estado",
-      body: `«${next.title}»: ${prev.status} → ${next.status}`,
-      href: requirementDetailPath(next.id),
-    }).catch(() => {});
-    revalidatePath("/", "layout");
+  if (prev && next) {
+    const ownerChanged = prev.ownerId !== next.ownerId;
+    const statusChanged = prev.status !== next.status;
+    if (ownerChanged) {
+      void createAppNotification({
+        recipientUserId: next.ownerId,
+        title: "Requerimiento asignado",
+        body: `Se te asignó «${next.title}»`,
+        href: requirementDetailPath(next.id),
+      }).catch(() => {});
+    }
+    if (statusChanged) {
+      void createAppNotification({
+        recipientUserId: next.ownerId,
+        title: "Cambio de estado",
+        body: `«${next.title}»: ${prev.status} → ${next.status}`,
+        href: requirementDetailPath(next.id),
+      }).catch(() => {});
+    }
+    if (ownerChanged || statusChanged) {
+      revalidatePath("/", "layout");
+    }
   }
   return next;
 }
@@ -203,6 +217,24 @@ export async function updateRequirementFullAction(id: string, input: Requirement
     outcome: next ? "ok" : "error",
     detail: next ? undefined : "not_found",
   });
+  if (prev && next) {
+    if (prev.ownerId !== next.ownerId) {
+      void createAppNotification({
+        recipientUserId: next.ownerId,
+        title: "Requerimiento asignado",
+        body: `Se te asignó «${next.title}»`,
+        href: requirementDetailPath(next.id),
+      }).catch(() => {});
+    }
+    if (prev.status !== next.status) {
+      void createAppNotification({
+        recipientUserId: next.ownerId,
+        title: "Cambio de estado",
+        body: `«${next.title}»: ${prev.status} → ${next.status}`,
+        href: requirementDetailPath(next.id),
+      }).catch(() => {});
+    }
+  }
   revalidatePath("/", "layout");
   return next;
 }
