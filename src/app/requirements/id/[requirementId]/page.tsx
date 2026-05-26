@@ -292,9 +292,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       </section>
 
       {/* Banner de cubicación — solo si hay ítem vinculado */}
-      {cubicacionCalc && linkedCubicacion && requirement.contractId && (
+      {cubicacionCalc && linkedCubicacion && (
         <RequirementCubicacionBanner
-          contractId={requirement.contractId}
+          contractId={requirement.contractId ?? linkedCubicacion.contractId}
           totalHoras={cubicacionCalc.totalHoras}
           usedHorasTotal={usedHorasTotal}
           senior={{
