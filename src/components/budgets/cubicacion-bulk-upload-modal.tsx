@@ -229,7 +229,7 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                 <div className="divide-y divide-border">
                   {[
                     { col: "Actividad",          req: true,  desc: "Nombre del requerimiento o actividad" },
-                    { col: "Horas Construcción", req: true,  desc: "Horas base de desarrollo (ej. 8, 14.5)" },
+                    { col: "Horas Construcción", req: true,  desc: "Horas base de desarrollo (ej. 8, 14.5). Puede ser 0 si se asignan horas Director o Diseñador." },
                     { col: "Levantamiento %",    req: false, desc: "Entero 0–100 · default 5" },
                     { col: "Diseño Fase %",      req: false, desc: "Entero 0–100 · default 20" },
                     { col: "QA+Ajustes %",       req: false, desc: "Entero 0–100 · default 15" },
@@ -237,8 +237,8 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                     { col: "Senior %",           req: false, desc: "Entero 0–100 · default 70 (fórmula: Total×%−QA)" },
                     { col: "Ingeniero %",        req: false, desc: "Entero 0–100 · default 30" },
                     { col: "Junior %",           req: false, desc: "Entero 0–100 · default 60 (fórmula: Total×%−QA)" },
-                    { col: "Director",           req: false, desc: "Horas directas del Director (ej. 10 → 10h). No pasa por porcentajes." },
-                    { col: "Diseñador",          req: false, desc: "Horas directas del Diseñador (ej. 5 → 5h). No pasa por porcentajes." },
+                    { col: "Director",           req: false, desc: "Número de horas asignadas directamente al Director (ej. 10 = 10h). Dejar vacío o 0 si no aplica." },
+                    { col: "Diseñador",          req: false, desc: "Número de horas asignadas directamente al Diseñador (ej. 5 = 5h). Dejar vacío o 0 si no aplica." },
                   ].map(({ col, req, desc }) => (
                     <div key={col} className="px-4 py-2 flex items-center gap-3 text-xs">
                       <code className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded shrink-0">{col}</code>

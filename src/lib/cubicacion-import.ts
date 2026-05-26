@@ -112,14 +112,27 @@ function getCell(row: unknown[], idx: number | undefined): string {
 }
 
 /**
- * Parsea horas de construcción como número positivo sin conversión de porcentaje.
+ * Parsea un número de horas positivo (> 0) sin conversión de porcentaje.
  * "1" → 1 hora, "14.7" → 14.7 horas.
+ * Retorna null si es inválido o ≤ 0.
  */
 function parseHoursNum(raw: string): number | null {
   if (!raw) return null;
   const cleaned = raw.replace(",", ".").trim();
   const n = parseFloat(cleaned);
   if (isNaN(n) || n <= 0) return null;
+  return n;
+}
+
+/**
+ * Parsea un número de horas que puede ser cero o positivo.
+ * Retorna null solo si el valor es inválido (texto no numérico o negativo).
+ */
+function parseNonNegativeHours(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(",", ".").trim();
+  const n = parseFloat(cleaned);
+  if (isNaN(n) || n < 0) return null;
   return n;
 }
 
@@ -193,9 +206,22 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
 
     if (!activityName) errors.push("Nombre de actividad requerido.");
 
-    const construccionHours = parseHoursNum(rawHours);
+    // Parseo preliminar de horas directas para poder validar construccionHours
+    // condicionalmente (se permite 0 si hay horas Director o Diseñador).
+    const rawDirectorHoursEarly  = getCell(row as unknown[], colMap.get("directorHours"));
+    const rawDisenadorHoursEarly = getCell(row as unknown[], colMap.get("disenadorHours"));
+    const directorHoursEarly  = rawDirectorHoursEarly  ? (parseHoursNum(rawDirectorHoursEarly)  ?? 0) : 0;
+    const disenadorHoursEarly = rawDisenadorHoursEarly ? (parseHoursNum(rawDisenadorHoursEarly) ?? 0) : 0;
+    const hasDirectHours = directorHoursEarly > 0 || disenadorHoursEarly > 0;
+
+    // Construcción: puede ser 0 si hay horas directas (ej. "Gestión del servicio")
+    const rawHoursNum = parseNonNegativeHours(rawHours);
+    const construccionHours = rawHoursNum !== null ? rawHoursNum : null;
+
     if (construccionHours === null) {
-      errors.push(`Horas de construcción inválidas: "${rawHours}". Debe ser un número positivo.`);
+      errors.push(`Horas de construcción inválidas: "${rawHours}". Debe ser un número ≥ 0.`);
+    } else if (construccionHours === 0 && !hasDirectHours) {
+      errors.push("Las horas de construcción deben ser mayores a 0 si no se asignan horas directas de Director o Diseñador.");
     }
 
     // ── Porcentajes de FASE: siempre usan defaults si están vacíos ──────────────
@@ -240,12 +266,9 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
       }
     }
 
-    // ── Horas directas (Director, Diseñador): siempre 0 si están vacías ─────
-    const rawDirectorHours = getCell(row as unknown[], colMap.get("directorHours"));
-    const directorHours = rawDirectorHours ? (parseHoursNum(rawDirectorHours) ?? 0) : 0;
-
-    const rawDisenadorHours = getCell(row as unknown[], colMap.get("disenadorHours"));
-    const disenadorHours = rawDisenadorHours ? (parseHoursNum(rawDisenadorHours) ?? 0) : 0;
+    // ── Horas directas (Director, Diseñador): reutilizamos los valores ya calculados
+    const directorHours  = directorHoursEarly;
+    const disenadorHours = disenadorHoursEarly;
 
     const importRow: CubicacionImportRow = {
       rowIndex,
