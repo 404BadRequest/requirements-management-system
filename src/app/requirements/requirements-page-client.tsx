@@ -33,11 +33,14 @@ export type RequirementsPageClientProps = {
   canExport: boolean;
   canReassignOwner: boolean;
   canManageRequirement: boolean;
+  canChangeStatus?: boolean;
   canViewSettings?: boolean;
   /** Abre el modal de alta al cargar (p. ej. `?nueva=1`). */
   autoOpenNewModal?: boolean;
   /** Filtro por cliente (query `clientId`). */
   clientId?: string;
+  /** ID del usuario del directorio de la sesión activa (para filtrar acciones propias). */
+  currentDirectoryUserId?: string;
 };
 
 function NewRequirementModalBody({
@@ -95,9 +98,11 @@ export function RequirementsPageClient({
   canExport,
   canReassignOwner,
   canManageRequirement,
+  canChangeStatus = false,
   canViewSettings = false,
   autoOpenNewModal = false,
   clientId = "",
+  currentDirectoryUserId = "",
 }: RequirementsPageClientProps) {
   const router = useRouter();
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -117,6 +122,9 @@ export function RequirementsPageClient({
   const [isReassigning, setIsReassigning] = useState(false);
   const [editTarget, setEditTarget] = useState<Requirement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Requirement | null>(null);
+  const [statusTarget, setStatusTarget] = useState<Requirement | null>(null);
+  const [statusValue, setStatusValue] = useState("");
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   const reload = useCallback(async () => {
     setListLoading(true);
@@ -222,6 +230,7 @@ export function RequirementsPageClient({
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => {
+          const isOwn = row.original.ownerId === currentDirectoryUserId;
           const items = [
             ...(canReassignOwner
               ? [{
@@ -232,6 +241,15 @@ export function RequirementsPageClient({
                   },
                 }]
               : []),
+            ...(canChangeStatus && (canManageRequirement || isOwn)
+              ? [{
+                  label: "Cambiar estado",
+                  onClick: () => {
+                    setStatusTarget(row.original);
+                    setStatusValue(row.original.status);
+                  },
+                }]
+              : []),
             ...(canWrite && canManageRequirement
               ? [{ label: "Editar", onClick: () => setEditTarget(row.original) }]
               : []),
@@ -239,11 +257,12 @@ export function RequirementsPageClient({
               ? [{ label: "Eliminar", danger: true, onClick: () => setDeleteTarget(row.original) }]
               : []),
           ];
+          if (items.length === 0) return null;
           return <RowActionMenu items={items} />;
         },
       },
     ];
-  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, clientById, ownerById]);
+  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, canChangeStatus, currentDirectoryUserId, clientById, ownerById]);
 
   const openNewRequirementModal = () => {
     setNewFormKey((k) => k + 1);
@@ -397,6 +416,72 @@ export function RequirementsPageClient({
               </div>
             </form>
           )}
+        </SettingsModal>
+      ) : null}
+
+      {/* Modal de cambio de estado */}
+      {canChangeStatus && statusTarget ? (
+        <SettingsModal
+          open={true}
+          onClose={() => setStatusTarget(null)}
+          title="Cambiar estado"
+          description={
+            statusTarget
+              ? `Selecciona el nuevo estado para «${statusTarget.title}».`
+              : "Selecciona un nuevo estado."
+          }
+        >
+          <form
+            className="grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!statusTarget || !statusValue || isSavingStatus) return;
+              void (async () => {
+                setIsSavingStatus(true);
+                try {
+                  await updateRequirementAction(statusTarget.id, { status: statusValue });
+                  toast.success("Estado actualizado");
+                  setStatusTarget(null);
+                  await reload();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "No se pudo actualizar el estado.");
+                } finally {
+                  setIsSavingStatus(false);
+                }
+              })();
+            }}
+          >
+            <label className="grid gap-1.5">
+              <span className="field-label">Nuevo estado</span>
+              <select
+                className="field-control w-full"
+                value={statusValue}
+                onChange={(event) => setStatusValue(event.target.value)}
+                required
+              >
+                {statusOpts.map((opt) => (
+                  <option key={opt.code} value={opt.code}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button type="submit" className="btn-primary py-2 text-sm" disabled={isSavingStatus}>
+                {isSavingStatus ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" aria-hidden />
+                    Guardando...
+                  </span>
+                ) : (
+                  "Guardar estado"
+                )}
+              </button>
+              <button type="button" className="btn-secondary py-2 text-sm" onClick={() => setStatusTarget(null)} disabled={isSavingStatus}>
+                Cancelar
+              </button>
+            </div>
+          </form>
         </SettingsModal>
       ) : null}
 

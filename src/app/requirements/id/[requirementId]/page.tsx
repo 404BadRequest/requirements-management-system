@@ -29,6 +29,7 @@ import {
 } from "@/components/requirements/requirement-activity-timeline";
 import { RequirementOwnerReassign } from "@/components/requirements/requirement-owner-reassign";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
+import { RequirementStatusChange } from "@/components/requirements/requirement-status-change";
 import type { Profile, SettingsCatalogEntry, TimeEntry, User } from "@/types/domain";
 
 function catalogLabel(catalog: SettingsCatalogEntry[], code: string): string {
@@ -342,8 +343,18 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         </article>
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
-          <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{statusLabel}</p>
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
+          {canPostObservations ? (
+            <RequirementStatusChange
+              requirementId={requirementId}
+              currentStatus={requirement.status}
+              statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
+            />
+          ) : (
+            <>
+              <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{statusLabel}</p>
+              <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
+            </>
+          )}
         </article>
         <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
           <h3 className="text-sm font-medium text-primary">Prioridad</h3>
