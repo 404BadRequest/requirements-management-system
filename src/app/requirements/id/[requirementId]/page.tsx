@@ -6,6 +6,7 @@ import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
+  getCubicacionItems,
   getRequirementById,
   getRequirementComments,
   getRequirements,
@@ -14,11 +15,13 @@ import {
   getUsers,
   getProfiles,
 } from "@/data/repositories/server-db";
+import { calcCubicacionRow } from "@/lib/calculations/cubicacion";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 import { RequirementHoursPanel } from "@/components/requirements/requirement-hours-panel";
+import { RequirementCubicacionBanner } from "@/components/requirements/requirement-cubicacion-banner";
 import { RequirementObservationsChat } from "@/components/requirements/requirement-observations-chat";
 import {
   RequirementActivityTimeline,
@@ -72,11 +75,28 @@ function buildHoursBreakdown(
   return { byProfile, byCategory };
 }
 
+/** Asigna el perfil del usuario a uno de los tres buckets de cubicación. */
+function mapProfileToBucket(profileName: string | undefined): "senior" | "ingeniero" | "junior" {
+  if (!profileName) return "ingeniero";
+  const lower = profileName.toLowerCase();
+  if (lower.includes("senior") || lower.includes("sr.")) return "senior";
+  if (lower.includes("junior") || lower.includes("jr")) return "junior";
+  return "ingeniero";
+}
+
 export default async function RequirementDetailPage({ params }: { params: Promise<{ requirementId: string }> }) {
-  const sessionUser = await requirePermission("requirements.read");
-  const { requirementId } = await params;
+  // Paso 1: Requerimiento + sesión en paralelo (necesitamos contractId antes del resto)
+  const [sessionUser, { requirementId }] = await Promise.all([
+    requirePermission("requirements.read"),
+    params,
+  ]);
+  const requirement = await getRequirementById(requirementId);
+  if (!requirement) {
+    notFound();
+  }
+
+  // Paso 2: Resto de datos (incluyendo cubicación si hay contrato)
   const [
-    requirement,
     comments,
     history,
     entries,
@@ -88,8 +108,8 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     requirementStatuses,
     requirementPriorities,
     contracts,
+    cubicacionItems,
   ] = await Promise.all([
-    getRequirementById(requirementId),
     getRequirementComments(requirementId),
     getRequirementStatusHistory(requirementId),
     getTimeEntries(),
@@ -101,11 +121,8 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
     getContractBudgets(),
+    requirement.contractId ? getCubicacionItems(requirement.contractId) : Promise.resolve([]),
   ]);
-
-  if (!requirement) {
-    notFound();
-  }
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   if (sessionUser.role === "Contributor" && requirement.ownerId !== currentDirectoryUserId) {
     notFound();
@@ -157,6 +174,20 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const contractLabel = requirement.contractId
     ? contracts.find((c) => c.id === requirement.contractId)?.name ?? requirement.contractId
     : null;
+
+  // ── Cubicación vinculada al requerimiento ─────────────────────────────────
+  const linkedCubicacion = cubicacionItems.find((c) => c.requirementId === requirementId) ?? null;
+  const cubicacionCalc   = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
+
+  // Horas usadas por bucket de perfil (Senior / Ingeniero / Junior)
+  const usedByBucket = { senior: 0, ingeniero: 0, junior: 0 };
+  for (const entry of requirementEntries) {
+    const user    = userById.get(entry.userId);
+    const profile = user ? profileById.get(user.profileId) : undefined;
+    const bucket  = mapProfileToBucket(profile?.name);
+    usedByBucket[bucket] += entry.durationMinutes / 60;
+  }
+  const usedHorasTotal = requirementEntries.reduce((a, e) => a + e.durationMinutes, 0) / 60;
 
   const canPostObservations = roleHasPermission(sessionUser.role, "requirements.write");
   const canReassignOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
@@ -258,7 +289,31 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         ) : null}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      {/* Banner de cubicación — solo si hay ítem vinculado */}
+      {cubicacionCalc && linkedCubicacion && requirement.contractId && (
+        <RequirementCubicacionBanner
+          contractId={requirement.contractId}
+          totalHoras={cubicacionCalc.totalHoras}
+          usedHorasTotal={usedHorasTotal}
+          senior={{
+            label: "Ingeniero Senior",
+            allocatedHoras: cubicacionCalc.seniorHoras,
+            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
+          }}
+          ingeniero={{
+            label: "Ingeniero",
+            allocatedHoras: cubicacionCalc.ingenieroHoras,
+            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
+          }}
+          junior={{
+            label: "Ingeniero Junior",
+            allocatedHoras: cubicacionCalc.juniorHoras,
+            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
+          }}
+        />
+      )}
+
+      <section className={`grid grid-cols-1 gap-4 ${cubicacionCalc ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Cliente</h3>
           <p className="mt-2 text-xl font-semibold text-foreground">{clientName}</p>
@@ -283,11 +338,14 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{priorityLabel}</p>
           <p className="mt-1 font-mono text-[10px] text-primary/90">{requirement.priority}</p>
         </article>
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-primary">Horas totales</h3>
-          <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(totalMinutes)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
-        </article>
+        {/* Tarjeta de horas totales solo cuando no hay cubicación (el banner ya la muestra) */}
+        {!cubicacionCalc && (
+          <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-primary">Horas totales</h3>
+            <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(totalMinutes)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
+          </article>
+        )}
       </section>
 
       <section id="hours-section">
