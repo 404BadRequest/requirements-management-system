@@ -103,14 +103,51 @@ export const calculateDashboardMetrics = (
 
   const hoursByPersonMinutes = groupHoursByPerson(entries);
   const hoursByPerson: Record<string, number> = {};
+  const userById = new Map<string, User>((context?.users ?? []).map((u) => [u.id, u]));
   if (context?.users?.length) {
-    const userById = new Map(context.users.map((u) => [u.id, u]));
     for (const [userId, minutes] of Object.entries(hoursByPersonMinutes)) {
       const label = userById.get(userId)?.name ?? userId;
       hoursByPerson[label] = (hoursByPerson[label] ?? 0) + minutes;
     }
   } else {
     Object.assign(hoursByPerson, hoursByPersonMinutes);
+  }
+
+  // Requerimientos abiertos por responsable (nombre)
+  const reqsByOwner: Record<string, number> = {};
+  for (const req of requirements.filter((r) => r.status !== "DONE_PROD")) {
+    const name = userById.get(req.ownerId)?.name ?? req.ownerId;
+    reqsByOwner[name] = (reqsByOwner[name] ?? 0) + 1;
+  }
+
+  // Tiempo promedio de ciclo: requerimientos completados en los últimos 30 días
+  const last30 = new Date();
+  last30.setDate(last30.getDate() - 30);
+  const completedWithTime = requirements.filter(
+    (r) => r.status === "DONE_PROD" && r.completedAt && new Date(r.completedAt) >= last30,
+  );
+  const avgCycleTimeDays =
+    completedWithTime.length > 0
+      ? Math.round(
+          completedWithTime.reduce(
+            (acc, r) => acc + (new Date(r.completedAt!).getTime() - new Date(r.createdAt).getTime()),
+            0,
+          ) /
+            completedWithTime.length /
+            86_400_000,
+        )
+      : 0;
+
+  // Completados en el mes calendario actual
+  const thisMonthStr = today.toISOString().slice(0, 7); // YYYY-MM
+  const completedThisMonth = requirements.filter(
+    (r) => r.status === "DONE_PROD" && r.completedAt && r.completedAt.slice(0, 7) === thisMonthStr,
+  ).length;
+
+  // Horas por día esta semana (últimos 7 días)
+  const hoursByDayThisWeek: Record<string, number> = {};
+  for (const entry of entries.filter((e) => e.date >= weekStartDate && e.date <= todayDate)) {
+    hoursByDayThisWeek[entry.date] = (hoursByDayThisWeek[entry.date] ?? 0) + entry.durationMinutes;
   }
 
   // Calcular métricas de salud por proyecto/cliente
@@ -184,6 +221,10 @@ export const calculateDashboardMetrics = (
     hoursByClient,
     billingEstimateByClient,
     projectHealthData,
+    reqsByOwner,
+    avgCycleTimeDays,
+    completedThisMonth,
+    hoursByDayThisWeek,
     roleViews: {
       adminView: {
         kpis: {

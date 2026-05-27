@@ -11,9 +11,10 @@ import {
   buildHorizontalBarChartOption,
   buildLineAreaChartOption,
   buildRoseChartOption,
+  buildWeekBarOption,
 } from "@/lib/charts/echarts-options";
 
-export type DashboardChartMode = "bar" | "barHorizontal" | "lineArea" | "pie" | "rose";
+export type DashboardChartMode = "bar" | "barHorizontal" | "lineArea" | "pie" | "rose" | "weekBar";
 
 export const DashboardChartCard = ({
   title,
@@ -23,9 +24,10 @@ export const DashboardChartCard = ({
   tall = false,
   emptyHint = "Crea registros o ajusta los filtros para visualizar este gráfico.",
   className,
+  weekBarTargetHours,
 }: {
   title: string;
-  data: { name: string; value: number; color?: string }[];
+  data: { name: string; value: number; color?: string; isToday?: boolean }[];
   mode: DashboardChartMode;
   /** Solo aplica en modo `bar`. */
   barVariant?: "default" | "multiColor";
@@ -34,6 +36,8 @@ export const DashboardChartCard = ({
   /** Mensaje contextual cuando el gráfico no tiene valores > 0. */
   emptyHint?: string;
   className?: string;
+  /** Horas diarias objetivo — dibuja línea de referencia en modo weekBar. */
+  weekBarTargetHours?: number;
 }) => {
   const [mounted, setMounted] = useState(false);
   const density = useUiStore((s) => s.density);
@@ -44,7 +48,8 @@ export const DashboardChartCard = ({
 
   useEffect(() => setMounted(true), []);
 
-  const hasData = data.some((d) => d.value > 0);
+  // Para weekBar mostramos todos los días aunque tengan 0h; en otros modos solo si hay algún valor > 0
+  const hasData = mode === "weekBar" ? true : data.some((d) => d.value > 0);
 
   const option = useMemo(() => {
     const names = data.map((d) => d.name);
@@ -61,8 +66,15 @@ export const DashboardChartCard = ({
     if (mode === "rose") {
       return buildRoseChartOption(data, dark);
     }
+    if (mode === "weekBar") {
+      return buildWeekBarOption(
+        data.map((d) => ({ label: d.name, value: d.value, isToday: d.isToday ?? false })),
+        dark,
+        weekBarTargetHours,
+      );
+    }
     return buildDonutChartOption(data, dark);
-  }, [barVariant, dark, data, mode]);
+  }, [barVariant, dark, data, mode, weekBarTargetHours]);
 
   return (
     <article
@@ -104,7 +116,7 @@ export const DashboardChartCard = ({
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[2px] border border-border bg-muted/50 text-muted-foreground">
                 <BarChart3 className="h-5 w-5" aria-hidden />
               </div>
-              <p className="text-sm font-medium text-foreground">Aun no hay informacion suficiente</p>
+              <p className="text-sm font-medium text-foreground">Aún no hay información suficiente</p>
               <p className="text-xs leading-relaxed text-muted-foreground">{emptyHint}</p>
             </div>
           </div>

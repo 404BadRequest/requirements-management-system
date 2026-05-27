@@ -7,14 +7,35 @@ import { AppShell } from "@/components/layout/app-shell";
 import { UtilizationPanel, type UtilizationData } from "@/components/reports/utilization-panel";
 import { ProjectHealthCards } from "@/components/dashboard/project-health-cards";
 import Link from "next/link";
-import { CircleDot, Clock, PieChart, AlertCircle, Users, AlertTriangle, Timer, CalendarClock, CheckCircle2 } from "lucide-react";
-import { getCatalogByKind, getClients, getDashboardMetrics, getFinancialReferenceRates, getUsers } from "@/data/repositories/server-db";
+import {
+  CircleDot,
+  Clock,
+  PieChart,
+  AlertCircle,
+  Users,
+  AlertTriangle,
+  Timer,
+  CalendarClock,
+  CheckCircle2,
+  TrendingUp,
+  Layers,
+  Sun,
+} from "lucide-react";
+import {
+  getCatalogByKind,
+  getClients,
+  getDashboardMetrics,
+  getFinancialReferenceRates,
+  getUsers,
+} from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 import { catalogColorHex } from "@/lib/catalog-colors";
 import type { SettingsCatalogEntry } from "@/types/domain";
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function catalogLabelByCode(catalog: SettingsCatalogEntry[], code: string): string {
   const entry = catalog.find((e) => e.active && e.code === code);
@@ -50,6 +71,37 @@ function sortedMonthHours(record: Record<string, number>): { name: string; value
     .map(([name, minutes]) => ({ name, value: Number((minutes / 60).toFixed(2)) }));
 }
 
+const DAY_LABELS: Record<number, string> = {
+  0: "Dom",
+  1: "Lun",
+  2: "Mar",
+  3: "Mié",
+  4: "Jue",
+  5: "Vie",
+  6: "Sáb",
+};
+
+/** Genera los 7 días de la semana en curso (del más antiguo al más reciente). */
+function buildWeekDayData(
+  hoursByDayThisWeek: Record<string, number>,
+): { name: string; value: number; isToday: boolean }[] {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0, 10);
+    const minutes = hoursByDayThisWeek[dateStr] ?? 0;
+    return {
+      name: DAY_LABELS[d.getDay()] ?? dateStr,
+      value: Number((minutes / 60).toFixed(2)),
+      isToday: dateStr === todayStr,
+    };
+  });
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -60,21 +112,26 @@ export default async function DashboardPage({
   const isProjectManager = sessionUser.role === "Project Manager";
   const isAdminLike = sessionUser.role === "Admin" || sessionUser.role === "Viewer";
   const { clientId = "" } = await searchParams;
-  const [clientList, referenceRates, requirementStatuses, requirementPriorities, timeEntryCategories, users] = await Promise.all([
-    getClients(),
-    getFinancialReferenceRates(),
-    getCatalogByKind("requirement_status"),
-    getCatalogByKind("requirement_priority"),
-    getCatalogByKind("time_entry_category"),
-    getUsers(),
-  ]);
+
+  const [clientList, referenceRates, requirementStatuses, requirementPriorities, timeEntryCategories, users] =
+    await Promise.all([
+      getClients(),
+      getFinancialReferenceRates(),
+      getCatalogByKind("requirement_status"),
+      getCatalogByKind("requirement_priority"),
+      getCatalogByKind("time_entry_category"),
+      getUsers(),
+    ]);
+
   const resolvedUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   const activeClients = clientList.filter((c) => c.active);
+
   const metrics = await getDashboardMetrics({
     ownerId: isContributor ? resolvedUserId : undefined,
     clientId: clientId || undefined,
   });
 
+  // ── Datos compartidos ───────────────────────────────────────────────────
   const statusChartData = mapRecordKeysToLabels(metrics.byStatus, requirementStatuses, formatStatusLabel);
   const priorityChartData = mapRecordKeysToLabels(metrics.byPriority, requirementPriorities);
   const categoryHoursChartData = Object.entries(metrics.hoursByCategory).map(([code, minutes]) => ({
@@ -84,10 +141,12 @@ export default async function DashboardPage({
   const monthHours = sortedMonthHours(metrics.hoursByMonth);
   const byClientHours = recordToHoursChartData(metrics.hoursByClient);
   const byPersonHours = recordToHoursChartData(metrics.hoursByPerson);
+  const reqsByOwnerData = recordToHoursChartData(metrics.reqsByOwner);
+  const weekDayData = buildWeekDayData(metrics.hoursByDayThisWeek);
 
-  // Preparar datos de utilización (asumiendo 40h semanales = 160h mensuales como capacidad base para el demo)
+  // Utilización (Admin/PM)
   const utilizationData: UtilizationData[] = Object.entries(metrics.hoursByPerson).map(([name, minutes]) => {
-    const user = users.find(u => u.name === name);
+    const user = users.find((u) => u.name === name);
     return {
       userId: user?.id ?? name,
       userName: name,
@@ -97,81 +156,56 @@ export default async function DashboardPage({
     };
   });
 
-  const roleChartSets = isContributor
-    ? [monthHours, categoryHoursChartData, priorityChartData]
-    : isProjectManager
-      ? [monthHours, byPersonHours, statusChartData]
-      : [monthHours, byClientHours, statusChartData];
-  const allChartsEmpty = roleChartSets.every((set) => set.every((item) => item.value <= 0));
-
+  // Target diario de horas para Contributor (capacidad semanal / 5 días laborales)
+  const dailyTargetHours = referenceRates.weeklyCapacityHours
+    ? Math.round((referenceRates.weeklyCapacityHours / 5) * 10) / 10
+    : undefined;
 
   return (
     <AppShell>
       <div className="space-y-6">
-        <PageHeader
-          title={isContributor ? "Mi dashboard" : isProjectManager ? "Dashboard de operación" : "Dashboard general"}
-          description={
-            isContributor
-              ? "Seguimiento personal de carga, pendientes y foco semanal."
-              : isProjectManager
-                ? "Control operativo del equipo: avance, carga y alertas de ejecución."
-                : "Visión ejecutiva de cartera: avance global, consumo y riesgo."
-          }
-        />
-        {!isContributor ? (
-          <form
-            className="surface-card flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)] sm:flex-nowrap sm:items-center"
-            action="/dashboard"
-            method="get"
-          >
-            <div className="flex min-w-[12rem] flex-1 flex-col gap-2">
-              <label htmlFor="client-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Filtrar por cliente
-              </label>
-              <select id="client-filter" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
-                <option value="">Todos los clientes</option>
-                {activeClients.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn-primary w-full sm:w-auto">
-              Aplicar filtro
-            </button>
-          </form>
-        ) : null}
 
-        {isContributor && metrics.loggedHoursToday === 0 ? (
-          <div className="rounded-[2px] border border-warning/50 bg-warning/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Aún no has registrado horas hoy</h3>
-                <p className="text-sm text-muted-foreground mt-1">Registrar tus horas diariamente ayuda a mantener la visibilidad del proyecto y facilita tu reporte semanal.</p>
+        {/* ─── Admin / Viewer ─────────────────────────────────────────────── */}
+        {isAdminLike ? (
+          <>
+            <PageHeader
+              title="Dashboard general"
+              description="Visión ejecutiva de cartera: avance global, consumo y riesgo."
+            />
+
+            <form
+              className="surface-card flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)] sm:flex-nowrap sm:items-center"
+              action="/dashboard"
+              method="get"
+            >
+              <div className="flex min-w-[12rem] flex-1 flex-col gap-2">
+                <label htmlFor="client-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Filtrar por cliente
+                </label>
+                <select id="client-filter" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
+                  <option value="">Todos los clientes</option>
+                  {activeClients.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-            <Link href="/time-entries/new" className="btn-primary whitespace-nowrap text-sm px-4 py-2">
-              Registrar horas
-            </Link>
-          </div>
-        ) : null}
+              <button type="submit" className="btn-primary w-full sm:w-auto">
+                Aplicar filtro
+              </button>
+            </form>
 
-        <section aria-labelledby="dash-kpis-heading" className="space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 id="dash-kpis-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Indicadores clave
-            </h2>
-            {!isContributor ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                Riesgo operativo: <RiskBadge risk={metrics.risk} />
-              </p>
-            ) : null}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {isAdminLike ? (
-              <>
+            <section aria-labelledby="admin-kpis-heading" className="space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <h2 id="admin-kpis-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Indicadores clave
+                </h2>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Riesgo operativo: <RiskBadge risk={metrics.risk} />
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <KpiCard label="Total requerimientos" value={String(metrics.roleViews.adminView.kpis.totalRequirements)} icon={PieChart} variant="default" />
                 <KpiCard label="Abiertos" value={String(metrics.roleViews.adminView.kpis.openRequirements)} icon={CircleDot} variant="info" />
                 <KpiCard
@@ -194,36 +228,238 @@ export default async function DashboardPage({
                         : "default"
                   }
                 />
-              </>
+              </div>
+            </section>
+
+            <BillingEstimateByClientTable
+              rows={metrics.billingEstimateByClient}
+              referenceFootnote={formatFinancialReferenceRatesFootnote(referenceRates)}
+            />
+
+            {utilizationData.length > 0 ? (
+              <UtilizationPanel data={utilizationData} weeklyCapacityHours={referenceRates.weeklyCapacityHours} />
             ) : null}
-            {isProjectManager ? (
-              <>
-                <KpiCard label="Requerimientos abiertos" value={String(metrics.roleViews.pmView.kpis.openRequirements)} icon={CircleDot} variant="info" />
+
+            {metrics.projectHealthData?.length > 0 ? (
+              <ProjectHealthCards data={metrics.projectHealthData} />
+            ) : null}
+
+            <section aria-labelledby="admin-charts-heading" className="surface-card space-y-5 p-[length:var(--density-inset-pad)]">
+              <h2 id="admin-charts-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Análisis visual
+              </h2>
+              <div className="grid gap-6 lg:grid-cols-12">
+                <DashboardChartCard
+                  className="lg:col-span-12"
+                  title="Evolución de horas cargadas por mes"
+                  mode="lineArea"
+                  tall
+                  emptyHint="Registra horas para ver la evolución mensual."
+                  data={monthHours}
+                />
+                <DashboardChartCard
+                  className="lg:col-span-7"
+                  title="Horas por cliente"
+                  mode="barHorizontal"
+                  emptyHint="Registra horas asociadas a requerimientos para mostrar clientes con consumo."
+                  data={byClientHours}
+                />
+                <DashboardChartCard
+                  className="lg:col-span-5"
+                  title="Requerimientos por estado"
+                  mode="pie"
+                  emptyHint="Cuando existan requerimientos, aquí se mostrará la proporción por estado."
+                  data={statusChartData}
+                />
+              </div>
+            </section>
+          </>
+        ) : null}
+
+        {/* ─── Project Manager ────────────────────────────────────────────── */}
+        {isProjectManager ? (
+          <>
+            <PageHeader
+              title="Dashboard de operación"
+              description="Control operativo del equipo: velocidad de entrega, carga y alertas de ejecución."
+            />
+
+            <form
+              className="surface-card flex flex-wrap items-end gap-4 p-[length:var(--density-inset-pad)] sm:flex-nowrap sm:items-center"
+              action="/dashboard"
+              method="get"
+            >
+              <div className="flex min-w-[12rem] flex-1 flex-col gap-2">
+                <label htmlFor="pm-client-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Filtrar por cliente
+                </label>
+                <select id="pm-client-filter" name="clientId" defaultValue={clientId} className="field-control w-full max-w-md">
+                  <option value="">Todos los clientes</option>
+                  {activeClients.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="btn-primary w-full sm:w-auto">
+                Aplicar filtro
+              </button>
+            </form>
+
+            {/* Alertas inline PM */}
+            {metrics.openTimeEntriesCount > 0 || metrics.hoursWithoutRequirement > 0 ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {metrics.openTimeEntriesCount > 0 ? (
+                  <div className="flex items-center gap-2 rounded-[2px] border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    <Timer className="h-4 w-4 shrink-0" />
+                    <span>
+                      <strong>{metrics.openTimeEntriesCount}</strong> registro{metrics.openTimeEntriesCount !== 1 ? "s" : ""} de horas sin cerrar
+                    </span>
+                  </div>
+                ) : null}
+                {metrics.hoursWithoutRequirement > 0 ? (
+                  <div className="flex items-center gap-2 rounded-[2px] border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>
+                      <strong>{metrics.hoursWithoutRequirement.toFixed(1)} h</strong> registradas sin requerimiento asociado
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* KPIs PM */}
+            <section aria-labelledby="pm-kpis-heading" className="space-y-3">
+              <h2 id="pm-kpis-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Indicadores clave
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <KpiCard
+                  label="Requerimientos abiertos"
+                  value={String(metrics.roleViews.pmView.kpis.openRequirements)}
+                  icon={CircleDot}
+                  variant="info"
+                />
                 <KpiCard
                   label="Finalizados (7 días)"
                   value={String(metrics.roleViews.pmView.kpis.completedLast7Days)}
                   helper="Throughput semanal"
                   icon={CheckCircle2}
-                  variant="success"
+                  variant={metrics.roleViews.pmView.kpis.completedLast7Days > 0 ? "success" : "default"}
                 />
                 <KpiCard
-                  label="Horas en curso"
-                  value={String(metrics.roleViews.pmView.kpis.openTimeEntriesCount)}
-                  helper="Registros sin hora de término"
-                  icon={Timer}
-                  variant={metrics.roleViews.pmView.kpis.openTimeEntriesCount > 0 ? "warning" : "default"}
+                  label="Completados este mes"
+                  value={String(metrics.completedThisMonth)}
+                  helper="Mes calendario actual"
+                  icon={TrendingUp}
+                  variant={metrics.completedThisMonth > 0 ? "success" : "default"}
                 />
                 <KpiCard
-                  label="Horas sin requerimiento"
-                  value={`${metrics.roleViews.pmView.kpis.hoursWithoutRequirement.toFixed(2)} h`}
-                  helper="Tiempo no vinculado"
-                  icon={AlertTriangle}
-                  variant={metrics.roleViews.pmView.kpis.hoursWithoutRequirement > 0 ? "warning" : "default"}
+                  label="Ciclo promedio"
+                  value={metrics.avgCycleTimeDays > 0 ? `${metrics.avgCycleTimeDays} días` : "—"}
+                  helper="Días creación → entrega (últimos 30d)"
+                  icon={Clock}
+                  variant="info"
                 />
-              </>
+                <KpiCard
+                  label="Riesgo operativo"
+                  value={metrics.risk === "sin presupuesto" ? "Sin presupuesto" : metrics.risk.charAt(0).toUpperCase() + metrics.risk.slice(1)}
+                  helper="Estado del presupuesto global"
+                  icon={AlertCircle}
+                  variant={
+                    metrics.risk === "rojo" ? "danger" : metrics.risk === "amarillo" ? "warning" : "default"
+                  }
+                />
+              </div>
+            </section>
+
+            {/* Gráficas PM — fila 1 */}
+            <div className="grid gap-6 lg:grid-cols-12">
+              <DashboardChartCard
+                className="lg:col-span-7"
+                title="Evolución mensual de horas del equipo"
+                mode="lineArea"
+                tall
+                emptyHint="Registra horas para ver la tendencia del equipo."
+                data={monthHours}
+              />
+              <DashboardChartCard
+                className="lg:col-span-5"
+                title="Requerimientos por estado"
+                mode="pie"
+                emptyHint="Cuando existan requerimientos se mostrará la distribución por estado."
+                data={statusChartData}
+              />
+            </div>
+
+            {/* Gráficas PM — fila 2: distribución de carga */}
+            <div className="grid gap-6 lg:grid-cols-12">
+              <DashboardChartCard
+                className="lg:col-span-6"
+                title="Distribución de carga — reqs abiertos por persona"
+                mode="barHorizontal"
+                emptyHint="No hay requerimientos abiertos asignados."
+                data={reqsByOwnerData}
+              />
+              <DashboardChartCard
+                className="lg:col-span-6"
+                title="Horas registradas por persona"
+                mode="barHorizontal"
+                emptyHint="No hay registros de horas disponibles."
+                data={byPersonHours}
+              />
+            </div>
+
+            {/* Utilización + Salud de proyectos */}
+            {utilizationData.length > 0 ? (
+              <UtilizationPanel data={utilizationData} weeklyCapacityHours={referenceRates.weeklyCapacityHours} />
             ) : null}
-            {isContributor ? (
-              <>
+            {metrics.projectHealthData?.length > 0 ? (
+              <ProjectHealthCards data={metrics.projectHealthData} />
+            ) : null}
+          </>
+        ) : null}
+
+        {/* ─── Contributor ────────────────────────────────────────────────── */}
+        {isContributor ? (
+          <>
+            <PageHeader
+              title="Mi dashboard"
+              description="Tu actividad personal: horas, requerimientos y progreso semanal."
+            />
+
+            {/* Alerta horas hoy */}
+            {metrics.loggedHoursToday === 0 ? (
+              <div className="rounded-[2px] border border-warning/50 bg-warning/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Aún no has registrado horas hoy</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Registrar tus horas diariamente facilita tu reporte semanal y mantiene la visibilidad del proyecto.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/time-entries/new" className="btn-primary whitespace-nowrap text-sm px-4 py-2">
+                  Registrar horas
+                </Link>
+              </div>
+            ) : null}
+
+            {/* KPIs Contributor */}
+            <section aria-labelledby="contributor-kpis-heading" className="space-y-3">
+              <h2 id="contributor-kpis-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Mis indicadores
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <KpiCard
+                  label="Horas hoy"
+                  value={`${metrics.loggedHoursToday.toFixed(2)} h`}
+                  helper={metrics.loggedHoursToday === 0 ? "Sin registros aún" : "Registros de hoy"}
+                  icon={Sun}
+                  variant={metrics.loggedHoursToday === 0 ? "warning" : "success"}
+                />
                 <KpiCard
                   label="Horas esta semana"
                   value={`${metrics.roleViews.contributorView.kpis.hoursThisWeek.toFixed(2)} h`}
@@ -232,140 +468,51 @@ export default async function DashboardPage({
                   variant="default"
                 />
                 <KpiCard
-                  label="Horas en curso"
-                  value={String(metrics.roleViews.contributorView.kpis.openTimeEntriesCount)}
-                  helper="Cierra estas horas para consolidar tu reporte"
-                  icon={Timer}
-                  variant={metrics.roleViews.contributorView.kpis.openTimeEntriesCount > 0 ? "warning" : "default"}
-                />
-                <KpiCard
-                  label="Requerimientos activos"
+                  label="Mis requerimientos activos"
                   value={String(metrics.roleViews.contributorView.kpis.activeRequirements)}
-                  helper="Pendientes asignados"
-                  icon={CircleDot}
+                  helper="Pendientes asignados a mí"
+                  icon={Layers}
                   variant="info"
                 />
                 <KpiCard
-                  label="Horas sin requerimiento"
-                  value={`${metrics.roleViews.contributorView.kpis.hoursWithoutRequirement.toFixed(2)} h`}
-                  helper="Tiempo que debes asociar a tickets"
-                  icon={AlertTriangle}
-                  variant={metrics.roleViews.contributorView.kpis.hoursWithoutRequirement > 0 ? "warning" : "default"}
+                  label="Completados este mes"
+                  value={String(metrics.completedThisMonth)}
+                  helper="Mes calendario actual"
+                  icon={CheckCircle2}
+                  variant={metrics.completedThisMonth > 0 ? "success" : "default"}
                 />
-              </>
-            ) : null}
-          </div>
-        </section>
-
-        {!isContributor ? (
-          <BillingEstimateByClientTable
-            rows={metrics.billingEstimateByClient}
-            referenceFootnote={formatFinancialReferenceRatesFootnote(referenceRates)}
-          />
-        ) : null}
-
-        {(isAdminLike || isProjectManager) && utilizationData.length > 0 ? (
-          <UtilizationPanel data={utilizationData} weeklyCapacityHours={referenceRates.weeklyCapacityHours} />
-        ) : null}
-
-        {(isAdminLike || isProjectManager) && metrics.projectHealthData && metrics.projectHealthData.length > 0 ? (
-          <ProjectHealthCards data={metrics.projectHealthData} />
-        ) : null}
-
-        <section aria-labelledby="dash-charts-heading" className="surface-card space-y-5 p-[length:var(--density-inset-pad)]">
-          <h2 id="dash-charts-heading" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Análisis visual
-          </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">
-            {isContributor
-              ? "Tendencia y distribución personal para priorizar tu carga y cerrar pendientes."
-              : isProjectManager
-                ? "Panel operativo del equipo: tendencia, carga por persona y estado de requerimientos."
-                : "Vista ejecutiva con tendencia global, consumo por cliente y estado de cartera."}
-          </p>
-          {allChartsEmpty ? (
-            <div className="surface-card flex items-start gap-3 border-dashed p-4">
-              <div className="mt-0.5 rounded-[2px] border border-border bg-muted/60 p-2 text-muted-foreground">
-                <AlertCircle className="h-4 w-4" aria-hidden />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Panel sin datos para los filtros actuales</p>
-                <p className="text-sm text-muted-foreground">
-                  {isContributor
-                    ? "Registra tu primera hora y clasifícala para activar tus indicadores personales."
-                    : isProjectManager
-                      ? "Registra horas y actualiza estados para activar el panel operativo por equipo."
-                      : "Crea requerimientos y registra horas para activar la lectura ejecutiva de cartera."}
-                </p>
-                <div className="pt-1">
-                  <Link href={isContributor ? "/time-entries/new" : "/requirements?nueva=1"} className="btn-secondary text-xs">
-                    {isContributor ? "Registrar mi primera hora" : "Crear requerimiento"}
-                  </Link>
-                </div>
-              </div>
+            </section>
+
+            {/* Gráficas Contributor — fila 1 */}
+            <div className="grid gap-6 lg:grid-cols-12">
+              <DashboardChartCard
+                className="lg:col-span-7"
+                title="Mi semana — horas por día"
+                mode="weekBar"
+                emptyHint="Registra horas esta semana para visualizar tu actividad diaria."
+                data={weekDayData}
+                weekBarTargetHours={dailyTargetHours}
+              />
+              <DashboardChartCard
+                className="lg:col-span-5"
+                title="Mis requerimientos por estado"
+                mode="pie"
+                emptyHint="Cuando tengas requerimientos asignados, aquí verás su distribución."
+                data={statusChartData}
+              />
             </div>
-          ) : null}
-          <div className="grid gap-6 lg:grid-cols-12">
-            {(isAdminLike || isProjectManager) ? (
-              <DashboardChartCard
-                className="lg:col-span-12"
-                title="Evolución de horas cargadas por mes"
-                mode="lineArea"
-                tall
-                emptyHint="Registra horas para ver la evolución mensual."
-                data={monthHours}
-              />
-            ) : null}
-            {isContributor ? (
-              <DashboardChartCard
-                className="lg:col-span-7"
-                title="Evolución personal de horas"
-                mode="lineArea"
-                tall
-                emptyHint="Registra horas para visualizar tu tendencia semanal."
-                data={monthHours}
-              />
-            ) : null}
-            {isAdminLike ? (
-              <DashboardChartCard
-                className="lg:col-span-7"
-                title="Horas por cliente"
-                mode="barHorizontal"
-                emptyHint="Registra horas asociadas a requerimientos para mostrar clientes con consumo."
-                data={byClientHours}
-              />
-            ) : null}
-            {isProjectManager ? (
-              <DashboardChartCard
-                className="lg:col-span-7"
-                title="Carga por persona"
-                mode="barHorizontal"
-                emptyHint="Las horas por persona aparecerán cuando existan registros."
-                data={byPersonHours}
-              />
-            ) : null}
+
+            {/* Gráficas Contributor — fila 2 */}
             <DashboardChartCard
-              className="lg:col-span-5"
-              title={isContributor ? "Horas por categoría" : "Requerimientos por estado"}
-              mode="pie"
-              emptyHint={
-                isContributor
-                  ? "Categoriza tus horas para ver en qué inviertes más tiempo."
-                  : "Cuando existan requerimientos, aquí se mostrará la proporción por estado."
-              }
-              data={isContributor ? categoryHoursChartData : statusChartData}
+              title="Mis horas por categoría"
+              mode="barHorizontal"
+              emptyHint="Categoriza tus horas para ver en qué inviertes más tiempo."
+              data={categoryHoursChartData}
             />
-            {isContributor ? (
-              <DashboardChartCard
-                className="lg:col-span-12"
-                title="Requerimientos por prioridad"
-                mode="barHorizontal"
-                emptyHint="Actualiza o crea requerimientos para visualizar prioridades activas."
-                data={priorityChartData}
-              />
-            ) : null}
-          </div>
-        </section>
+          </>
+        ) : null}
+
       </div>
     </AppShell>
   );

@@ -258,6 +258,87 @@ export function buildLineAreaChartOption(categories: string[], values: number[],
   };
 }
 
+/**
+ * Barras verticales por día de la semana.
+ * Recibe los 7 días con etiquetas cortas (Lun, Mar…) y marca el día actual.
+ * Opcionalmente dibuja una línea de referencia (target diario de horas).
+ */
+export function buildWeekBarOption(
+  days: { label: string; value: number; isToday: boolean }[],
+  dark: boolean,
+  targetHours?: number,
+): EChartsOption {
+  const c = axisColors(dark);
+  const baseColor = CORP_BLUE;
+  const todayColor = CORP_RED;
+
+  const markLine =
+    targetHours && targetHours > 0
+      ? {
+          markLine: {
+            silent: true,
+            symbol: "none",
+            label: {
+              show: true,
+              position: "end" as const,
+              formatter: `${targetHours}h`,
+              color: c.text,
+              fontSize: 10,
+            },
+            lineStyle: { color: CORP_GRAY, type: "dashed" as const, width: 1.5 },
+            data: [{ yAxis: targetHours }],
+          },
+        }
+      : {};
+
+  return {
+    animationDuration: 420,
+    animationEasing: "cubicOut",
+    grid: { left: 8, right: 16, top: 18, bottom: 8, containLabel: true },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow", shadowStyle: { opacity: 0.12 } },
+      backgroundColor: c.tooltipBg,
+      borderColor: c.tooltipBorder,
+      borderWidth: 1,
+      textStyle: { color: c.text, fontSize: 12 },
+      formatter: (params: unknown) => {
+        const p = (params as { name: string; value: number }[])[0];
+        return `<strong>${p.name}</strong><br/>${p.value.toFixed(2)} h`;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: days.map((d) => d.label),
+      axisLine: { lineStyle: { color: c.line } },
+      axisTick: { show: false },
+      axisLabel: { color: c.text, fontSize: 12, fontWeight: "normal" },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { color: c.split, type: "dashed" } },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: c.text, fontSize: 11, formatter: (v: number) => `${v}h` },
+    },
+    series: [
+      {
+        type: "bar",
+        barMaxWidth: 48,
+        data: days.map((d) => ({
+          value: d.value,
+          itemStyle: {
+            borderRadius: [3, 3, 0, 0],
+            color: d.isToday ? todayColor : baseColor,
+            opacity: d.value === 0 ? 0.25 : 1,
+          },
+        })),
+        ...markLine,
+      },
+    ],
+  };
+}
+
 /** Roseta (área): buena para prioridades y pocas categorías. */
 export function buildRoseChartOption(items: { name: string; value: number }[], dark: boolean): EChartsOption {
   const c = axisColors(dark);
