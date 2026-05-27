@@ -90,11 +90,12 @@ export function buildBarChartOption(
 }
 
 export function buildDonutChartOption(
-  items: { name: string; value: number }[],
+  items: { name: string; value: number; color?: string }[],
   dark: boolean,
 ): EChartsOption {
   const c = axisColors(dark);
   const palette = [CORP_RED, CORP_BLUE, CORP_GRAY, CORP_GREEN, CORP_ORANGE];
+  const hasCustomColors = items.some((d) => !!d.color);
 
   return {
     color: palette,
@@ -124,7 +125,13 @@ export function buildDonutChartOption(
         itemStyle: { borderRadius: 2, borderColor: "hsl(0 0% 96%)", borderWidth: 2 },
         label: { color: c.text, fontSize: 11 },
         labelLine: { lineStyle: { color: c.line } },
-        data: items.map((d) => ({ name: d.name, value: d.value })),
+        data: items.map((d, i) => ({
+          name: d.name,
+          value: d.value,
+          ...(hasCustomColors
+            ? { itemStyle: { borderRadius: 2, borderColor: "hsl(0 0% 96%)", borderWidth: 2, color: d.color ?? palette[i % palette.length] } }
+            : {}),
+        })),
       },
     ],
   };

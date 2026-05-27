@@ -13,6 +13,7 @@ import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatFinancialReferenceRatesFootnote } from "@/lib/formatting/reference-rates-footnote";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
+import { catalogColorHex } from "@/lib/catalog-colors";
 import type { SettingsCatalogEntry } from "@/types/domain";
 
 function catalogLabelByCode(catalog: SettingsCatalogEntry[], code: string): string {
@@ -24,11 +25,16 @@ function mapRecordKeysToLabels(
   record: Record<string, number>,
   catalog: SettingsCatalogEntry[],
   formatter?: (code: string, label: string) => string,
-): { name: string; value: number }[] {
-  return Object.entries(record).map(([code, value]) => ({
-    name: formatter ? formatter(code, catalogLabelByCode(catalog, code)) : catalogLabelByCode(catalog, code),
-    value,
-  }));
+): { name: string; value: number; color?: string }[] {
+  return Object.entries(record).map(([code, value]) => {
+    const entry = catalog.find((e) => e.active && e.code === code);
+    const hex = catalogColorHex(entry?.color) ?? undefined;
+    return {
+      name: formatter ? formatter(code, entry?.label ?? code) : (entry?.label ?? code),
+      value,
+      ...(hex ? { color: hex } : {}),
+    };
+  });
 }
 
 function recordToHoursChartData(record: Record<string, number>): { name: string; value: number }[] {

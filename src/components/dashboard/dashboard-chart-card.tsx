@@ -25,7 +25,7 @@ export const DashboardChartCard = ({
   className,
 }: {
   title: string;
-  data: { name: string; value: number }[];
+  data: { name: string; value: number; color?: string }[];
   mode: DashboardChartMode;
   /** Solo aplica en modo `bar`. */
   barVariant?: "default" | "multiColor";
