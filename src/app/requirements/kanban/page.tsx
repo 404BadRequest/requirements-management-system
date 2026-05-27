@@ -39,7 +39,7 @@ export default async function RequirementsKanbanPage({
   const statusColumns = statusRows
     .filter((row) => row.active)
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((row) => ({ code: row.code, label: formatStatusLabel(row.code, row.label) }));
+    .map((row) => ({ code: row.code, label: formatStatusLabel(row.code, row.label), color: row.color }));
 
   return (
     <AppShell>

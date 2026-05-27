@@ -223,6 +223,7 @@ function mapCatalog(r: Row): SettingsCatalogEntry {
     label: String(r.label),
     sortOrder: Number(r.sort_order),
     active: Boolean(r.active),
+    color: r.color ? String(r.color) : null,
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -407,6 +408,7 @@ export class RmsDataAccess {
       label: input.label,
       sort_order: input.sortOrder,
       active: input.active,
+      color: input.color ?? null,
       created_at: now,
       updated_at: now,
     };
@@ -421,6 +423,7 @@ export class RmsDataAccess {
     if (input.label !== undefined) patch.label = input.label;
     if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
     if (input.active !== undefined) patch.active = input.active;
+    if ("color" in input) patch.color = input.color ?? null;
     const { data, error } = await this.sb.from("rms_settings_catalog").update(patch).eq("id", id).select("*").maybeSingle();
     if (error) throw error;
     return data ? mapCatalog(data as Row) : undefined;

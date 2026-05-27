@@ -10,6 +10,8 @@ import { SettingsDeleteConfirm } from "@/components/settings/settings-delete-con
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { SettingsTableToolbar } from "@/components/settings/settings-table-toolbar";
 import { RowActionMenu } from "@/components/common/row-action-menu";
+import { CATALOG_COLOR_KEYS, CATALOG_COLORS, type CatalogColor } from "@/lib/catalog-colors";
+import { cn } from "@/lib/utils/cn";
 
 export function SettingsCatalogPanel({
   kind,
@@ -36,6 +38,24 @@ export function SettingsCatalogPanel({
         cell: ({ row }) => <span className="font-mono text-sm">{row.original.code}</span>,
       },
       { accessorKey: "label", header: "Etiqueta" },
+      {
+        accessorKey: "color",
+        header: "Color",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const c = row.original.color as CatalogColor | null;
+          return c && CATALOG_COLORS[c] ? (
+            <span
+              className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", CATALOG_COLORS[c].classes.bg, CATALOG_COLORS[c].classes.text)}
+            >
+              <span className={cn("h-2 w-2 rounded-full", CATALOG_COLORS[c].classes.dot)} />
+              {CATALOG_COLORS[c].label}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          );
+        },
+      },
       {
         accessorKey: "sortOrder",
         header: "Orden",
@@ -130,6 +150,55 @@ export function SettingsCatalogPanel({
   );
 }
 
+function ColorPicker({ initialColor }: { initialColor: string | null }) {
+  const [selected, setSelected] = useState<string>(initialColor ?? "");
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="field-label">Color</legend>
+      <input type="hidden" name="color" value={selected} />
+      <div className="flex flex-wrap gap-2">
+        {CATALOG_COLOR_KEYS.map((token) => {
+          const def = CATALOG_COLORS[token];
+          const isSelected = selected === token;
+          return (
+            <button
+              key={token}
+              type="button"
+              title={def.label}
+              onClick={() => setSelected(isSelected ? "" : token)}
+              className={cn(
+                "h-7 w-7 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                def.classes.dot,
+                isSelected ? "ring-2 ring-ring ring-offset-2 scale-110" : "opacity-70 hover:opacity-100 hover:scale-105",
+              )}
+              aria-label={def.label}
+              aria-pressed={isSelected}
+            />
+          );
+        })}
+        <button
+          type="button"
+          title="Sin color"
+          onClick={() => setSelected("")}
+          className={cn(
+            "h-7 w-7 rounded-full border-2 border-dashed border-border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            selected === "" ? "ring-2 ring-ring ring-offset-2 scale-110 border-foreground/40" : "opacity-60 hover:opacity-100",
+          )}
+          aria-label="Sin color (automático)"
+          aria-pressed={selected === ""}
+        />
+      </div>
+      {selected && CATALOG_COLORS[selected as CatalogColor] ? (
+        <p className="text-xs text-muted-foreground">
+          Seleccionado: <span className="font-medium text-foreground">{CATALOG_COLORS[selected as CatalogColor].label}</span>
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">Sin color — se usará color automático según el código.</p>
+      )}
+    </fieldset>
+  );
+}
+
 function CatalogEntryForm({
   kind,
   action,
@@ -173,6 +242,7 @@ function CatalogEntryForm({
           <option value="false">Inactivo</option>
         </select>
       </label>
+      <ColorPicker initialColor={initial?.color ?? null} />
       <div className="flex flex-wrap gap-2 pt-1">
         <button type="submit" className="btn-primary">
           {submitLabel}

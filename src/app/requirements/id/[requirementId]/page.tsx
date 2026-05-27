@@ -30,11 +30,16 @@ import {
 import { RequirementOwnerReassign } from "@/components/requirements/requirement-owner-reassign";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
 import { RequirementStatusChange } from "@/components/requirements/requirement-status-change";
+import { StatusBadge, PriorityBadge } from "@/components/common/badges";
 import type { Profile, SettingsCatalogEntry, TimeEntry, User } from "@/types/domain";
 
 function catalogLabel(catalog: SettingsCatalogEntry[], code: string): string {
   const entry = catalog.find((e) => e.active && e.code === code);
   return entry?.label ?? code;
+}
+
+function catalogColor(catalog: SettingsCatalogEntry[], code: string): string | null {
+  return catalog.find((e) => e.active && e.code === code)?.color ?? null;
 }
 
 function requirementStatusLabel(catalog: SettingsCatalogEntry[], code: string): string {
@@ -173,7 +178,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     });
 
   const statusLabel = requirementStatusLabel(requirementStatuses, requirement.status);
+  const statusCatalogColor = catalogColor(requirementStatuses, requirement.status);
   const priorityLabel = catalogLabel(requirementPriorities, requirement.priority);
+  const priorityCatalogColor = catalogColor(requirementPriorities, requirement.priority);
   const contractLabel = requirement.contractId
     ? contracts.find((c) => c.id === requirement.contractId)?.name ?? requirement.contractId
     : null;
@@ -344,22 +351,27 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
           {canPostObservations ? (
-            <RequirementStatusChange
-              requirementId={requirementId}
-              currentStatus={requirement.status}
-              statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
-            />
+            <div className="mt-2 space-y-2">
+              <StatusBadge status={requirement.status} label={statusLabel} color={statusCatalogColor} />
+              <RequirementStatusChange
+                requirementId={requirementId}
+                currentStatus={requirement.status}
+                statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
+              />
+            </div>
           ) : (
-            <>
-              <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{statusLabel}</p>
-              <p className="mt-1 font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
-            </>
+            <div className="mt-2 space-y-1">
+              <StatusBadge status={requirement.status} label={statusLabel} color={statusCatalogColor} />
+              <p className="font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
+            </div>
           )}
         </article>
         <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
           <h3 className="text-sm font-medium text-primary">Prioridad</h3>
-          <p className="mt-2 text-lg font-semibold leading-snug text-foreground">{priorityLabel}</p>
-          <p className="mt-1 font-mono text-[10px] text-primary/90">{requirement.priority}</p>
+          <div className="mt-2 space-y-1">
+            <PriorityBadge priority={requirement.priority} label={priorityLabel} color={priorityCatalogColor} />
+            <p className="font-mono text-[10px] text-primary/90">{requirement.priority}</p>
+          </div>
         </article>
         {/* Tarjeta de horas totales solo cuando no hay cubicación (el banner ya la muestra) */}
         {!cubicacionCalc && (

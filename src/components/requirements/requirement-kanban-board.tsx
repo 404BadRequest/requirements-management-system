@@ -30,7 +30,7 @@ function KanbanCard({
 }: {
   item: Requirement;
   statusIndex: number;
-  statusColumns: { code: string; label: string }[];
+  statusColumns: { code: string; label: string; color?: string | null }[];
   canManageStatus: boolean;
   pending: boolean;
   onMove: (requirementId: string, nextStatusCode: string) => void;
@@ -116,7 +116,7 @@ export const RequirementKanbanBoard = ({
   readOnly = false,
 }: {
   requirements: Requirement[];
-  statusColumns: { code: string; label: string }[];
+  statusColumns: { code: string; label: string; color?: string | null }[];
   canManageStatus: boolean;
   ownerOptions: { id: string; name: string }[];
   readOnly?: boolean;
@@ -279,7 +279,7 @@ export const RequirementKanbanBoard = ({
             const resolvedCode = statusCodeByToken.get(normalizeStatusToken(item.status)) ?? item.status;
             return resolvedCode === status.code;
           });
-          const color = statusColor(status.code);
+          const color = statusColor(status.code, status.color);
           return (
             <section
               key={status.code}

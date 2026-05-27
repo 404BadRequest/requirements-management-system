@@ -13,6 +13,7 @@ export interface SettingsCatalogEntry {
   label: string;
   sortOrder: number;
   active: boolean;
+  color: string | null;
   createdAt: string;
   updatedAt: string;
 }

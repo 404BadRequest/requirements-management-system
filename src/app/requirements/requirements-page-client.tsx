@@ -178,11 +178,11 @@ export function RequirementsPageClient({
     () =>
       statusCatalog
         .filter((s) => s.active)
-        .map((s) => ({ code: s.code, label: formatStatusLabel(s.code, s.label) })),
+        .map((s) => ({ code: s.code, label: formatStatusLabel(s.code, s.label), color: s.color })),
     [statusCatalog],
   );
   const priorityOpts = useMemo(
-    () => priorityCatalog.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label })),
+    () => priorityCatalog.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label, color: p.color })),
     [priorityCatalog],
   );
   const activeClients = useMemo(() => clients.filter((c) => c.active), [clients]);
@@ -218,13 +218,20 @@ export function RequirementsPageClient({
         header: "Título",
         cell: ({ row }) => row.original.title,
       },
-      { accessorKey: "priority", header: "Prioridad", cell: ({ row }) => <PriorityBadge priority={row.original.priority} /> },
+      {
+        accessorKey: "priority",
+        header: "Prioridad",
+        cell: ({ row }) => {
+          const opt = priorityOpts.find((p) => p.code === row.original.priority);
+          return <PriorityBadge priority={row.original.priority} label={opt?.label} color={opt?.color} />;
+        },
+      },
       {
         accessorKey: "status",
         header: "Estado",
         cell: ({ row }) => {
-          const labelResolved = statusOpts.find((s) => s.code === row.original.status)?.label;
-          return <StatusBadge status={row.original.status} label={labelResolved} />;
+          const opt = statusOpts.find((s) => s.code === row.original.status);
+          return <StatusBadge status={row.original.status} label={opt?.label} color={opt?.color} />;
         },
       },
     ];

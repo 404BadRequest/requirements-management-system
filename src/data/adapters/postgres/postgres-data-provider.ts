@@ -167,6 +167,7 @@ function mapCatalog(r: Row): SettingsCatalogEntry {
     label: String(r.label),
     sortOrder: Number(r.sort_order),
     active: Boolean(r.active),
+    color: r.color ? String(r.color) : null,
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -380,10 +381,10 @@ export class PostgresDataProvider implements AppDataProvider {
     const now = new Date().toISOString();
     const id = `cat-${crypto.randomUUID().slice(0, 8)}`;
     const { rows } = await queryPg<Row>(
-      `insert into rms_settings_catalog (id, kind, code, label, sort_order, active, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+      `insert into rms_settings_catalog (id, kind, code, label, sort_order, active, color, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        returning *`,
-      [id, input.kind, input.code, input.label, input.sortOrder, input.active, now, now],
+      [id, input.kind, input.code, input.label, input.sortOrder, input.active, input.color ?? null, now, now],
     );
     return mapCatalog(rows[0]);
   }
@@ -395,10 +396,11 @@ export class PostgresDataProvider implements AppDataProvider {
            label = coalesce($3, label),
            sort_order = coalesce($4, sort_order),
            active = coalesce($5, active),
+           color = case when $7 then $8 else color end,
            updated_at = $6
        where id = $1
        returning *`,
-      [id, input.code ?? null, input.label ?? null, input.sortOrder ?? null, input.active ?? null, now],
+      [id, input.code ?? null, input.label ?? null, input.sortOrder ?? null, input.active ?? null, now, "color" in input, input.color ?? null],
     );
     return rows[0] ? mapCatalog(rows[0]) : undefined;
   }

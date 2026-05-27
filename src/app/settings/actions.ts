@@ -198,7 +198,8 @@ export async function createCatalogFromFormAction(formData: FormData) {
     redirectSettingsError(returnPath, "Ya existe una entrada con ese código en este catálogo.");
   }
   const order = Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : list.length;
-  await createCatalogEntry({ kind, code, label, sortOrder: order, active });
+  const color = String(formData.get("color") ?? "").trim() || null;
+  await createCatalogEntry({ kind, code, label, sortOrder: order, active, color });
   refreshDataViews();
 }
 
@@ -218,11 +219,13 @@ export async function updateCatalogAction(id: string, formData: FormData) {
   if (list.some((e) => e.id !== id && e.code === code)) {
     redirectSettingsError(returnPath, "Ya existe otra entrada con ese código en este catálogo.");
   }
+  const color = String(formData.get("color") ?? "").trim() || null;
   await updateCatalogEntry(id, {
     code,
     label,
     sortOrder: Number.isFinite(sortOrder) ? Number(sortOrder) : 0,
     active,
+    color,
   });
   refreshDataViews();
 }

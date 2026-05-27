@@ -1,7 +1,7 @@
 import type { SettingsCatalogEntry, SettingsCatalogKind } from "@/types/domain";
 
 export type CatalogCreateInput = Omit<SettingsCatalogEntry, "id" | "createdAt" | "updatedAt">;
-export type CatalogUpdateInput = Partial<Pick<SettingsCatalogEntry, "code" | "label" | "sortOrder" | "active">>;
+export type CatalogUpdateInput = Partial<Pick<SettingsCatalogEntry, "code" | "label" | "sortOrder" | "active" | "color">>;
 
 export interface SettingsCatalogRepository {
   getByKind(kind: SettingsCatalogKind): Promise<SettingsCatalogEntry[]>;
