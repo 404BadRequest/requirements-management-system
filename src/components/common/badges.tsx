@@ -49,12 +49,12 @@ function priorityVariant(priority: string): {
 
 // ── Components ─────────────────────────────────────────────────────────────
 
-export const StatusBadge = ({ status }: { status: string }) => {
+export const StatusBadge = ({ status, label }: { status: string; label?: string }) => {
   const v = statusVariant(status);
   return (
     <span className={cn("status-chip", v.bg, v.text)}>
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", v.dot)} aria-hidden />
-      {formatStatusLabel(status, status)}
+      {label ?? formatStatusLabel(status, status)}
     </span>
   );
 };

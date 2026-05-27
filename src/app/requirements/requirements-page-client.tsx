@@ -219,7 +219,14 @@ export function RequirementsPageClient({
         cell: ({ row }) => row.original.title,
       },
       { accessorKey: "priority", header: "Prioridad", cell: ({ row }) => <PriorityBadge priority={row.original.priority} /> },
-      { accessorKey: "status", header: "Estado", cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+      {
+        accessorKey: "status",
+        header: "Estado",
+        cell: ({ row }) => {
+          const labelResolved = statusOpts.find((s) => s.code === row.original.status)?.label;
+          return <StatusBadge status={row.original.status} label={labelResolved} />;
+        },
+      },
     ];
     if (!canWrite && !canDelete) return base;
     return [
@@ -262,7 +269,7 @@ export function RequirementsPageClient({
         },
       },
     ];
-  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, canChangeStatus, currentDirectoryUserId, clientById, ownerById]);
+  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, canChangeStatus, currentDirectoryUserId, clientById, ownerById, statusOpts]);
 
   const openNewRequirementModal = () => {
     setNewFormKey((k) => k + 1);
@@ -602,6 +609,7 @@ export function RequirementsPageClient({
         <DataTable
           data={filteredRequirements}
           columns={columns}
+          pageSize={10}
           globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
         />
       )}

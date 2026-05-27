@@ -279,7 +279,7 @@ export function TimeEntriesTable({
         data={rows}
         columns={columns}
         globalFilterPlaceholder="Buscar por ID, fecha, persona, categoría o cliente…"
-        pageSize={20}
+        pageSize={10}
         enableRowSelection={true}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
