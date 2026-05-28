@@ -68,12 +68,20 @@ export function RequirementHoursPanel({
         header: "ID",
         meta: { align: "left" },
         cell: ({ row }) => (
-          <Link href={`/time-entries/${row.original.id}`} className="font-medium text-primary hover:underline">
+          <Link href={`/time-entries/${row.original.id}`} className="hidden font-medium text-primary hover:underline md:inline">
             {row.original.id}
           </Link>
         ),
       },
-      { accessorKey: "date", header: "Fecha" },
+      {
+        accessorKey: "date",
+        header: "Fecha",
+        cell: ({ row }) => (
+          <Link href={`/time-entries/${row.original.id}`} className="font-medium text-primary hover:underline md:font-normal md:text-foreground md:no-underline">
+            {row.original.date}
+          </Link>
+        ),
+      },
       { accessorKey: "userName", header: "Persona" },
       { accessorKey: "profileName", header: "Perfil" },
       { accessorKey: "contractStatus", header: "Perfil contractual" },

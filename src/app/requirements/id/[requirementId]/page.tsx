@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import {
@@ -22,17 +22,17 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 import { RequirementHoursPanel } from "@/components/requirements/requirement-hours-panel";
-import { RequirementCubicacionBanner } from "@/components/requirements/requirement-cubicacion-banner";
 import { RequirementObservationsChat } from "@/components/requirements/requirement-observations-chat";
 import {
   RequirementActivityTimeline,
   type RequirementActivityEvent,
 } from "@/components/requirements/requirement-activity-timeline";
-import { RequirementOwnerReassign } from "@/components/requirements/requirement-owner-reassign";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
-import { RequirementStatusChange } from "@/components/requirements/requirement-status-change";
 import { RequirementTasksPanel } from "@/components/requirements/requirement-tasks-panel";
-import { StatusBadge, PriorityBadge } from "@/components/common/badges";
+import { RequirementDetailHeader } from "@/components/requirements/requirement-detail-header";
+import { RequirementDetailShell } from "@/components/requirements/requirement-detail-shell";
+import { RequirementDetailSummaryTab } from "@/components/requirements/requirement-detail-summary-tab";
+import type { RequirementCubicacionBannerProps } from "@/components/requirements/requirement-cubicacion-banner";
 import type { Profile, SettingsCatalogEntry, TimeEntry, User } from "@/types/domain";
 
 function catalogLabel(catalog: SettingsCatalogEntry[], code: string): string {
@@ -218,6 +218,42 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     isOwn: comment.userId === currentDirectoryUserId,
   }));
 
+  const tasksDone = tasks.filter((task) => task.status === "done").length;
+
+  const cubicacionBannerProps: RequirementCubicacionBannerProps | null =
+    cubicacionCalc && linkedCubicacion && effectiveContractId
+      ? {
+          contractId: effectiveContractId,
+          totalHoras: cubicacionCalc.totalHoras,
+          usedHorasTotal,
+          senior: {
+            label: "Ingeniero Senior",
+            allocatedHoras: cubicacionCalc.seniorHoras,
+            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
+          },
+          ingeniero: {
+            label: "Ingeniero",
+            allocatedHoras: cubicacionCalc.ingenieroHoras,
+            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
+          },
+          junior: {
+            label: "Ingeniero Junior",
+            allocatedHoras: cubicacionCalc.juniorHoras,
+            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
+          },
+          director: {
+            label: "Director",
+            allocatedHoras: cubicacionCalc.directorHoras,
+            usedHoras: Math.round(usedByBucket.director * 100) / 100,
+          },
+          disenador: {
+            label: "Diseñador",
+            allocatedHoras: cubicacionCalc.disenadorHoras,
+            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
+          },
+        }
+      : null;
+
   const activityEvents: RequirementActivityEvent[] = [
     ...history.map((event) => ({
       id: `status-${event.id}`,
@@ -225,7 +261,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: `${requirementStatusLabel(requirementStatuses, event.fromStatus)} → ${requirementStatusLabel(requirementStatuses, event.toStatus)}`,
       description: `Cambio realizado por ${userById.get(event.changedById)?.name ?? event.changedById}.`,
       at: event.changedAt,
-      href: "#activity-section",
+      href: "?tab=resumen",
     })),
     ...comments.map((comment) => ({
       id: `comment-${comment.id}`,
@@ -233,7 +269,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: "Nuevo comentario",
       description: `${userById.get(comment.userId)?.name ?? comment.userId}: ${comment.body.slice(0, 120)}${comment.body.length > 120 ? "…" : ""}`,
       at: comment.createdAt,
-      href: "#comments-section",
+      href: "?tab=comunicacion#comments-section",
     })),
     ...requirementEntries.map((entry) => ({
       id: `time-${entry.id}`,
@@ -241,7 +277,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: "Registro de horas",
       description: `${userById.get(entry.userId)?.name ?? entry.userId} registró ${minutesToHoursDisplay(entry.durationMinutes)} en ${catLabel(entry.category)}.`,
       at: `${entry.date}T${entry.startTime}:00`,
-      href: "#hours-section",
+      href: "?tab=horas#hours-section",
     })),
   ].sort((a, b) => {
     const ad = new Date(a.at).getTime();
@@ -254,7 +290,31 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       <PageHeader
         title={requirement.title}
         description={requirement.description}
-        actions={
+      />
+
+      <RequirementDetailHeader
+        requirementId={requirementId}
+        requirementTitle={requirement.title}
+        clientName={clientName}
+        contractLabel={contractLabel}
+        effectiveContractId={effectiveContractId}
+        origin={requirement.origin ?? null}
+        createdAt={requirement.createdAt}
+        completedAt={requirement.completedAt ?? null}
+        notes={requirement.notes}
+        status={requirement.status}
+        statusLabel={statusLabel}
+        statusColor={statusCatalogColor}
+        priority={requirement.priority}
+        priorityLabel={priorityLabel}
+        priorityColor={priorityCatalogColor}
+        ownerId={requirement.ownerId}
+        owners={users.map((u) => ({ id: u.id, name: u.name }))}
+        canReassignOwner={canReassignOwner}
+        canChangeStatus={canPostObservations}
+        statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
+        registerHoursHref={`/time-entries?nueva=1&requirementId=${requirementId}`}
+        editAction={
           <RequirementEditModal
             requirement={requirement}
             clients={clients.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}
@@ -270,174 +330,72 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           />
         }
       />
-      {/* Tarjeta de metadata expandida */}
-      <section className="surface-card-static grid gap-x-8 gap-y-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Creado</p>
-          <p className="mt-1 text-sm text-foreground">
-            {new Date(requirement.createdAt).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
-          </p>
-        </div>
-        {requirement.completedAt ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Completado</p>
-            <p className="mt-1 text-sm text-foreground">
-              {new Date(requirement.completedAt).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
-            </p>
-          </div>
-        ) : null}
-        {requirement.origin ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Origen</p>
-            <p className="mt-1 text-sm text-foreground">{requirement.origin}</p>
-          </div>
-        ) : null}
-        {contractLabel && effectiveContractId ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Contrato</p>
-            <p className="mt-1 text-sm text-foreground">
-              <Link href={`/budgets/${effectiveContractId}`} className="text-primary hover:underline">
-                {contractLabel}
-              </Link>
-            </p>
-          </div>
-        ) : null}
-        {requirement.notes ? (
-          <div className="sm:col-span-2 lg:col-span-4">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Notas</p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground/90">{requirement.notes}</p>
-          </div>
-        ) : null}
-      </section>
 
-      <section className={`grid grid-cols-1 gap-4 ${cubicacionCalc ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Cliente</h3>
-          <p className="mt-2 text-xl font-semibold text-foreground">{clientName}</p>
-        </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Responsable</h3>
-          <RequirementOwnerReassign
-            requirementId={requirement.id}
-            requirementTitle={requirement.title}
-            currentOwnerId={requirement.ownerId}
-            owners={users.map((u) => ({ id: u.id, name: u.name }))}
-            canWrite={canReassignOwner}
-          />
-        </article>
-        <article className="surface-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
-          {canPostObservations ? (
-            <div className="mt-2 space-y-2">
-              <StatusBadge status={requirement.status} label={statusLabel} color={statusCatalogColor} />
-              <RequirementStatusChange
-                requirementId={requirementId}
-                currentStatus={requirement.status}
-                statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
+      <Suspense
+        fallback={
+          <div className="space-y-4">
+            <div className="skeleton-shimmer h-10 w-full rounded-[2px]" />
+            <div className="skeleton-shimmer h-48 w-full rounded-[2px]" />
+          </div>
+        }
+      >
+        <RequirementDetailShell
+          tabCounts={{
+            hours: requirementEntries.length,
+            tasksDone,
+            tasksTotal: tasks.length,
+            comments: comments.length,
+          }}
+          resumenContent={
+            <RequirementDetailSummaryTab
+              totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
+              imputationCount={requirementEntries.length}
+              tasksDone={tasksDone}
+              tasksTotal={tasks.length}
+              cubicacion={cubicacionBannerProps}
+            />
+          }
+          planContent={
+            <section id="tasks-section">
+              <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
+            </section>
+          }
+          horasContent={
+            <section id="hours-section">
+              <RequirementHoursPanel
+                rows={hourRows}
+                byProfile={byProfile.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
+                byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
+                totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
+                imputationCount={requirementEntries.length}
+                users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+                clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
+                requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
+                contracts={contracts
+                  .filter((contract) => contract.active)
+                  .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
+                contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
+                categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
+                canPickAnyOwner={canManageAnyTimeEntry}
               />
+            </section>
+          }
+          comunicacionContent={
+            <div className="flex flex-col gap-4">
+              <div id="comments-section" className="min-h-[24rem]">
+                <RequirementObservationsChat
+                  requirementId={requirementId}
+                  messages={observationMessages}
+                  canPost={canPostObservations}
+                />
+              </div>
+              <div id="activity-section">
+                <RequirementActivityTimeline events={activityEvents} />
+              </div>
             </div>
-          ) : (
-            <div className="mt-2 space-y-1">
-              <StatusBadge status={requirement.status} label={statusLabel} color={statusCatalogColor} />
-              <p className="font-mono text-[10px] text-muted-foreground">{requirement.status}</p>
-            </div>
-          )}
-        </article>
-        <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-primary">Prioridad</h3>
-          <div className="mt-2 space-y-1">
-            <PriorityBadge priority={requirement.priority} label={priorityLabel} color={priorityCatalogColor} />
-            <p className="font-mono text-[10px] text-primary/90">{requirement.priority}</p>
-          </div>
-        </article>
-        {/* Tarjeta de horas totales solo cuando no hay cubicación (el banner ya la muestra) */}
-        {!cubicacionCalc && (
-          <article className="surface-card border border-primary/35 bg-primary/5 p-4 shadow-sm">
-            <h3 className="text-sm font-medium text-primary">Horas totales</h3>
-            <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">{minutesToHoursDisplay(totalMinutes)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
-          </article>
-        )}
-      </section>
-
-      {/* Horas presupuestadas vs utilizadas por perfil (cubicación vinculada) */}
-      {cubicacionCalc && linkedCubicacion && effectiveContractId && (
-        <RequirementCubicacionBanner
-          contractId={effectiveContractId}
-          totalHoras={cubicacionCalc.totalHoras}
-          usedHorasTotal={usedHorasTotal}
-          senior={{
-            label: "Ingeniero Senior",
-            allocatedHoras: cubicacionCalc.seniorHoras,
-            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
-          }}
-          ingeniero={{
-            label: "Ingeniero",
-            allocatedHoras: cubicacionCalc.ingenieroHoras,
-            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
-          }}
-          junior={{
-            label: "Ingeniero Junior",
-            allocatedHoras: cubicacionCalc.juniorHoras,
-            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
-          }}
-          director={{
-            label: "Director",
-            allocatedHoras: cubicacionCalc.directorHoras,
-            usedHoras: Math.round(usedByBucket.director * 100) / 100,
-          }}
-          disenador={{
-            label: "Diseñador",
-            allocatedHoras: cubicacionCalc.disenadorHoras,
-            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
-          }}
+          }
         />
-      )}
-
-      <section id="hours-section">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Horas registradas</h2>
-          <Link
-            href={`/time-entries?nueva=1&requirementId=${requirementId}`}
-            className="inline-flex items-center gap-1.5 rounded-[2px] border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 no-underline"
-          >
-            + Registrar horas
-          </Link>
-        </div>
-        <RequirementHoursPanel
-          rows={hourRows}
-          byProfile={byProfile.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
-          byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
-          totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
-          imputationCount={requirementEntries.length}
-          users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-          clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
-          requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-          contracts={contracts
-            .filter((contract) => contract.active)
-            .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
-          contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
-          categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
-          canPickAnyOwner={canManageAnyTimeEntry}
-        />
-      </section>
-
-      <section id="tasks-section">
-        <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-5">
-        <div id="comments-section" className="min-h-0 lg:col-span-3">
-          <RequirementObservationsChat
-            requirementId={requirementId}
-            messages={observationMessages}
-            canPost={canPostObservations}
-          />
-        </div>
-        <div id="activity-section" className="min-h-0 lg:col-span-2">
-          <RequirementActivityTimeline events={activityEvents} />
-        </div>
-      </section>
+      </Suspense>
     </AppShell>
   );
 }
