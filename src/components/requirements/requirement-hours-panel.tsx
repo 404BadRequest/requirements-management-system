@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { deleteTimeEntryAction } from "@/app/time-entries/new/data-actions";
+import { cn } from "@/lib/utils/cn";
 import type { TimeEntry } from "@/types/domain";
 
 export type RequirementHoursRow = {
@@ -43,6 +44,7 @@ export function RequirementHoursPanel({
   contractProfiles = [],
   categories,
   canPickAnyOwner,
+  embedded = false,
 }: {
   rows: RequirementHoursRow[];
   byProfile: HoursBreakdownItem[];
@@ -56,6 +58,7 @@ export function RequirementHoursPanel({
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
@@ -65,10 +68,14 @@ export function RequirementHoursPanel({
     () => [
       {
         accessorKey: "id",
-        header: "ID",
+        header: "Hora",
         meta: { align: "left" },
         cell: ({ row }) => (
-          <Link href={`/time-entries/${row.original.id}`} className="hidden font-medium text-primary hover:underline md:inline">
+          <Link
+            href={`/time-entries/${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+            title={row.original.id}
+          >
             {row.original.id}
           </Link>
         ),
@@ -76,38 +83,30 @@ export function RequirementHoursPanel({
       {
         accessorKey: "date",
         header: "Fecha",
-        cell: ({ row }) => (
-          <Link href={`/time-entries/${row.original.id}`} className="font-medium text-primary hover:underline md:font-normal md:text-foreground md:no-underline">
-            {row.original.date}
-          </Link>
-        ),
+        cell: ({ row }) => <span className="tabular-nums text-foreground">{row.original.date}</span>,
       },
-      { accessorKey: "userName", header: "Persona" },
-      { accessorKey: "profileName", header: "Perfil" },
-      { accessorKey: "contractStatus", header: "Perfil contractual" },
-      { accessorKey: "categoryLabel", header: "Categoría" },
+      {
+        accessorKey: "userName",
+        header: "Persona",
+        cell: ({ row }) => <span className="min-w-0 truncate">{row.original.userName}</span>,
+      },
+      {
+        accessorKey: "profileName",
+        header: "Perfil",
+        cell: ({ row }) => <span className="min-w-0 truncate">{row.original.profileName}</span>,
+      },
       {
         accessorKey: "durationDisplay",
         header: "Horas",
         meta: { align: "right" },
-      },
-      {
-        accessorKey: "timeRange",
-        header: "Bloque",
-        cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.timeRange}</span>,
-      },
-      {
-        accessorKey: "taskDescription",
-        header: "Tarea / descripción",
-        cell: ({ row }) => (
-          <span className="line-clamp-2 max-w-[min(28rem,50vw)] text-muted-foreground">{row.original.taskDescription || "—"}</span>
-        ),
+        cell: ({ row }) => <span className="font-medium tabular-nums text-foreground">{row.original.durationDisplay}</span>,
       },
       {
         id: "actions",
-        header: "",
+        header: "Acciones",
         enableSorting: false,
         enableGlobalFilter: false,
+        meta: { align: "right" },
         cell: ({ row }) => {
           if (!row.original.canEdit && !row.original.canDelete) {
             return <span className="text-xs text-muted-foreground">—</span>;
@@ -123,14 +122,14 @@ export function RequirementHoursPanel({
         },
       },
     ],
-    [canPickAnyOwner, categories, clients, contractProfiles, contracts, requirements, users],
+    [],
   );
 
   if (rows.length === 0) {
     return (
-      <article className="surface-card p-[length:var(--density-inset-pad)]">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+      <article className={cn(embedded ? "" : "surface-card p-[length:var(--density-inset-pad)]")}>
+        {!embedded ? <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2> : null}
+        <p className={cn("text-sm leading-relaxed text-muted-foreground", !embedded && "mt-3")}>
           Aún no hay horas registradas vinculadas a este requerimiento. Las horas aparecen cuando en el registro se
           elige este REQ.
         </p>
@@ -181,13 +180,21 @@ export function RequirementHoursPanel({
           }}
         />
       ) : null}
-    <article className="surface-card flex flex-col gap-6 p-[length:var(--density-inset-pad)]">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
+    <article className={cn(embedded ? "flex flex-col gap-5" : "surface-card flex flex-col gap-6 p-[length:var(--density-inset-pad)]")}>
+      <div className={cn("flex flex-wrap items-start justify-between gap-3", embedded ? "" : "border-b border-border/60 pb-4")}>
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2>
-          <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
-            Detalle de cada registro: quién registró la hora, con qué perfil de tarifa, categoría de tiempo y bloque horario.
-          </p>
+          {!embedded ? (
+            <>
+              <h2 className="text-base font-semibold tracking-tight text-foreground">Horas</h2>
+              <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
+                Detalle de cada registro: quién registró la hora, con qué perfil de tarifa, categoría de tiempo y bloque horario.
+              </p>
+            </>
+          ) : (
+            <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
+              Imputaciones vinculadas a este requerimiento.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-4 text-right">
           <div>

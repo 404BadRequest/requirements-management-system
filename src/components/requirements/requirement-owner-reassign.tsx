@@ -12,12 +12,14 @@ export function RequirementOwnerReassign({
   currentOwnerId,
   owners,
   canWrite,
+  compact = false,
 }: {
   requirementId: string;
   requirementTitle: string;
   currentOwnerId: string;
   owners: { id: string; name: string }[];
   canWrite: boolean;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ export function RequirementOwnerReassign({
 
   return (
     <>
-      <div className="mt-2 flex items-center gap-2">
+      <div className={compact ? "flex items-center gap-2" : "mt-2 flex items-center gap-2"}>
         <p className="text-sm font-medium text-foreground">{owners.find((o) => o.id === currentOwnerId)?.name ?? currentOwnerId}</p>
         <button
           type="button"

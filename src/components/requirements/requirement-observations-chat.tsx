@@ -27,10 +27,14 @@ export function RequirementObservationsChat({
   requirementId,
   messages,
   canPost,
+  variant = "default",
+  embedded = false,
 }: {
   requirementId: string;
   messages: ObservationMessage[];
   canPost: boolean;
+  variant?: "default" | "sidebar";
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -58,16 +62,41 @@ export function RequirementObservationsChat({
     });
   };
 
-  return (
-    <article className="surface-card flex h-full min-h-[22rem] flex-col overflow-hidden p-[length:var(--density-inset-pad)]">
-      <div className="mb-3 border-b border-border/60 pb-3">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">Observaciones y dudas</h2>
-        <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
-          Hilo tipo chat para coordinación, preguntas y notas. Los mensajes quedan asociados a este requerimiento.
-        </p>
-      </div>
+  const isSidebar = variant === "sidebar";
 
-      <div className="flex min-h-[12rem] flex-1 flex-col gap-3 overflow-y-auto rounded-lg border border-border/50 bg-muted/15 p-3">
+  return (
+    <article
+      className={cn(
+        "flex flex-col overflow-hidden",
+        embedded ? "" : "surface-card p-[length:var(--density-inset-pad)]",
+        !embedded && isSidebar ? "h-full min-h-[18rem] xl:min-h-0" : !embedded ? "min-h-[22rem]" : "min-h-[16rem]",
+      )}
+    >
+      {!embedded ? (
+        <div className={cn("border-b border-border/60 pb-3", isSidebar ? "mb-2" : "mb-3")}>
+          <h2 className={cn("font-semibold tracking-tight text-foreground", isSidebar ? "text-sm" : "text-base")}>
+            Observaciones y dudas
+          </h2>
+          {!isSidebar ? (
+            <p className="mt-1 max-w-prose text-xs leading-relaxed text-muted-foreground">
+              Hilo tipo chat para coordinación, preguntas y notas. Los mensajes quedan asociados a este requerimiento.
+            </p>
+          ) : (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Coordinación y seguimiento del REQ.</p>
+          )}
+        </div>
+      ) : (
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Hilo de coordinación, preguntas y notas asociadas a este requerimiento.
+        </p>
+      )}
+
+      <div
+        className={cn(
+          "flex flex-1 flex-col gap-3 overflow-y-auto rounded-lg border border-border/50 bg-muted/15 p-3 [scrollbar-width:thin]",
+          isSidebar ? "min-h-[10rem]" : "min-h-[12rem]",
+        )}
+      >
         {messages.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-sm text-muted-foreground">
             Aún no hay mensajes. {canPost ? "Sé el primero en escribir abajo." : "Solo lectura: necesitas permiso de edición en requerimientos."}
@@ -121,7 +150,11 @@ export function RequirementObservationsChat({
                 submit();
               }
             }}
-            placeholder="Escribe una observación, duda o seguimiento… (Ctrl+Enter o ⌘+Enter para enviar)"
+            placeholder={
+              isSidebar
+                ? "Escribe un mensaje… (⌘+Enter para enviar)"
+                : "Escribe una observación, duda o seguimiento… (Ctrl+Enter o ⌘+Enter para enviar)"
+            }
             className="field-control min-h-[5.5rem] w-full resize-y text-sm"
             disabled={pending}
           />

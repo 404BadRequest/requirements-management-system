@@ -10,10 +10,12 @@ export function RequirementStatusChange({
   requirementId,
   currentStatus,
   statusOptions,
+  compact = false,
 }: {
   requirementId: string;
   currentStatus: string;
   statusOptions: { code: string; label: string }[];
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(currentStatus);
@@ -36,6 +38,35 @@ export function RequirementStatusChange({
     }
   };
 
+  if (compact) {
+    return (
+      <div className="inline-flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</span>
+        <label className="sr-only" htmlFor={`req-status-${requirementId}`}>
+          Cambiar estado
+        </label>
+        <select
+          id={`req-status-${requirementId}`}
+          className="field-control min-w-[11rem] py-1.5 text-sm"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          disabled={saving}
+        >
+          {statusOptions.map((opt) => (
+            <option key={opt.code} value={opt.code}>
+              {formatStatusLabel(opt.code, opt.label)}
+            </option>
+          ))}
+        </select>
+        {hasChange ? (
+          <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={handleSave} disabled={saving}>
+            {saving ? "Guardando…" : "Aplicar"}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-2 space-y-2">
       <select
@@ -50,23 +81,11 @@ export function RequirementStatusChange({
           </option>
         ))}
       </select>
-      {hasChange && (
-        <button
-          type="button"
-          className="btn-primary w-full py-1.5 text-xs"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" aria-hidden />
-              Guardando…
-            </span>
-          ) : (
-            "Guardar estado"
-          )}
+      {hasChange ? (
+        <button type="button" className="btn-primary w-full py-1.5 text-xs" onClick={handleSave} disabled={saving}>
+          {saving ? "Guardando…" : "Guardar estado"}
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

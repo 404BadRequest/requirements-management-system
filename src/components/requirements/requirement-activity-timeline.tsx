@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils/cn";
 
 type ActivityType = "all" | "status" | "comment" | "time";
 
@@ -58,15 +59,19 @@ function formatDayTitle(day: string): string {
 export function RequirementActivityTimeline({
   events,
   defaultExpanded = false,
+  variant = "default",
 }: {
   events: RequirementActivityEvent[];
   defaultExpanded?: boolean;
+  variant?: "default" | "sidebar";
 }) {
   const pathname = usePathname();
+  const isSidebar = variant === "sidebar";
+  const [expanded, setExpanded] = useState(defaultExpanded && !isSidebar);
+
   const [activeType, setActiveType] = useState<ActivityType>("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState(defaultExpanded);
 
   useEffect(() => {
     const savedType = localStorage.getItem(STORAGE_TYPE_KEY);
@@ -77,12 +82,19 @@ export function RequirementActivityTimeline({
     if (savedOrder === "asc" || savedOrder === "desc") {
       setSortOrder(savedOrder);
     }
-    if (defaultExpanded) return;
+    if (isSidebar) {
+      setExpanded(false);
+      return;
+    }
+    if (defaultExpanded) {
+      setExpanded(true);
+      return;
+    }
     const savedOpen = localStorage.getItem(STORAGE_OPEN_KEY);
     if (savedOpen === "1") {
       setExpanded(true);
     }
-  }, [defaultExpanded]);
+  }, [defaultExpanded, isSidebar]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_TYPE_KEY, activeType);
@@ -93,8 +105,9 @@ export function RequirementActivityTimeline({
   }, [sortOrder]);
 
   useEffect(() => {
+    if (isSidebar) return;
     localStorage.setItem(STORAGE_OPEN_KEY, expanded ? "1" : "0");
-  }, [expanded]);
+  }, [expanded, isSidebar]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -136,13 +149,21 @@ export function RequirementActivityTimeline({
   };
 
   return (
-    <article className="surface-card flex h-full flex-col p-[length:var(--density-inset-pad)]">
+    <article
+      className={cn(
+        "surface-card flex flex-col p-[length:var(--density-inset-pad)]",
+        isSidebar && expanded && "max-h-[min(24rem,40vh)]",
+      )}
+    >
       {/* Header compacto */}
       <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">Actividad</h2>
+          <h2 className={cn("font-semibold tracking-tight text-foreground", isSidebar ? "text-sm" : "text-sm")}>
+            Actividad
+          </h2>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {events.length} evento{events.length === 1 ? "" : "s"} · estados, comentarios, horas
+            {events.length} evento{events.length === 1 ? "" : "s"}
+            {isSidebar ? "" : " · estados, comentarios, horas"}
           </p>
         </div>
         <button
@@ -166,7 +187,7 @@ export function RequirementActivityTimeline({
       </div>
 
       {expanded ? (
-        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+        <div className={cn("mt-3 flex min-h-0 flex-1 flex-col gap-3", isSidebar && "overflow-hidden")}>
           {/* Filtros tipo */}
           <div className="flex flex-wrap gap-1.5">
             {(["all", "status", "comment", "time"] as ActivityType[]).map((type) => (
@@ -218,7 +239,7 @@ export function RequirementActivityTimeline({
               No hay eventos para este filtro.
             </p>
           ) : (
-            <div className="overflow-y-auto space-y-3 pr-0.5 [scrollbar-width:thin]">
+            <div className={cn("overflow-y-auto space-y-3 pr-0.5 [scrollbar-width:thin]", isSidebar && "min-h-0 flex-1")}>
               {grouped.map(([day, dayEvents]) => (
                 <section key={day} className="space-y-1.5">
                   <h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

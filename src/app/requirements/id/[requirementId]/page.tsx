@@ -10,7 +10,6 @@ import {
   getRequirementById,
   getRequirementComments,
   getRequirements,
-  getRequirementStatusHistory,
   getRequirementTasks,
   getTimeEntries,
   getUsers,
@@ -23,13 +22,10 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 import { RequirementHoursPanel } from "@/components/requirements/requirement-hours-panel";
 import { RequirementObservationsChat } from "@/components/requirements/requirement-observations-chat";
-import {
-  RequirementActivityTimeline,
-  type RequirementActivityEvent,
-} from "@/components/requirements/requirement-activity-timeline";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
 import { RequirementTasksPanel } from "@/components/requirements/requirement-tasks-panel";
 import { RequirementDetailHeader } from "@/components/requirements/requirement-detail-header";
+import { RequirementRegisterHoursButton } from "@/components/requirements/requirement-register-hours-button";
 import { RequirementDetailShell } from "@/components/requirements/requirement-detail-shell";
 import { RequirementDetailSummaryTab } from "@/components/requirements/requirement-detail-summary-tab";
 import type { RequirementCubicacionBannerProps } from "@/components/requirements/requirement-cubicacion-banner";
@@ -108,7 +104,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   // Paso 2: Resto de datos (incluyendo cubicación si hay contrato)
   const [
     comments,
-    history,
     entries,
     requirements,
     clients,
@@ -122,7 +117,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     tasks,
   ] = await Promise.all([
     getRequirementComments(requirementId),
-    getRequirementStatusHistory(requirementId),
     getTimeEntries(),
     getRequirements(),
     getClients(),
@@ -254,37 +248,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         }
       : null;
 
-  const activityEvents: RequirementActivityEvent[] = [
-    ...history.map((event) => ({
-      id: `status-${event.id}`,
-      type: "status" as const,
-      title: `${requirementStatusLabel(requirementStatuses, event.fromStatus)} → ${requirementStatusLabel(requirementStatuses, event.toStatus)}`,
-      description: `Cambio realizado por ${userById.get(event.changedById)?.name ?? event.changedById}.`,
-      at: event.changedAt,
-      href: "#activity-section",
-    })),
-    ...comments.map((comment) => ({
-      id: `comment-${comment.id}`,
-      type: "comment" as const,
-      title: "Nuevo comentario",
-      description: `${userById.get(comment.userId)?.name ?? comment.userId}: ${comment.body.slice(0, 120)}${comment.body.length > 120 ? "…" : ""}`,
-      at: comment.createdAt,
-      href: "#comments-section",
-    })),
-    ...requirementEntries.map((entry) => ({
-      id: `time-${entry.id}`,
-      type: "time" as const,
-      title: "Registro de horas",
-      description: `${userById.get(entry.userId)?.name ?? entry.userId} registró ${minutesToHoursDisplay(entry.durationMinutes)} en ${catLabel(entry.category)}.`,
-      at: `${entry.date}T${entry.startTime}:00`,
-      href: "#hours-section",
-    })),
-  ].sort((a, b) => {
-    const ad = new Date(a.at).getTime();
-    const bd = new Date(b.at).getTime();
-    return bd - ad;
-  });
-
   return (
     <AppShell>
       <PageHeader
@@ -313,7 +276,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         canReassignOwner={canReassignOwner}
         canChangeStatus={canPostObservations}
         statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
-        registerHoursHref={`/time-entries?nueva=1&requirementId=${requirementId}`}
+        registerHoursAction={<RequirementRegisterHoursButton requirementId={requirementId} />}
         editAction={
           <RequirementEditModal
             requirement={requirement}
@@ -356,7 +319,12 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             />
           }
           planContent={
-            <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
+            <RequirementTasksPanel
+              requirementId={requirementId}
+              initialTasks={tasks}
+              canManage={canManageTasks}
+              sidebar
+            />
           }
           horasContent={
             <RequirementHoursPanel
@@ -374,21 +342,16 @@ export default async function RequirementDetailPage({ params }: { params: Promis
               contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
               categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canPickAnyOwner={canManageAnyTimeEntry}
+              embedded
             />
           }
-          sidebarContent={
-            <>
-              <div id="comments-section">
-                <RequirementObservationsChat
-                  requirementId={requirementId}
-                  messages={observationMessages}
-                  canPost={canPostObservations}
-                />
-              </div>
-              <div id="activity-section">
-                <RequirementActivityTimeline events={activityEvents} defaultExpanded />
-              </div>
-            </>
+          chatContent={
+            <RequirementObservationsChat
+              requirementId={requirementId}
+              messages={observationMessages}
+              canPost={canPostObservations}
+              embedded
+            />
           }
         />
       </Suspense>
