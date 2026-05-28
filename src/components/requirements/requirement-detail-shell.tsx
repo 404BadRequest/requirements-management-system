@@ -1,163 +1,173 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
-export type RequirementDetailTab = "resumen" | "plan" | "horas" | "comunicacion";
+type CollapsibleSection = "plan" | "horas";
 
-const TAB_ORDER: RequirementDetailTab[] = ["resumen", "plan", "horas", "comunicacion"];
-
-const TAB_LABEL: Record<RequirementDetailTab, string> = {
-  resumen: "Resumen",
+const SECTION_LABEL: Record<CollapsibleSection, string> = {
   plan: "Plan de trabajo",
   horas: "Horas",
-  comunicacion: "Comunicación",
 };
 
-const HASH_TAB: Record<string, RequirementDetailTab> = {
-  "hours-section": "horas",
+const HASH_SECTION: Record<string, CollapsibleSection | "sidebar"> = {
   "tasks-section": "plan",
-  "comments-section": "comunicacion",
-  "activity-section": "comunicacion",
+  "hours-section": "horas",
+  "comments-section": "sidebar",
+  "activity-section": "sidebar",
 };
 
-function parseTab(value: string | null): RequirementDetailTab {
-  if (value === "plan" || value === "horas" || value === "comunicacion") return value;
-  return "resumen";
+function AccordionSection({
+  id,
+  section,
+  label,
+  badge,
+  open,
+  onToggle,
+  children,
+}: {
+  id: string;
+  section: CollapsibleSection;
+  label: string;
+  badge: string | null;
+  open: boolean;
+  onToggle: (section: CollapsibleSection, next: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="overflow-hidden rounded-[2px] border border-border/70 bg-background">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        className="flex w-full items-center gap-3 px-[length:var(--density-inset-pad)] py-3 text-left transition-colors hover:bg-muted/30"
+        onClick={() => onToggle(section, !open)}
+      >
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{label}</span>
+        {badge ? (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            {badge}
+          </span>
+        ) : null}
+      </button>
+      {open ? (
+        <div id={`${id}-panel`} className="border-t border-border/70 px-[length:var(--density-inset-pad)] py-4">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 export function RequirementDetailShell({
-  tabCounts,
-  resumenContent,
+  sectionCounts,
+  summaryContent,
   planContent,
   horasContent,
-  comunicacionContent,
+  sidebarContent,
 }: {
-  tabCounts: {
+  sectionCounts: {
     hours: number;
     tasksDone: number;
     tasksTotal: number;
     comments: number;
   };
-  resumenContent: ReactNode;
+  summaryContent: ReactNode;
   planContent: ReactNode;
   horasContent: ReactNode;
-  comunicacionContent: ReactNode;
+  sidebarContent: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<RequirementDetailTab>(() => parseTab(searchParams.get("tab")));
+  const [openSections, setOpenSections] = useState<Record<CollapsibleSection, boolean>>({
+    plan: false,
+    horas: false,
+  });
 
-  const syncTabToUrl = useCallback(
-    (tab: RequirementDetailTab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (tab === "resumen") {
-        params.delete("tab");
-      } else {
-        params.set("tab", tab);
-      }
-      const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
+  const clearLegacyTabParam = useCallback(() => {
+    if (!searchParams.has("tab")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("tab");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
-  useEffect(() => {
-    const tabFromQuery = parseTab(searchParams.get("tab"));
-    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
-    const tabFromHash = hash ? HASH_TAB[hash] : undefined;
-    const nextTab = tabFromHash ?? tabFromQuery;
-    setActiveTab(nextTab);
-    if (tabFromHash && tabFromHash !== tabFromQuery) {
-      syncTabToUrl(tabFromHash);
-    }
-  }, [searchParams, syncTabToUrl]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash.replace(/^#/, "");
+  const scrollToHash = useCallback((hash: string) => {
     if (!hash) return;
     const target = document.getElementById(hash);
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [activeTab]);
+  }, []);
 
-  const selectTab = (tab: RequirementDetailTab) => {
-    setActiveTab(tab);
-    syncTabToUrl(tab);
+  useEffect(() => {
+    clearLegacyTabParam();
+  }, [clearLegacyTabParam]);
+
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (!hash) return;
+
+    const mapped = HASH_SECTION[hash];
+    if (mapped === "plan" || mapped === "horas") {
+      setOpenSections((prev) => ({ ...prev, [mapped]: true }));
+      requestAnimationFrame(() => scrollToHash(hash));
+      return;
+    }
+    if (mapped === "sidebar") {
+      requestAnimationFrame(() => scrollToHash(hash));
+    }
+  }, [scrollToHash]);
+
+  const toggleSection = (section: CollapsibleSection, next: boolean) => {
+    setOpenSections((prev) => ({ ...prev, [section]: next }));
   };
 
-  const tabBadge = useMemo(
-    () =>
-      ({
-        resumen: null,
-        plan: tabCounts.tasksTotal > 0 ? `${tabCounts.tasksDone}/${tabCounts.tasksTotal}` : null,
-        horas: tabCounts.hours > 0 ? String(tabCounts.hours) : null,
-        comunicacion: tabCounts.comments > 0 ? String(tabCounts.comments) : null,
-      }) satisfies Record<RequirementDetailTab, string | null>,
-    [tabCounts],
-  );
-
-  const panelContent: Record<RequirementDetailTab, ReactNode> = {
-    resumen: resumenContent,
-    plan: planContent,
-    horas: horasContent,
-    comunicacion: comunicacionContent,
-  };
+  const planBadge =
+    sectionCounts.tasksTotal > 0 ? `${sectionCounts.tasksDone}/${sectionCounts.tasksTotal}` : null;
+  const horasBadge = sectionCounts.hours > 0 ? String(sectionCounts.hours) : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <nav
-        aria-label="Secciones del requerimiento"
-        className="sticky top-0 z-10 -mx-1 border-b border-border bg-background/95 px-1 pb-0 backdrop-blur supports-[backdrop-filter]:bg-background/80"
-      >
-        <div className="flex gap-1 overflow-x-auto [scrollbar-width:thin]">
-          {TAB_ORDER.map((tab) => {
-            const active = activeTab === tab;
-            const badge = tabBadge[tab];
-            return (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-controls={`requirement-tab-${tab}`}
-                id={`requirement-tab-trigger-${tab}`}
-                className={cn(
-                  "shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
-                )}
-                onClick={() => selectTab(tab)}
-              >
-                {TAB_LABEL[tab]}
-                {badge ? (
-                  <span
-                    className={cn(
-                      "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                      active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {badge}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_min(22rem,34%)] xl:gap-5">
+      <main className="flex min-w-0 flex-col gap-4">
+        {summaryContent}
 
-      <div
-        id={`requirement-tab-${activeTab}`}
-        role="tabpanel"
-        aria-labelledby={`requirement-tab-trigger-${activeTab}`}
+        <AccordionSection
+          id="tasks-section"
+          section="plan"
+          label={SECTION_LABEL.plan}
+          badge={planBadge}
+          open={openSections.plan}
+          onToggle={toggleSection}
+        >
+          {planContent}
+        </AccordionSection>
+
+        <AccordionSection
+          id="hours-section"
+          section="horas"
+          label={SECTION_LABEL.horas}
+          badge={horasBadge}
+          open={openSections.horas}
+          onToggle={toggleSection}
+        >
+          {horasContent}
+        </AccordionSection>
+      </main>
+
+      <aside
+        className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto xl:pr-0.5 [scrollbar-width:thin]"
+        aria-label="Comunicación y actividad"
       >
-        {panelContent[activeTab]}
-      </div>
+        {sidebarContent}
+      </aside>
     </div>
   );
 }

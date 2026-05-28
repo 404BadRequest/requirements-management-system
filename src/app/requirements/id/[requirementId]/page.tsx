@@ -261,7 +261,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: `${requirementStatusLabel(requirementStatuses, event.fromStatus)} → ${requirementStatusLabel(requirementStatuses, event.toStatus)}`,
       description: `Cambio realizado por ${userById.get(event.changedById)?.name ?? event.changedById}.`,
       at: event.changedAt,
-      href: "?tab=resumen",
+      href: "#activity-section",
     })),
     ...comments.map((comment) => ({
       id: `comment-${comment.id}`,
@@ -269,7 +269,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: "Nuevo comentario",
       description: `${userById.get(comment.userId)?.name ?? comment.userId}: ${comment.body.slice(0, 120)}${comment.body.length > 120 ? "…" : ""}`,
       at: comment.createdAt,
-      href: "?tab=comunicacion#comments-section",
+      href: "#comments-section",
     })),
     ...requirementEntries.map((entry) => ({
       id: `time-${entry.id}`,
@@ -277,7 +277,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       title: "Registro de horas",
       description: `${userById.get(entry.userId)?.name ?? entry.userId} registró ${minutesToHoursDisplay(entry.durationMinutes)} en ${catLabel(entry.category)}.`,
       at: `${entry.date}T${entry.startTime}:00`,
-      href: "?tab=horas#hours-section",
+      href: "#hours-section",
     })),
   ].sort((a, b) => {
     const ad = new Date(a.at).getTime();
@@ -340,13 +340,13 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         }
       >
         <RequirementDetailShell
-          tabCounts={{
+          sectionCounts={{
             hours: requirementEntries.length,
             tasksDone,
             tasksTotal: tasks.length,
             comments: comments.length,
           }}
-          resumenContent={
+          summaryContent={
             <RequirementDetailSummaryTab
               totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
               imputationCount={requirementEntries.length}
@@ -356,33 +356,29 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             />
           }
           planContent={
-            <section id="tasks-section">
-              <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
-            </section>
+            <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
           }
           horasContent={
-            <section id="hours-section">
-              <RequirementHoursPanel
-                rows={hourRows}
-                byProfile={byProfile.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
-                byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
-                totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
-                imputationCount={requirementEntries.length}
-                users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-                clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
-                requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-                contracts={contracts
-                  .filter((contract) => contract.active)
-                  .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
-                contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
-                categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
-                canPickAnyOwner={canManageAnyTimeEntry}
-              />
-            </section>
+            <RequirementHoursPanel
+              rows={hourRows}
+              byProfile={byProfile.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
+              byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
+              totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
+              imputationCount={requirementEntries.length}
+              users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+              clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
+              requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
+              contracts={contracts
+                .filter((contract) => contract.active)
+                .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
+              contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
+              categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
+              canPickAnyOwner={canManageAnyTimeEntry}
+            />
           }
-          comunicacionContent={
-            <div className="flex flex-col gap-4">
-              <div id="comments-section" className="min-h-[24rem]">
+          sidebarContent={
+            <>
+              <div id="comments-section">
                 <RequirementObservationsChat
                   requirementId={requirementId}
                   messages={observationMessages}
@@ -390,9 +386,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
                 />
               </div>
               <div id="activity-section">
-                <RequirementActivityTimeline events={activityEvents} />
+                <RequirementActivityTimeline events={activityEvents} defaultExpanded />
               </div>
-            </div>
+            </>
           }
         />
       </Suspense>

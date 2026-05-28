@@ -55,12 +55,18 @@ function formatDayTitle(day: string): string {
   });
 }
 
-export function RequirementActivityTimeline({ events }: { events: RequirementActivityEvent[] }) {
+export function RequirementActivityTimeline({
+  events,
+  defaultExpanded = false,
+}: {
+  events: RequirementActivityEvent[];
+  defaultExpanded?: boolean;
+}) {
   const pathname = usePathname();
   const [activeType, setActiveType] = useState<ActivityType>("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   useEffect(() => {
     const savedType = localStorage.getItem(STORAGE_TYPE_KEY);
@@ -71,11 +77,12 @@ export function RequirementActivityTimeline({ events }: { events: RequirementAct
     if (savedOrder === "asc" || savedOrder === "desc") {
       setSortOrder(savedOrder);
     }
+    if (defaultExpanded) return;
     const savedOpen = localStorage.getItem(STORAGE_OPEN_KEY);
     if (savedOpen === "1") {
       setExpanded(true);
     }
-  }, []);
+  }, [defaultExpanded]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_TYPE_KEY, activeType);
