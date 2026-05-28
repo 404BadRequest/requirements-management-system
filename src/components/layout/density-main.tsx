@@ -16,8 +16,8 @@ export function DensityMain({ children }: { children: ReactNode }) {
       className={cn(
         "route-content-enter mx-auto flex w-full max-w-[1760px] flex-1 flex-col",
         density === "compact"
-          ? "gap-5 px-4 pb-6 pt-3 sm:px-5 lg:gap-6 lg:px-6"
-          : "gap-8 px-4 pb-10 pt-6 sm:px-6 lg:gap-10 lg:px-8 lg:pb-14",
+          ? "gap-3 px-4 pb-5 pt-2 sm:px-5 lg:gap-4 lg:px-6"
+          : "gap-4 px-4 pb-6 pt-4 sm:px-5 lg:gap-5 lg:px-6 lg:pb-8",
       )}
     >
       {children}

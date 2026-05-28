@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/common/data-table";
+import { EmptyState } from "@/components/common/empty-state";
 import { SyncStatusBanner } from "@/components/common/sync-status-banner";
 import { BudgetForm } from "@/components/forms/budget-form";
 import { RiskBadge } from "@/components/common/badges";
@@ -291,30 +292,10 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         }}
         loadingLabel="Actualizando contratos…"
       />
-      {loading && contracts.length === 0 ? (
-        <div className="skeleton-shimmer h-44 rounded-[2px] border border-border" aria-busy aria-label="Cargando contratos" />
-      ) : null}
-      
-      {contracts.length === 0 && !loading ? (
-        <div className="surface-card p-4 sm:p-5">
-          <div
-            className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
-            role="status"
-          >
-            <p className="font-medium text-foreground">No hay contratos registrados</p>
-            <p className="mt-1">Aún no se han configurado contratos ni presupuestos en el sistema.</p>
-            {canWrite ? (
-              <div className="mt-4 flex justify-center">
-                <button type="button" className="btn-primary py-2 text-sm" onClick={openCreateModal}>
-                  Crear primer contrato
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : (
+
+      {contracts.length > 0 ? (
         <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <article className="surface-card p-4">
               <p className="text-xs text-muted-foreground">Contratos en riesgo</p>
               <p className="text-2xl font-semibold">{globalDecisionMetrics.contractsAtRiskCount}</p>
@@ -382,7 +363,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
               <p className="text-sm text-muted-foreground">No hay contratos suficientes para priorizar riesgo.</p>
             )}
           </article>
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-3 md:grid-cols-3">
             <article className="surface-card p-4">
               <p className="text-xs text-muted-foreground">Horas cotizadas</p>
               <p className="text-2xl font-semibold">{(quotedMinutes / 60).toFixed(2)}</p>
@@ -411,7 +392,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
             </div>
           ) : null}
         </>
-      )}
+      ) : null}
 
       {canWrite ? (
         <SettingsModal
@@ -524,24 +505,24 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
         />
       ) : null}
 
-      <div className="mt-6 space-y-3">
+      <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contratos</h2>
-        {contracts.length === 0 && !loading ? (
-          <div className="surface-card p-4 sm:p-5">
-            <div
-              className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
-              role="status"
-            >
-              <p className="font-medium text-foreground">No hay contratos registrados</p>
-              <p className="mt-1">Aún no se han configurado contratos ni presupuestos en el sistema.</p>
-              {canWrite ? (
-                <div className="mt-4 flex justify-center">
+        {loading && contracts.length === 0 ? (
+          <div className="skeleton-shimmer h-32 rounded-[2px] border border-border" aria-busy aria-label="Cargando contratos" />
+        ) : contracts.length === 0 ? (
+          <div className="surface-card p-[length:var(--density-inset-pad)]">
+            <EmptyState
+              title="No hay contratos registrados"
+              description="Aún no se han configurado contratos ni presupuestos en el sistema."
+              compact
+              action={
+                canWrite ? (
                   <button type="button" className="btn-primary py-2 text-sm" onClick={openCreateModal}>
                     Crear primer contrato
                   </button>
-                </div>
-              ) : null}
-            </div>
+                ) : undefined
+              }
+            />
           </div>
         ) : (
           <DataTable
@@ -564,7 +545,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
             }
           />
         )}
-      </div>
+      </section>
     </>
   );
 }

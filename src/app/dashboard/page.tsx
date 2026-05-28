@@ -163,7 +163,7 @@ export default async function DashboardPage({
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-4">
 
         {/* ─── Admin / Viewer ─────────────────────────────────────────────── */}
         {isAdminLike ? (

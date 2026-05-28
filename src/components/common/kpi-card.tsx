@@ -49,7 +49,7 @@ export const KpiCard = ({
 }) => {
   const v = VARIANT_STYLES[variant];
   return (
-    <article className="surface-card group relative min-h-[132px] overflow-hidden p-4 transition-all sm:p-5">
+    <article className="surface-card group relative min-h-[108px] overflow-hidden p-4 transition-all sm:p-4">
       {/* Accent bar top */}
       <div className={cn("absolute inset-x-0 top-0 h-[2px]", v.bar)} aria-hidden />
       <div className="flex items-start justify-between gap-4">

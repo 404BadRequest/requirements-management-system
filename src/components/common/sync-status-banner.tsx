@@ -25,7 +25,7 @@ export function SyncStatusBanner({
   if (loading) {
     return (
       <div
-        className="mb-3 rounded-[2px] border border-primary/35 bg-primary/10 px-3 py-2 text-sm text-foreground"
+        className="rounded-[2px] border border-primary/35 bg-primary/10 px-3 py-1.5 text-sm text-foreground"
         role="status"
         aria-live="polite"
       >
@@ -37,7 +37,7 @@ export function SyncStatusBanner({
   if (error) {
     return (
       <div
-        className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[2px] border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+        className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-[2px] border border-danger/40 bg-danger/10 px-3 py-1.5 text-sm text-danger"
         role="alert"
       >
         <span>{error}</span>
@@ -53,7 +53,7 @@ export function SyncStatusBanner({
   if (!lastSyncedAt) return null;
 
   return (
-    <p className="mb-3 text-xs text-muted-foreground" aria-live="polite">
+    <p className="text-xs text-muted-foreground" aria-live="polite">
       Ultima sincronizacion: {formatTime(lastSyncedAt)}
     </p>
   );

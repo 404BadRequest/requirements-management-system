@@ -296,9 +296,9 @@ export default async function TimeEntriesPage({
         </button>
       </form>
       {filteredEntries.length === 0 && !selectedClientId && !selectedContractId && !selectedContractStatus ? (
-        <div className="surface-card p-4 sm:p-5">
+        <div className="surface-card p-[length:var(--density-inset-pad)]">
           <div
-            className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
+            className="rounded-[2px] border border-dashed border-border bg-muted/25 px-4 py-[length:var(--density-empty-py)] text-center text-sm text-muted-foreground"
             role="status"
           >
             <p className="font-medium text-foreground">No hay horas registradas</p>

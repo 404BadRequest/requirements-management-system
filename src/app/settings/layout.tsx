@@ -21,13 +21,13 @@ export default async function SettingsLayout({ children }: { children: ReactNode
         <Suspense fallback={null}>
           <SettingsFlashBanner />
         </Suspense>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-x-4 lg:gap-y-6 lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-x-4 lg:gap-y-4 lg:items-start">
           <aside className="min-w-0 w-full lg:max-w-[15rem]">
             <div className="lg:sticky lg:top-24">
               <SettingsSubNav />
             </div>
           </aside>
-          <div className="min-w-0 space-y-6">{children}</div>
+          <div className="min-w-0 space-y-4">{children}</div>
         </div>
       </div>
     </AppShell>

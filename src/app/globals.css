@@ -48,24 +48,28 @@
   --sidebar-active-border: 3px;
 
   /** Densidad "cómoda" (valor por defecto; `compact` en `html[data-density]`). */
-  --density-inset-pad: 1.25rem;
-  --density-page-header-gap: 0.75rem;
-  --density-page-header-pb: 1.25rem;
-  --density-table-th-py: 0.75rem;
-  --density-table-th-px: 1rem;
-  --density-table-td-py: 0.625rem;
-  --density-table-td-px: 1rem;
-  --density-billing-bar-py: 1rem;
-  --density-billing-bar-px: 1.25rem;
+  --density-inset-pad: 1rem;
+  --density-page-header-gap: 0.5rem;
+  --density-page-header-pb: 0.625rem;
+  --density-section-gap: 0.875rem;
+  --density-empty-py: 2rem;
+  --density-table-th-py: 0.625rem;
+  --density-table-th-px: 0.875rem;
+  --density-table-td-py: 0.5rem;
+  --density-table-td-px: 0.875rem;
+  --density-billing-bar-py: 0.75rem;
+  --density-billing-bar-px: 1rem;
   --motion-fast: 160ms;
   --motion-normal: 240ms;
   --motion-slow: 420ms;
 }
 
 html[data-density="compact"] {
-  --density-inset-pad: 0.8125rem;
-  --density-page-header-gap: 0.5rem;
-  --density-page-header-pb: 0.875rem;
+  --density-inset-pad: 0.75rem;
+  --density-page-header-gap: 0.375rem;
+  --density-page-header-pb: 0.5rem;
+  --density-section-gap: 0.625rem;
+  --density-empty-py: 1.25rem;
   --density-table-th-py: 0.45rem;
   --density-table-th-px: 0.65rem;
   --density-table-td-py: 0.4rem;

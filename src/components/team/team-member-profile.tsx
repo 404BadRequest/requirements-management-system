@@ -142,7 +142,7 @@ export function TeamMemberProfile({
   const registerHref = `/time-entries?nueva=1&userId=${encodeURIComponent(memberId)}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="surface-card p-[length:var(--density-inset-pad)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">

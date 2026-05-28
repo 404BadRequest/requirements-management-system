@@ -113,21 +113,21 @@ export function DataTable<TData>({
 
   if (emptySource) {
     return (
-      <div className="surface-card p-4 sm:p-5">
+      <div className="surface-card p-[length:var(--density-inset-pad)]">
         <div
-          className="rounded-[2px] border border-dashed border-border bg-muted/25 px-6 py-12 text-center text-sm text-muted-foreground"
+          className="rounded-[2px] border border-dashed border-border bg-muted/25 px-4 py-[length:var(--density-empty-py)] text-center text-sm text-muted-foreground"
           role="status"
         >
           <p className="font-medium text-foreground">{emptyTitle}</p>
           <p className="mt-1">{emptyDescription}</p>
-          {emptyAction ? <div className="mt-4 flex justify-center">{emptyAction}</div> : null}
+          {emptyAction ? <div className="mt-3 flex justify-center">{emptyAction}</div> : null}
         </div>
       </div>
     );
   }
 
   return (
-    <div className={cn("surface-card p-4 sm:p-5", compact ? "space-y-3" : "space-y-4")}>
+    <div className={cn("surface-card p-[length:var(--density-inset-pad)]", compact ? "space-y-2.5" : "space-y-3")}>
       {showToolbar ? (
         <div className="relative max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

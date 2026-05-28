@@ -190,7 +190,7 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
         ) : null}
 
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-border py-12 text-center">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-border py-[length:var(--density-empty-py)] text-center">
             <p className="text-sm font-medium text-muted-foreground">Sin actividades cubicadas</p>
             <p className="text-xs text-muted-foreground/70">
               Agrega actividades para estimar las horas del contrato por fase y perfil.
