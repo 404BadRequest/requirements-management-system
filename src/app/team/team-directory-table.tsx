@@ -1,26 +1,50 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { DataTable } from "@/components/common/data-table";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { RowActionMenu } from "@/components/common/row-action-menu";
+import type { Role } from "@/types/domain";
+import { cn } from "@/lib/utils/cn";
 
 export type TeamDirectoryRow = {
   id: string;
   name: string;
   email: string;
+  role: Role;
+  profileId: string;
   profileLabel: string;
   rateLabel: string;
   hours: number;
   hoursDisplay: string;
   estimateLabel: string;
-  reqsAssigned: number;
+  openReqsCount: number;
+  utilizationPercent: number;
+  utilizationDisplay: string;
   activeLabel: string;
+  capacityHours: number;
 };
 
-export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
+function utilizationClass(percent: number): string {
+  if (percent > 100) return "text-danger font-semibold";
+  if (percent < 60) return "text-warning";
+  return "text-success";
+}
+
+export function TeamDirectoryTable({
+  rows,
+  from,
+  to,
+}: {
+  rows: TeamDirectoryRow[];
+  from: string;
+  to: string;
+}) {
+  const router = useRouter();
   const columns = useMemo<ColumnDef<TeamDirectoryRow>[]>(
     () => [
       {
@@ -29,7 +53,9 @@ export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
         cell: ({ row }) => (
           <div className="flex min-w-0 items-center gap-2">
             <UserAvatar name={row.original.name} />
-            <span className="truncate font-medium">{row.original.name}</span>
+            <Link href={`/team/${row.original.id}?from=${from}&to=${to}`} className="truncate font-medium hover:underline">
+              {row.original.name}
+            </Link>
           </div>
         ),
       },
@@ -39,34 +65,46 @@ export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
         cell: ({ row }) => <span className="truncate text-muted-foreground">{row.original.email}</span>,
       },
       { accessorKey: "profileLabel", header: "Perfil" },
-      { accessorKey: "rateLabel", header: "Tarifa referencia" },
       {
         accessorKey: "hours",
-        header: "Horas",
+        header: "Horas (periodo)",
         meta: { align: "right" },
         cell: ({ row }) => row.original.hoursDisplay,
       },
       {
-        accessorKey: "estimateLabel",
-        header: "Estimado",
+        accessorKey: "openReqsCount",
+        header: "REQs abiertos",
         meta: { align: "right" },
       },
       {
-        accessorKey: "reqsAssigned",
-        header: "Requerimientos",
+        accessorKey: "utilizationPercent",
+        header: "Utilización",
         meta: { align: "right" },
+        cell: ({ row }) => (
+          <span className={cn("tabular-nums", utilizationClass(row.original.utilizationPercent))}>
+            {row.original.utilizationDisplay}
+          </span>
+        ),
       },
       { accessorKey: "activeLabel", header: "Estado" },
       {
         id: "actions",
-        header: "",
+        header: "Acciones",
         enableSorting: false,
         enableGlobalFilter: false,
+        meta: { align: "right" },
         cell: ({ row }) => {
           const email = row.original.email;
+          const hoursHref = `/time-entries?userId=${encodeURIComponent(row.original.id)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+          const reqsHref = `/requirements?ownerId=${encodeURIComponent(row.original.id)}`;
+          const profileHref = `/team/${row.original.id}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+
           return (
             <RowActionMenu
               items={[
+                { label: "Ver persona", onClick: () => router.push(profileHref) },
+                { label: "Ver horas", onClick: () => router.push(hoursHref) },
+                { label: "Ver REQs abiertos", onClick: () => router.push(reqsHref) },
                 {
                   label: "Copiar correo",
                   onClick: async () => {
@@ -90,7 +128,7 @@ export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
         },
       },
     ],
-    [],
+    [from, to, router],
   );
 
   return (
@@ -100,7 +138,7 @@ export function TeamDirectoryTable({ rows }: { rows: TeamDirectoryRow[] }) {
       globalFilterPlaceholder="Buscar por nombre, correo, perfil…"
       pageSize={20}
       emptyTitle="Sin personas"
-      emptyDescription="No hay usuarios para el filtro actual o aun no existe directorio."
+      emptyDescription="No hay usuarios para el filtro actual o aún no existe directorio."
       emptyAction={
         <a href="/settings/users" className="btn-secondary py-2 text-sm no-underline">
           Gestionar usuarios

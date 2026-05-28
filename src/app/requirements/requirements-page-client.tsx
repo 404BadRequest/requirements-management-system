@@ -39,6 +39,8 @@ export type RequirementsPageClientProps = {
   autoOpenNewModal?: boolean;
   /** Filtro por cliente (query `clientId`). */
   clientId?: string;
+  /** Filtro por responsable (query `ownerId`). */
+  ownerId?: string;
   /** ID del usuario del directorio de la sesión activa (para filtrar acciones propias). */
   currentDirectoryUserId?: string;
 };
@@ -102,6 +104,7 @@ export function RequirementsPageClient({
   canViewSettings = false,
   autoOpenNewModal = false,
   clientId = "",
+  ownerId = "",
   currentDirectoryUserId = "",
 }: RequirementsPageClientProps) {
   const router = useRouter();
@@ -160,19 +163,29 @@ export function RequirementsPageClient({
   const ownerById = useMemo(() => new Map(owners.map((o) => [o.id, o.name])), [owners]);
 
   const clientIdTrim = clientId.trim();
+  const ownerIdTrim = ownerId.trim();
   const filteredRequirements = useMemo(() => {
-    if (!clientIdTrim) return requirements;
-    return requirements.filter((r) => r.clientId === clientIdTrim);
-  }, [requirements, clientIdTrim]);
+    return requirements.filter((requirement) => {
+      if (clientIdTrim && requirement.clientId !== clientIdTrim) return false;
+      if (ownerIdTrim && requirement.ownerId !== ownerIdTrim) return false;
+      return true;
+    });
+  }, [requirements, clientIdTrim, ownerIdTrim]);
 
-  const exportRequirementsHref =
-    clientIdTrim !== ""
-      ? `/api/export/requirements?clientId=${encodeURIComponent(clientIdTrim)}`
-      : "/api/export/requirements";
-  const kanbanHref =
-    clientIdTrim !== ""
-      ? `/requirements/kanban?clientId=${encodeURIComponent(clientIdTrim)}`
-      : "/requirements/kanban";
+  const exportRequirementsHref = (() => {
+    const q = new URLSearchParams();
+    if (clientIdTrim) q.set("clientId", clientIdTrim);
+    if (ownerIdTrim) q.set("ownerId", ownerIdTrim);
+    const qs = q.toString();
+    return qs ? `/api/export/requirements?${qs}` : "/api/export/requirements";
+  })();
+  const kanbanHref = (() => {
+    const q = new URLSearchParams();
+    if (clientIdTrim) q.set("clientId", clientIdTrim);
+    if (ownerIdTrim) q.set("ownerId", ownerIdTrim);
+    const qs = q.toString();
+    return qs ? `/requirements/kanban?${qs}` : "/requirements/kanban";
+  })();
 
   const statusOpts = useMemo(
     () =>
@@ -575,6 +588,19 @@ export function RequirementsPageClient({
             ))}
           </select>
         </div>
+        <div className="flex min-w-[12rem] flex-col gap-2">
+          <label htmlFor="req-owner" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Responsable
+          </label>
+          <select id="req-owner" name="ownerId" defaultValue={ownerId} className="field-control w-full max-w-md">
+            <option value="">Todos</option>
+            {owners.map((owner) => (
+              <option key={owner.id} value={owner.id}>
+                {owner.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <button type="submit" className="btn-primary">
           Aplicar filtro
         </button>
@@ -604,11 +630,11 @@ export function RequirementsPageClient({
         />
       ) : filteredRequirements.length === 0 ? (
         <EmptyState
-          title="Sin requerimientos en este cliente"
-          description="Prueba otro cliente o quita el filtro para ver todos."
+          title="Sin requerimientos para este filtro"
+          description="Prueba otro cliente o responsable, o quita los filtros para ver todos."
           action={
-            <a href="/requirements?clientId=" className="btn-secondary py-2 text-sm no-underline">
-              Quitar filtro
+            <a href="/requirements" className="btn-secondary py-2 text-sm no-underline">
+              Quitar filtros
             </a>
           }
         />

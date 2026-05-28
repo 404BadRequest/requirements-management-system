@@ -8,7 +8,7 @@ import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-u
 export default async function RequirementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ nueva?: string; clientId?: string }>;
+  searchParams: Promise<{ nueva?: string; clientId?: string; ownerId?: string }>;
 }) {
   const user = await requirePermission("requirements.read");
   const canWrite = roleHasPermission(user.role, "requirements.write");
@@ -19,7 +19,7 @@ export default async function RequirementsPage({
 
   const canExport = roleHasPermission(user.role, "exports.run");
   const canViewSettings = roleHasPermission(user.role, "settings.read");
-  const { nueva, clientId = "" } = await searchParams;
+  const { nueva, clientId = "", ownerId = "" } = await searchParams;
   const autoOpenNewModal = canWrite && (nueva === "1" || nueva === "true");
 
   const users = await getUsers();
@@ -37,6 +37,7 @@ export default async function RequirementsPage({
         canViewSettings={canViewSettings}
         autoOpenNewModal={autoOpenNewModal}
         clientId={clientId}
+        ownerId={ownerId}
         currentDirectoryUserId={currentDirectoryUserId}
       />
     </AppShell>

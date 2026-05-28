@@ -12,13 +12,13 @@ type PersistRule = {
 
 const RULES: PersistRule[] = [
   { path: "/dashboard", params: ["clientId"] },
-  { path: "/requirements", params: ["clientId"] },
+  { path: "/requirements", params: ["clientId", "ownerId"] },
   { path: "/requirements/kanban", params: ["clientId"] },
   { path: "/reports", params: ["clientId"] },
   { path: "/time-entries", params: ["userId"] },
   { path: "/time-entries/weekly", params: ["userId"] },
   { path: "/budgets", params: ["clientId"] },
-  { path: "/team", params: ["role"] },
+  { path: "/team", params: ["from", "to", "role", "profileId", "activeOnly"] },
   { path: "/notifications", params: ["status"] },
 ];
 
