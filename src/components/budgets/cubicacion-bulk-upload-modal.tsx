@@ -73,6 +73,7 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     created: number;
+    tasksCreated: number;
     failed: number;
     errors: Array<{ activityName: string; error: string }>;
   } | null>(null);
@@ -134,7 +135,12 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
     setImporting(true);
     try {
       const result = await bulkCreateCubicacionItemsAction(contractId, valid);
-      setImportResult({ created: result.created, failed: result.failed, errors: result.errors });
+      setImportResult({
+        created: result.created,
+        tasksCreated: result.tasksCreated,
+        failed: result.failed,
+        errors: result.errors,
+      });
       if (result.newItems.length > 0) onImported(result.newItems);
       setStep("result");
     } catch (err) {
@@ -239,6 +245,7 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                     { col: "Junior %",           req: false, desc: "Entero 0–100 · default 60 (fórmula: Total×%−QA)" },
                     { col: "Director",           req: false, desc: "Número de horas asignadas directamente al Director (ej. 10 = 10h). Dejar vacío o 0 si no aplica." },
                     { col: "Diseñador",          req: false, desc: "Número de horas asignadas directamente al Diseñador (ej. 5 = 5h). Dejar vacío o 0 si no aplica." },
+                    { col: "Contempla",          req: false, desc: "Lista numerada de subtareas (1) Tarea A, 2) Tarea B). Si hay varias, las horas de construcción deben ser una suma con el mismo número de partes (ej. 2+1 o =2+1 en Excel)." },
                   ].map(({ col, req, desc }) => (
                     <div key={col} className="px-4 py-2 flex items-center gap-3 text-xs">
                       <code className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded shrink-0">{col}</code>
@@ -294,7 +301,9 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                       Actividades a importar
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      Se crearán {valid.length} requerimiento{valid.length !== 1 ? "s" : ""} automáticamente
+                      Se crearán {valid.length} requerimiento{valid.length !== 1 ? "s" : ""} y{" "}
+                      {valid.reduce((sum, row) => sum + row.tasks.length, 0)} tarea
+                      {valid.reduce((sum, row) => sum + row.tasks.length, 0) !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="overflow-x-auto">
@@ -313,11 +322,18 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                           <th className="px-3 py-2 text-right font-semibold">Junior</th>
                           <th className="px-3 py-2 text-right font-semibold">Director</th>
                           <th className="px-3 py-2 text-right font-semibold">Diseñador</th>
+                          <th className="px-3 py-2 text-left font-semibold">Tareas</th>
                         </tr>
                       </thead>
                       <tbody>
                         {valid.map((row, i) => {
                           const calc = calcCubicacionRow(row);
+                          const taskSummary =
+                            row.tasks.length > 0
+                              ? row.tasks
+                                  .map((task) => `${fmt(task.estimatedHours)}h ${task.title}`)
+                                  .join(" · ")
+                              : "—";
                           return (
                             <tr key={i} className="border-t border-border/50 hover:bg-muted/20">
                               <td className="px-3 py-2 font-medium text-foreground max-w-[220px] truncate">
@@ -334,6 +350,15 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                               <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(calc.juniorHoras)}</td>
                               <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(calc.directorHoras)}</td>
                               <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(calc.disenadorHoras)}</td>
+                              <td className="px-3 py-2 text-muted-foreground max-w-[260px] truncate" title={taskSummary}>
+                                {row.tasks.length > 0 ? (
+                                  <span>
+                                    {row.tasks.length} · {row.tasks.map((t) => `${fmt(t.estimatedHours)}h`).join(" + ")}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -386,6 +411,9 @@ export function CubicacionBulkUploadModal({ contractId, onClose, onImported }: P
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {importResult.created} actividad{importResult.created !== 1 ? "es" : ""} importada{importResult.created !== 1 ? "s" : ""} correctamente
+                  {importResult.tasksCreated > 0 && (
+                    <> · {importResult.tasksCreated} tarea{importResult.tasksCreated !== 1 ? "s" : ""} creada{importResult.tasksCreated !== 1 ? "s" : ""}</>
+                  )}
                   {importResult.failed > 0 && ` · ${importResult.failed} fallaron`}
                 </p>
               </div>

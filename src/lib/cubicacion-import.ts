@@ -11,6 +11,13 @@ import { CUBICACION_DEFAULTS } from "@/lib/calculations/cubicacion";
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
+export interface CubicacionImportTask {
+  title: string;
+  description: string;
+  estimatedHours: number;
+  sortOrder: number;
+}
+
 export interface CubicacionImportRow {
   /** Índice 0-based de la fila original en el archivo */
   rowIndex: number;
@@ -27,6 +34,8 @@ export interface CubicacionImportRow {
   directorHours: number;
   /** Horas directas del Diseñador (sin cálculo de porcentajes). */
   disenadorHours: number;
+  /** Subtareas del plan de trabajo (columna Contempla + distribución de horas). */
+  tasks: CubicacionImportTask[];
 }
 
 export interface CubicacionImportRowWithError extends CubicacionImportRow {
@@ -41,9 +50,13 @@ export interface CubicacionImportResult {
 
 // ─── Alias de columnas aceptadas ─────────────────────────────────────────────
 
+type CubicacionImportColumnKey =
+  | Exclude<keyof CubicacionImportRow, "rowIndex" | "tasks">
+  | "contempla";
+
 /** Cada entrada: [clave_interna, aliases_posibles] */
-const COLUMN_ALIASES: [keyof CubicacionImportRow, string[]][] = [
-  ["activityName",       ["actividad", "requerimiento", "nombre", "descripcion", "descripción", "activity", "name"]],
+const COLUMN_ALIASES: [CubicacionImportColumnKey, string[]][] = [
+  ["activityName",       ["actividad", "actividades", "requerimiento", "nombre", "descripcion", "descripción", "activity", "name"]],
   ["construccionHours",  ["construccion", "construcción", "horas construccion", "horas construcción", "horas", "hours", "construccionh", "hconstruccion"]],
   ["levantamientoPct",   ["levantamiento", "levantamiento%", "levantamientopct", "lev%", "lev"]],
   ["disenoPct",          ["diseno fase", "diseño fase", "diseño%", "disenofase", "disenopct", "dis%"]],
@@ -54,12 +67,13 @@ const COLUMN_ALIASES: [keyof CubicacionImportRow, string[]][] = [
   ["juniorPct",          ["junior", "junior%", "jr", "jr%", "juniorpct"]],
   ["directorHours",      ["director", "horas director", "director hours", "directorh", "director h"]],
   ["disenadorHours",     ["disenador", "diseñador", "horas diseñador", "horas disenador", "disenador hours", "diseñadorh"]],
+  ["contempla",          ["contempla", "contemplas", "tareas", "plan de trabajo", "subtareas", "actividades menores"]],
 ];
 
-const REQUIRED_KEYS: Array<keyof CubicacionImportRow> = ["activityName", "construccionHours"];
+const REQUIRED_KEYS: Array<CubicacionImportColumnKey> = ["activityName", "construccionHours"];
 
 /** Porcentajes de FASE: controlan la distribución de horas por etapa del proyecto. */
-const PHASE_PCT_KEYS: Array<keyof CubicacionImportRow> = [
+const PHASE_PCT_KEYS: Array<CubicacionImportColumnKey> = [
   "levantamientoPct", "disenoPct", "qaAjustesPct", "puestaEnMarchaPct",
 ];
 
@@ -68,11 +82,11 @@ const PHASE_PCT_KEYS: Array<keyof CubicacionImportRow> = [
  * Si el usuario especifica al menos uno, los vacíos se tratan como 0
  * (no se aplican defaults del sistema). Si no especifica ninguno, se usan defaults.
  */
-const PROFILE_PCT_KEYS: Array<keyof CubicacionImportRow> = [
+const PROFILE_PCT_KEYS: Array<CubicacionImportColumnKey> = [
   "seniorPct", "ingeneroPct", "juniorPct",
 ];
 
-const PCT_KEYS: Array<keyof CubicacionImportRow> = [...PHASE_PCT_KEYS, ...PROFILE_PCT_KEYS];
+const PCT_KEYS: Array<CubicacionImportColumnKey> = [...PHASE_PCT_KEYS, ...PROFILE_PCT_KEYS];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -80,8 +94,8 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function detectColumnMap(headers: string[]): Map<keyof CubicacionImportRow, number> {
-  const map = new Map<keyof CubicacionImportRow, number>();
+function detectColumnMap(headers: string[]): Map<CubicacionImportColumnKey, number> {
+  const map = new Map<CubicacionImportColumnKey, number>();
 
   for (const [key, aliases] of COLUMN_ALIASES) {
     const normAliases = aliases.map(normalize);
@@ -93,7 +107,7 @@ function detectColumnMap(headers: string[]): Map<keyof CubicacionImportRow, numb
   if (!map.has("activityName") && !map.has("construccionHours")) {
     map.set("activityName", 0);
     map.set("construccionHours", 1);
-    const pctOrder: Array<keyof CubicacionImportRow> = [
+    const pctOrder: Array<CubicacionImportColumnKey> = [
       "levantamientoPct", "disenoPct", "qaAjustesPct",
       "puestaEnMarchaPct", "seniorPct", "ingeneroPct", "juniorPct",
       "directorHours", "disenadorHours",
@@ -153,7 +167,7 @@ function parsePctNum(raw: string): number | null {
   return n > 1 ? n / 100 : n;
 }
 
-function defaultPct(key: keyof CubicacionImportRow): number {
+function defaultPct(key: CubicacionImportColumnKey): number {
   const defaults: Record<string, number> = {
     levantamientoPct:  CUBICACION_DEFAULTS.levantamientoPct,
     disenoPct:         CUBICACION_DEFAULTS.disenoPct,
@@ -166,6 +180,90 @@ function defaultPct(key: keyof CubicacionImportRow): number {
   return defaults[key as string] ?? 0;
 }
 
+/** Extrae subtareas numeradas de la columna Contempla (ej. "1) Tarea A\n2) Tarea B"). */
+export function parseContemplaTasks(raw: string): { title: string; description: string }[] {
+  const text = raw.trim();
+  if (!text) return [];
+
+  const numbered = text.match(/(?:^|\n)\s*\d+[\.\)]\s*.+/g);
+  if (numbered?.length) {
+    return numbered
+      .map((block) => {
+        const title = block.replace(/^\s*\d+[\.\)]\s*/, "").trim();
+        return { title, description: "" };
+      })
+      .filter((t) => t.title.length > 0);
+  }
+
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((title) => ({ title, description: "" }));
+}
+
+/**
+ * Parsea horas de construcción con distribución por tarea.
+ * Acepta fórmulas Excel como "=2+1" → total 3, partes [2, 1].
+ */
+export function parseConstructionHourDistribution(
+  rawValue: string,
+  formula?: string | null,
+): { total: number; parts: number[] } {
+  const formulaSource = formula?.replace(/^=/, "").trim();
+  const rawSource = rawValue.replace(/^=/, "").trim();
+
+  const source =
+    formulaSource && formulaSource.includes("+")
+      ? formulaSource
+      : rawSource.includes("+")
+        ? rawSource
+        : formulaSource || rawSource;
+
+  if (source.includes("+")) {
+    const parts = source
+      .split("+")
+      .map((part) => parseNonNegativeHours(part.trim()))
+      .filter((n): n is number => n !== null);
+
+    if (parts.length === 0) {
+      throw new Error("La distribución de horas de construcción no es válida (ej. 2+1).");
+    }
+
+    const total = parts.reduce((sum, n) => sum + n, 0);
+    return { total, parts };
+  }
+
+  const single = parseNonNegativeHours(source);
+  if (single === null) {
+    throw new Error(`Horas de construcción inválidas: "${rawValue}". Debe ser un número ≥ 0 o una suma (ej. 2+1).`);
+  }
+
+  return { total: single, parts: [single] };
+}
+
+function buildRequirementTasks(
+  contemplaRaw: string,
+  construccionParts: number[],
+): CubicacionImportTask[] {
+  const parsedTasks = parseContemplaTasks(contemplaRaw);
+  if (parsedTasks.length === 0) return [];
+
+  if (construccionParts.length !== parsedTasks.length) {
+    throw new Error(
+      `Contempla tiene ${parsedTasks.length} tarea(s) pero construcción tiene ${construccionParts.length} parte(s) de horas. ` +
+        `Usa formato 2+1 (o fórmula =2+1 en Excel) con una parte por tarea.`,
+    );
+  }
+
+  return parsedTasks.map((task, index) => ({
+    title: task.title,
+    description: task.description,
+    estimatedHours: construccionParts[index] ?? 0,
+    sortOrder: index,
+  }));
+}
+
 // ─── Función principal ────────────────────────────────────────────────────────
 
 /**
@@ -174,9 +272,10 @@ function defaultPct(key: keyof CubicacionImportRow): number {
  * Si no, se asume que los datos empiezan en la primera fila (sin cabecera).
  */
 export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult {
-  const workbook = XLSX.read(buffer, { type: "array" });
+  const workbook = XLSX.read(buffer, { type: "array", cellFormula: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
+  if (!sheet) throw new Error("No se pudo leer la hoja de cálculo.");
   const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
   if (raw.length === 0) {
@@ -215,17 +314,39 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
     const hasDirectHours = directorHoursEarly > 0 || disenadorHoursEarly > 0;
 
     // Construcción: puede ser 0 si hay horas directas (ej. "Gestión del servicio")
-    const rawHoursNum = parseNonNegativeHours(rawHours);
-    const construccionHours = rawHoursNum !== null ? rawHoursNum : null;
+    // También acepta distribución por tarea: 2+1 o fórmula =2+1 en Excel.
+    const constrCol = colMap.get("construccionHours");
+    const sheetRow = hasHeader ? rowIndexInData + 1 : rowIndexInData;
+    const constrCell =
+      constrCol !== undefined
+        ? sheet[XLSX.utils.encode_cell({ r: sheetRow, c: constrCol })]
+        : undefined;
 
-    if (construccionHours === null) {
-      errors.push(`Horas de construcción inválidas: "${rawHours}". Debe ser un número ≥ 0.`);
-    } else if (construccionHours === 0 && !hasDirectHours) {
+    let construccionHours: number | null = null;
+    let construccionParts: number[] = [0];
+
+    try {
+      const distribution = parseConstructionHourDistribution(rawHours, constrCell?.f ?? null);
+      construccionHours = distribution.total;
+      construccionParts = distribution.parts;
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : "Horas de construcción inválidas.");
+    }
+
+    if (construccionHours === 0 && !hasDirectHours) {
       errors.push("Las horas de construcción deben ser mayores a 0 si no se asignan horas directas de Director o Diseñador.");
     }
 
+    const contemplaRaw = getCell(row as unknown[], colMap.get("contempla"));
+    let tasks: CubicacionImportTask[] = [];
+    try {
+      tasks = buildRequirementTasks(contemplaRaw, construccionParts);
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : "No se pudieron parsear las tareas de Contempla.");
+    }
+
     // ── Porcentajes de FASE: siempre usan defaults si están vacíos ──────────────
-    const pcts: Partial<Record<keyof CubicacionImportRow, number>> = {};
+    const pcts: Partial<Record<CubicacionImportColumnKey, number>> = {};
     for (const key of PHASE_PCT_KEYS) {
       const rawPct = getCell(row as unknown[], colMap.get(key));
       if (!rawPct) {
@@ -244,7 +365,7 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
     // ── Porcentajes de PERFIL: lógica opt-in ─────────────────────────────────
     // Si el usuario especifica AL MENOS UNO, los vacíos = 0 (no se aplican defaults).
     // Si no especifica NINGUNO, se aplican los defaults del sistema para los tres.
-    const profileRaw: Partial<Record<keyof CubicacionImportRow, string>> = {};
+    const profileRaw: Partial<Record<CubicacionImportColumnKey, string>> = {};
     for (const key of PROFILE_PCT_KEYS) {
       profileRaw[key] = getCell(row as unknown[], colMap.get(key));
     }
@@ -283,6 +404,7 @@ export function parseCubicacionFile(buffer: ArrayBuffer): CubicacionImportResult
       juniorPct:         pcts.juniorPct!,
       directorHours,
       disenadorHours,
+      tasks,
     };
 
     if (errors.length > 0) {
@@ -318,6 +440,7 @@ export function generateCubicacionTemplate(): Blob {
       "Junior %",
       "Director",
       "Diseñador",
+      "Contempla",
     ],
     [
       "Ejemplo: Modificar banner de inicio",
@@ -331,12 +454,27 @@ export function generateCubicacionTemplate(): Blob {
       pctToInt(CUBICACION_DEFAULTS.juniorPct),
       0,
       0,
+      "",
     ],
-    ["Ejemplo: Gestión del servicio", 0, "", "", "", "", "", "", "", 10, 0],
+    [
+      "Ejemplo: 2 banners en sección",
+      "2+1",
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      "1) Incorporar registro en base de datos\n2) Generar link de acceso por proyecto",
+    ],
+    ["Ejemplo: Gestión del servicio", 0, "", "", "", "", "", "", "", 10, 0, ""],
   ]);
 
   // Ancho de columnas
-  ws["!cols"] = [{ wch: 40 }, { wch: 18 }, ...Array(7).fill({ wch: 14 }), { wch: 12 }, { wch: 12 }];
+  ws["!cols"] = [{ wch: 40 }, { wch: 18 }, ...Array(7).fill({ wch: 14 }), { wch: 12 }, { wch: 12 }, { wch: 48 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Cubicación");
