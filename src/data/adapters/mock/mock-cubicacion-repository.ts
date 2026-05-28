@@ -10,6 +10,10 @@ export class MockCubicacionRepository {
     return rows.filter((r) => r.contractId === contractId).sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
+  async findByRequirementId(requirementId: string): Promise<CubicacionItem | null> {
+    return rows.find((r) => r.requirementId === requirementId) ?? null;
+  }
+
   async create(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
     const now = new Date().toISOString();
     const item: CubicacionItem = {

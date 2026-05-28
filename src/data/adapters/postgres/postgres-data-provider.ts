@@ -1106,6 +1106,15 @@ export class PostgresDataProvider implements AppDataProvider {
     return rows.map(mapCubicacionItem);
   }
 
+  async getCubicacionItemByRequirementId(requirementId: string): Promise<CubicacionItem | null> {
+    const { rows } = await queryPg<Row>(
+      "select * from rms_cubicacion_items where requirement_id = $1 limit 1",
+      [requirementId],
+    );
+    if (!rows[0]) return null;
+    return mapCubicacionItem(rows[0]);
+  }
+
   async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
     const now = new Date().toISOString();
     const id = `cubi-${crypto.randomUUID().slice(0, 12)}`;

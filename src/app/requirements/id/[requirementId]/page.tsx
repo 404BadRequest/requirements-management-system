@@ -6,7 +6,7 @@ import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
-  getCubicacionItems,
+  getCubicacionItemByRequirementId,
   getRequirementById,
   getRequirementComments,
   getRequirements,
@@ -118,7 +118,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     requirementStatuses,
     requirementPriorities,
     contracts,
-    cubicacionItems,
+    linkedCubicacion,
     tasks,
   ] = await Promise.all([
     getRequirementComments(requirementId),
@@ -132,7 +132,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
     getContractBudgets(),
-    requirement.contractId ? getCubicacionItems(requirement.contractId) : Promise.resolve([]),
+    getCubicacionItemByRequirementId(requirementId),
     getRequirementTasks(requirementId),
   ]);
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
@@ -185,20 +185,22 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const statusCatalogColor = catalogColor(requirementStatuses, requirement.status);
   const priorityLabel = catalogLabel(requirementPriorities, requirement.priority);
   const priorityCatalogColor = catalogColor(requirementPriorities, requirement.priority);
-  const contractLabel = requirement.contractId
-    ? contracts.find((c) => c.id === requirement.contractId)?.name ?? requirement.contractId
-    : null;
+  const effectiveContractId = requirement.contractId ?? linkedCubicacion?.contractId ?? null;
+  const contract = effectiveContractId ? contracts.find((c) => c.id === effectiveContractId) : undefined;
+  const contractLabel = contract ? `${contract.code} · ${contract.name}` : null;
 
   // ── Cubicación vinculada al requerimiento ─────────────────────────────────
-  const linkedCubicacion = cubicacionItems.find((c) => c.requirementId === requirementId) ?? null;
-  const cubicacionCalc   = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
+  const cubicacionCalc = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
 
   // Horas usadas por bucket de perfil (Senior / Ingeniero / Junior / Director / Diseñador)
   const usedByBucket = { senior: 0, ingeniero: 0, junior: 0, director: 0, disenador: 0 };
   for (const entry of requirementEntries) {
-    const user    = userById.get(entry.userId);
-    const profile = user ? profileById.get(user.profileId) : undefined;
-    const bucket  = mapProfileToBucket(profile?.name);
+    const contractProfile = entry.contractProfileId
+      ? profileById.get(entry.contractProfileId)
+      : undefined;
+    const user = userById.get(entry.userId);
+    const userProfile = user ? profileById.get(user.profileId) : undefined;
+    const bucket = mapProfileToBucket(contractProfile?.name ?? userProfile?.name);
     usedByBucket[bucket] += entry.durationMinutes / 60;
   }
   const usedHorasTotal = requirementEntries.reduce((a, e) => a + e.durationMinutes, 0) / 60;
@@ -290,10 +292,14 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             <p className="mt-1 text-sm text-foreground">{requirement.origin}</p>
           </div>
         ) : null}
-        {contractLabel ? (
+        {contractLabel && effectiveContractId ? (
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Contrato</p>
-            <p className="mt-1 text-sm text-foreground">{contractLabel}</p>
+            <p className="mt-1 text-sm text-foreground">
+              <Link href={`/budgets/${effectiveContractId}`} className="text-primary hover:underline">
+                {contractLabel}
+              </Link>
+            </p>
           </div>
         ) : null}
         {requirement.notes ? (
@@ -355,9 +361,9 @@ export default async function RequirementDetailPage({ params }: { params: Promis
       </section>
 
       {/* Horas presupuestadas vs utilizadas por perfil (cubicación vinculada) */}
-      {cubicacionCalc && linkedCubicacion && (
+      {cubicacionCalc && linkedCubicacion && effectiveContractId && (
         <RequirementCubicacionBanner
-          contractId={requirement.contractId ?? linkedCubicacion.contractId}
+          contractId={effectiveContractId}
           totalHoras={cubicacionCalc.totalHoras}
           usedHorasTotal={usedHorasTotal}
           senior={{

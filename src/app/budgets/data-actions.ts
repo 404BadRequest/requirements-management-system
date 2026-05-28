@@ -732,6 +732,11 @@ export async function bulkCreateCubicacionItemsAction(
         });
         requirementId = newReq.id;
         existingReqsByTitle.set(row.activityName.toLowerCase().trim(), requirementId);
+      } else {
+        const existingReq = existingReqs.find((r) => r.id === requirementId);
+        if (existingReq && !existingReq.contractId) {
+          await updateRequirement(requirementId, { contractId: contract.id });
+        }
       }
 
       const item = await createCubicacionItem({

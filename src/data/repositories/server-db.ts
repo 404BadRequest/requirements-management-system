@@ -401,6 +401,12 @@ export const getCubicacionItems = async (contractId: string) => {
   return cubicacionRepository.listByContract(contractId);
 };
 
+export const getCubicacionItemByRequirementId = async (requirementId: string) => {
+  const remote = await rms();
+  if (remote) return remote.getCubicacionItemByRequirementId(requirementId);
+  return cubicacionRepository.findByRequirementId(requirementId);
+};
+
 export const createCubicacionItem = async (input: CubicacionItemCreateInput) => {
   const remote = await rms();
   if (remote) return remote.createCubicacionItem(input);

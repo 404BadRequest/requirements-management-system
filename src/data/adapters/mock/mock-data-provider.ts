@@ -239,6 +239,9 @@ export class MockDataProvider implements AppDataProvider {
   async getCubicacionItems(contractId: string): Promise<CubicacionItem[]> {
     return this.cubicacionRepository.listByContract(contractId);
   }
+  async getCubicacionItemByRequirementId(requirementId: string): Promise<CubicacionItem | null> {
+    return this.cubicacionRepository.findByRequirementId(requirementId);
+  }
   async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
     return this.cubicacionRepository.create(input);
   }

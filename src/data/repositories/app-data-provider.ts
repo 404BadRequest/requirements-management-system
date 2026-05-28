@@ -89,6 +89,7 @@ export interface AppDataProvider {
   getContractProfileAllocations(contractId?: string): Promise<ContractProfileAllocation[]>;
 
   getCubicacionItems(contractId: string): Promise<CubicacionItem[]>;
+  getCubicacionItemByRequirementId(requirementId: string): Promise<CubicacionItem | null>;
   createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem>;
   updateCubicacionItem(id: string, input: CubicacionItemUpdateInput): Promise<CubicacionItem | undefined>;
   deleteCubicacionItem(id: string): Promise<boolean>;

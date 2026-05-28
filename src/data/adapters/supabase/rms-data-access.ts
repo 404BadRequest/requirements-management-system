@@ -1189,6 +1189,17 @@ export class RmsDataAccess {
     return (data as Row[]).map(mapCubicacionItem);
   }
 
+  async getCubicacionItemByRequirementId(requirementId: string): Promise<CubicacionItem | null> {
+    const { data, error } = await this.sb
+      .from("rms_cubicacion_items")
+      .select("*")
+      .eq("requirement_id", requirementId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return mapCubicacionItem(data as Row);
+  }
+
   async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
     const now = new Date().toISOString();
     const id = `cubi-${crypto.randomUUID().slice(0, 12)}`;
