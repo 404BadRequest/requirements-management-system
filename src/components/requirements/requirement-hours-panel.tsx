@@ -102,6 +102,13 @@ export function RequirementHoursPanel({
         cell: ({ row }) => <span className="font-medium tabular-nums text-foreground">{row.original.durationDisplay}</span>,
       },
       {
+        accessorKey: "timeRange",
+        header: "Bloque",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap tabular-nums text-muted-foreground">{row.original.timeRange}</span>
+        ),
+      },
+      {
         id: "actions",
         header: "Acciones",
         enableSorting: false,
