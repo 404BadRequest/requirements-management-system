@@ -4,7 +4,6 @@ import {
   createBudget,
   createCubicacionItem,
   createRequirement,
-  createRequirementTask,
   deleteBudget,
   deleteCubicacionItem,
   getClients,
@@ -28,7 +27,6 @@ import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { SettingsCatalogEntry } from "@/types/domain";
 import type { BudgetInput } from "@/schemas/budget-schema";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
-import type { CubicacionImportTask } from "@/lib/cubicacion-import";
 import { calculateContractConsumptions } from "@/lib/calculations/contract-budget";
 import {
   type TrafficRisk,
@@ -664,12 +662,10 @@ export interface BulkCubicacionRowInput {
   juniorPct: number;
   directorHours: number;
   disenadorHours: number;
-  tasks?: CubicacionImportTask[];
 }
 
 export interface BulkCubicacionResult {
   created: number;
-  tasksCreated: number;
   failed: number;
   errors: Array<{ activityName: string; error: string }>;
   newItems: import("@/types/domain").CubicacionItem[];
@@ -715,7 +711,6 @@ export async function bulkCreateCubicacionItemsAction(
 
   const newItems: import("@/types/domain").CubicacionItem[] = [];
   const errors: BulkCubicacionResult["errors"] = [];
-  let tasksCreated = 0;
 
   for (const row of rows) {
     try {
@@ -757,20 +752,6 @@ export async function bulkCreateCubicacionItemsAction(
       });
 
       newItems.push(item);
-
-      if (row.tasks?.length) {
-        for (const task of row.tasks) {
-          await createRequirementTask({
-            requirementId,
-            title: task.title,
-            description: task.description,
-            status: "pending",
-            estimatedHours: task.estimatedHours,
-            sortOrder: task.sortOrder,
-          });
-          tasksCreated++;
-        }
-      }
     } catch (err) {
       errors.push({
         activityName: row.activityName,
@@ -781,7 +762,6 @@ export async function bulkCreateCubicacionItemsAction(
 
   return {
     created: newItems.length,
-    tasksCreated,
     failed:  errors.length,
     errors,
     newItems,
