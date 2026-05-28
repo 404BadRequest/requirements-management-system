@@ -648,6 +648,20 @@ export async function deleteCubicacionItemAction(id: string) {
   return ok;
 }
 
+export async function deleteCubicacionItemsBatchAction(ids: string[]) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "budgets.write");
+  if (ids.length === 0) return 0;
+
+  let deletedCount = 0;
+  for (const id of ids) {
+    const ok = await deleteCubicacionItem(id);
+    if (ok) deletedCount++;
+  }
+  if (deletedCount === 0) throw new Error("No se pudo eliminar ninguna actividad.");
+  return deletedCount;
+}
+
 // ─── Carga masiva de cubicación ───────────────────────────────────────────────
 
 export interface BulkCubicacionRowInput {

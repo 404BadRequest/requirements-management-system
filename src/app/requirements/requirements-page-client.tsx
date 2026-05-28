@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DataTable } from "@/components/common/data-table";
@@ -20,6 +20,7 @@ import { SettingsModal } from "@/components/settings/settings-modal";
 import {
   createRequirementAction,
   deleteRequirementAction,
+  deleteRequirementsBatchAction,
   loadRequirementsPageData,
   updateRequirementAction,
 } from "@/app/requirements/data-actions";
@@ -128,6 +129,8 @@ export function RequirementsPageClient({
   const [statusTarget, setStatusTarget] = useState<Requirement | null>(null);
   const [statusValue, setStatusValue] = useState("");
   const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const reload = useCallback(async () => {
     setListLoading(true);
@@ -200,9 +203,60 @@ export function RequirementsPageClient({
   );
   const activeClients = useMemo(() => clients.filter((c) => c.active), [clients]);
   const canShowForm = statusOpts.length > 0 && priorityOpts.length > 0 && activeClients.length > 0;
+  const selectedCount = Object.keys(rowSelection).length;
+
+  const handleBulkDelete = async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0) return;
+
+    setIsBulkDeleting(true);
+    try {
+      scheduleUndoableAction({
+        pendingMessage: `${selectedIds.length} requerimiento(s) marcado(s) para eliminar.`,
+        successMessage: `${selectedIds.length} requerimiento(s) eliminado(s).`,
+        errorMessage: "No se pudieron eliminar los requerimientos.",
+        onCommit: async () => {
+          await deleteRequirementsBatchAction(selectedIds);
+          await reload();
+        },
+      });
+      setRowSelection({});
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar.");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const columns = useMemo<ColumnDef<Requirement>[]>(() => {
     const base: ColumnDef<Requirement>[] = [
+      ...(canDelete
+        ? [
+            {
+              id: "select",
+              header: ({ table }) => (
+                <input
+                  type="checkbox"
+                  className="rounded border-border text-primary focus:ring-primary"
+                  checked={table.getIsAllPageRowsSelected()}
+                  onChange={table.getToggleAllPageRowsSelectedHandler()}
+                  aria-label="Seleccionar todos los requerimientos"
+                />
+              ),
+              cell: ({ row }) => (
+                <input
+                  type="checkbox"
+                  className="rounded border-border text-primary focus:ring-primary"
+                  checked={row.getIsSelected()}
+                  onChange={row.getToggleSelectedHandler()}
+                  aria-label={`Seleccionar ${row.original.title}`}
+                />
+              ),
+              enableSorting: false,
+              enableGlobalFilter: false,
+            } satisfies ColumnDef<Requirement>,
+          ]
+        : []),
       {
         accessorKey: "id",
         header: "ID",
@@ -639,12 +693,35 @@ export function RequirementsPageClient({
           }
         />
       ) : (
-        <DataTable
-          data={filteredRequirements}
-          columns={columns}
-          pageSize={10}
-          globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
-        />
+        <>
+          {canDelete && selectedCount > 0 ? (
+            <div className="mb-4 flex items-center justify-between rounded-[2px] border border-border bg-muted/30 px-4 py-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                {selectedCount} requerimiento{selectedCount !== 1 ? "s" : ""} seleccionado{selectedCount !== 1 ? "s" : ""}
+              </span>
+              <ConfirmDialog
+                label="Eliminar seleccionados"
+                title={`¿Eliminar ${selectedCount} requerimiento${selectedCount !== 1 ? "s" : ""}?`}
+                description="Esta acción no se puede deshacer."
+                triggerClassName="rounded-[2px] border border-danger px-3 py-1.5 text-xs text-danger"
+                confirmLabel="Eliminar"
+                confirmLoadingLabel="Eliminando..."
+                disabled={isBulkDeleting}
+                onConfirm={handleBulkDelete}
+              />
+            </div>
+          ) : null}
+          <DataTable
+            data={filteredRequirements}
+            columns={columns}
+            pageSize={10}
+            globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
+            enableRowSelection={canDelete}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            getRowId={(row) => row.id}
+          />
+        </>
       )}
     </>
   );

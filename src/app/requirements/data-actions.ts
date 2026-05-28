@@ -264,6 +264,40 @@ export async function deleteRequirementAction(id: string) {
   return ok;
 }
 
+export async function deleteRequirementsBatchAction(ids: string[]) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "requirements.delete");
+  if (!user) throw new Error("Debes iniciar sesión.");
+  if (ids.length === 0) return 0;
+
+  let deletedCount = 0;
+  for (const id of ids) {
+    const prev = await getRequirementById(id);
+    const ok = await deleteRequirement(id);
+    if (user && prev && ok) {
+      void recordAuditSafely({
+        entityType: "requirement",
+        entityId: id,
+        action: "delete",
+        beforeJson: JSON.stringify(prev),
+        afterJson: "{}",
+        userId: user.id,
+      });
+      deletedCount++;
+    }
+  }
+
+  logServerActionEvent({
+    action: "requirement.delete.batch",
+    entityType: "requirement",
+    entityId: ids.join(","),
+    outcome: deletedCount > 0 ? "ok" : "error",
+    detail: deletedCount > 0 ? `${deletedCount} deleted` : "none_deleted",
+  });
+  revalidatePath("/", "layout");
+  return deletedCount;
+}
+
 export async function addRequirementCommentAction(requirementId: string, formData: FormData) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.write");
