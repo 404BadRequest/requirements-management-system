@@ -7,6 +7,8 @@ import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clie
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
+import type { RequirementTaskCreateInput, RequirementTaskUpdateInput } from "@/data/contracts/requirement-tasks-contract";
+import { MockRequirementTasksRepository } from "@/data/adapters/mock/mock-requirement-tasks-repository";
 import { pushAuditMemory } from "@/lib/audit/memory";
 import { MockBudgetsRepository } from "@/data/adapters/mock/mock-budgets-repository";
 import { MockClientsRepository } from "@/data/adapters/mock/mock-clients-repository";
@@ -36,6 +38,7 @@ import type {
   Requirement,
   RequirementComment,
   RequirementStatusHistory,
+  RequirementTask,
   SettingsCatalogEntry,
   SettingsCatalogKind,
   TimeEntry,
@@ -44,6 +47,7 @@ import type {
 
 export class MockDataProvider implements AppDataProvider {
   private readonly requirementsRepository = new MockRequirementsRepository();
+  private readonly requirementTasksRepository = new MockRequirementTasksRepository();
   private readonly timeEntriesRepository = new MockTimeEntriesRepository();
   private readonly usersRepository = new MockUsersRepository();
   private readonly budgetsRepository = new MockBudgetsRepository();
@@ -152,6 +156,22 @@ export class MockDataProvider implements AppDataProvider {
   }
   async getRequirementStatusHistory(requirementId: string): Promise<RequirementStatusHistory[]> {
     return this.requirementsRepository.getStatusHistory(requirementId);
+  }
+
+  async getRequirementTasksByRequirementId(requirementId: string): Promise<RequirementTask[]> {
+    return this.requirementTasksRepository.getByRequirementId(requirementId);
+  }
+
+  async createRequirementTask(input: RequirementTaskCreateInput): Promise<RequirementTask> {
+    return this.requirementTasksRepository.create(input);
+  }
+
+  async updateRequirementTask(id: string, input: RequirementTaskUpdateInput): Promise<RequirementTask | undefined> {
+    return this.requirementTasksRepository.update(id, input);
+  }
+
+  async deleteRequirementTask(id: string): Promise<boolean> {
+    return this.requirementTasksRepository.delete(id);
   }
 
   async getTimeEntries(): Promise<TimeEntry[]> {

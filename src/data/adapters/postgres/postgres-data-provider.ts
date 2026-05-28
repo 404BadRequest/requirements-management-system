@@ -8,6 +8,7 @@ import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clie
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
+import type { RequirementTaskCreateInput, RequirementTaskUpdateInput } from "@/data/contracts/requirement-tasks-contract";
 import { calculateDurationMinutes } from "@/lib/calculations/time";
 import { queryPg } from "@/lib/postgres/client";
 import type { AppDataProvider, AuditEntryInput } from "@/data/repositories/app-data-provider";
@@ -28,6 +29,8 @@ import type {
   Requirement,
   RequirementComment,
   RequirementStatusHistory,
+  RequirementTask,
+  RequirementTaskStatus,
   SettingsCatalogEntry,
   SettingsCatalogKind,
   TimeEntry,
@@ -71,6 +74,20 @@ function mapUser(r: Row): User {
     profileId: String(r.profile_id),
     active: Boolean(r.active),
     role: r.role as User["role"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapRequirementTask(r: Row): RequirementTask {
+  return {
+    id: String(r.id),
+    requirementId: String(r.requirement_id),
+    title: String(r.title),
+    description: String(r.description ?? ""),
+    status: String(r.status) as RequirementTaskStatus,
+    estimatedHours: r.estimated_hours === null || r.estimated_hours === undefined ? null : Number(r.estimated_hours),
+    sortOrder: Number(r.sort_order),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -545,6 +562,68 @@ export class PostgresDataProvider implements AppDataProvider {
       changedById: String(r.changed_by_id),
       changedAt: String(r.changed_at),
     }));
+  }
+
+  async getRequirementTasksByRequirementId(requirementId: string): Promise<RequirementTask[]> {
+    const { rows } = await queryPg<Row>(
+      "select * from rms_requirement_tasks where requirement_id = $1 order by sort_order asc",
+      [requirementId],
+    );
+    return rows.map(mapRequirementTask);
+  }
+
+  async createRequirementTask(input: RequirementTaskCreateInput): Promise<RequirementTask> {
+    const now = new Date().toISOString();
+    const id = `task-${crypto.randomUUID().slice(0, 10)}`;
+    const { rows } = await queryPg<Row>(
+      `insert into rms_requirement_tasks
+       (id, requirement_id, title, description, status, estimated_hours, sort_order, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       returning *`,
+      [
+        id,
+        input.requirementId,
+        input.title,
+        input.description,
+        input.status,
+        input.estimatedHours,
+        input.sortOrder,
+        now,
+        now,
+      ],
+    );
+    return mapRequirementTask(rows[0]);
+  }
+
+  async updateRequirementTask(id: string, input: RequirementTaskUpdateInput): Promise<RequirementTask | undefined> {
+    const now = new Date().toISOString();
+    const { rows } = await queryPg<Row>(
+      `update rms_requirement_tasks
+       set title = coalesce($2, title),
+           description = coalesce($3, description),
+           status = coalesce($4, status),
+           estimated_hours = case when $6 then $7 else estimated_hours end,
+           sort_order = coalesce($5, sort_order),
+           updated_at = $8
+       where id = $1
+       returning *`,
+      [
+        id,
+        input.title ?? null,
+        input.description ?? null,
+        input.status ?? null,
+        input.sortOrder ?? null,
+        "estimatedHours" in input,
+        input.estimatedHours ?? null,
+        now,
+      ],
+    );
+    return rows[0] ? mapRequirementTask(rows[0]) : undefined;
+  }
+
+  async deleteRequirementTask(id: string): Promise<boolean> {
+    const { rowCount } = await queryPg("delete from rms_requirement_tasks where id = $1", [id]);
+    return (rowCount ?? 0) > 0;
   }
 
   async getTimeEntries(): Promise<TimeEntry[]> {

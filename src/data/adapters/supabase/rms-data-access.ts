@@ -23,6 +23,8 @@ import type {
   Requirement,
   RequirementComment,
   RequirementStatusHistory,
+  RequirementTask,
+  RequirementTaskStatus,
   SettingsCatalogEntry,
   SettingsCatalogKind,
   TimeEntry,
@@ -31,6 +33,7 @@ import type {
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
 import type { CreateAppNotificationInput } from "@/data/contracts/notifications-contract";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
+import type { RequirementTaskCreateInput, RequirementTaskUpdateInput } from "@/data/contracts/requirement-tasks-contract";
 
 type Row = Record<string, unknown>;
 
@@ -67,6 +70,20 @@ function mapUser(r: Row): User {
     profileId: String(r.profile_id),
     active: Boolean(r.active),
     role: r.role as User["role"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function mapRequirementTask(r: Row): RequirementTask {
+  return {
+    id: String(r.id),
+    requirementId: String(r.requirement_id),
+    title: String(r.title),
+    description: String(r.description ?? ""),
+    status: String(r.status) as RequirementTaskStatus,
+    estimatedHours: r.estimated_hours === null || r.estimated_hours === undefined ? null : Number(r.estimated_hours),
+    sortOrder: Number(r.sort_order),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };
@@ -575,6 +592,53 @@ export class RmsDataAccess {
       changedById: String(r.changed_by_id),
       changedAt: String(r.changed_at),
     }));
+  }
+
+  async getRequirementTasksByRequirementId(requirementId: string): Promise<RequirementTask[]> {
+    const { data, error } = await this.sb
+      .from("rms_requirement_tasks")
+      .select("*")
+      .eq("requirement_id", requirementId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data as Row[]).map(mapRequirementTask);
+  }
+
+  async createRequirementTask(input: RequirementTaskCreateInput): Promise<RequirementTask> {
+    const now = new Date().toISOString();
+    const id = `task-${crypto.randomUUID().slice(0, 10)}`;
+    const row = {
+      id,
+      requirement_id: input.requirementId,
+      title: input.title,
+      description: input.description,
+      status: input.status,
+      estimated_hours: input.estimatedHours,
+      sort_order: input.sortOrder,
+      created_at: now,
+      updated_at: now,
+    };
+    const { data, error } = await this.sb.from("rms_requirement_tasks").insert(row).select("*").single();
+    if (error) throw error;
+    return mapRequirementTask(data as Row);
+  }
+
+  async updateRequirementTask(id: string, input: RequirementTaskUpdateInput): Promise<RequirementTask | undefined> {
+    const patch: Row = { updated_at: new Date().toISOString() };
+    if (input.title !== undefined) patch.title = input.title;
+    if (input.description !== undefined) patch.description = input.description;
+    if (input.status !== undefined) patch.status = input.status;
+    if (input.estimatedHours !== undefined) patch.estimated_hours = input.estimatedHours;
+    if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+    const { data, error } = await this.sb.from("rms_requirement_tasks").update(patch).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? mapRequirementTask(data as Row) : undefined;
+  }
+
+  async deleteRequirementTask(id: string): Promise<boolean> {
+    const { error } = await this.sb.from("rms_requirement_tasks").delete().eq("id", id);
+    if (error) throw error;
+    return true;
   }
 
   async getTimeEntries(): Promise<TimeEntry[]> {

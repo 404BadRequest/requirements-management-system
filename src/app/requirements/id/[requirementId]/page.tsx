@@ -11,6 +11,7 @@ import {
   getRequirementComments,
   getRequirements,
   getRequirementStatusHistory,
+  getRequirementTasks,
   getTimeEntries,
   getUsers,
   getProfiles,
@@ -30,6 +31,7 @@ import {
 import { RequirementOwnerReassign } from "@/components/requirements/requirement-owner-reassign";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
 import { RequirementStatusChange } from "@/components/requirements/requirement-status-change";
+import { RequirementTasksPanel } from "@/components/requirements/requirement-tasks-panel";
 import { StatusBadge, PriorityBadge } from "@/components/common/badges";
 import type { Profile, SettingsCatalogEntry, TimeEntry, User } from "@/types/domain";
 
@@ -117,6 +119,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     requirementPriorities,
     contracts,
     cubicacionItems,
+    tasks,
   ] = await Promise.all([
     getRequirementComments(requirementId),
     getRequirementStatusHistory(requirementId),
@@ -130,6 +133,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getCatalogByKind("requirement_priority"),
     getContractBudgets(),
     requirement.contractId ? getCubicacionItems(requirement.contractId) : Promise.resolve([]),
+    getRequirementTasks(requirementId),
   ]);
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   if (sessionUser.role === "Contributor" && requirement.ownerId !== currentDirectoryUserId) {
@@ -200,6 +204,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const usedHorasTotal = requirementEntries.reduce((a, e) => a + e.durationMinutes, 0) / 60;
 
   const canPostObservations = roleHasPermission(sessionUser.role, "requirements.write");
+  const canManageTasks = roleHasPermission(sessionUser.role, "requirements.read");
   const canReassignOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
   const canManageRequirement = canReassignOwner;
   const observationMessages = comments.map((comment) => ({
@@ -381,6 +386,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
             <p className="mt-1 text-xs text-muted-foreground">{requirementEntries.length} registro(s)</p>
           </article>
         )}
+      </section>
+
+      <section id="tasks-section">
+        <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
       </section>
 
       <section id="hours-section">

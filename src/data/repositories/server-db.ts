@@ -6,6 +6,7 @@ import { MockBudgetsRepository } from "@/data/adapters/mock/mock-budgets-reposit
 import { MockClientsRepository } from "@/data/adapters/mock/mock-clients-repository";
 import { MockCubicacionRepository } from "@/data/adapters/mock/mock-cubicacion-repository";
 import { MockProfilesRepository } from "@/data/adapters/mock/mock-profiles-repository";
+import { MockRequirementTasksRepository } from "@/data/adapters/mock/mock-requirement-tasks-repository";
 import { MockRequirementsRepository } from "@/data/adapters/mock/mock-requirements-repository";
 import { MockSettingsCatalogRepository } from "@/data/adapters/mock/mock-settings-catalog-repository";
 import { MockTimeEntriesRepository } from "@/data/adapters/mock/mock-time-entries-repository";
@@ -16,6 +17,7 @@ import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/se
 import type { FinancialReferenceRatesUpdateInput } from "@/data/contracts/financial-reference-rates-contract";
 import type { CreateAppNotificationInput } from "@/data/contracts/notifications-contract";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
+import type { RequirementTaskCreateInput, RequirementTaskUpdateInput } from "@/data/contracts/requirement-tasks-contract";
 import { projectsMock } from "@/data/mock/projects";
 import { getServerDataProvider } from "@/data/repositories/server-provider";
 import { calculateDashboardMetrics } from "@/lib/calculations/dashboard";
@@ -34,6 +36,7 @@ import type {
 } from "@/types/domain";
 
 const requirementsRepository = new MockRequirementsRepository();
+const requirementTasksRepository = new MockRequirementTasksRepository();
 const timeEntriesRepository = new MockTimeEntriesRepository();
 const usersRepository = new MockUsersRepository();
 const budgetsRepository = new MockBudgetsRepository();
@@ -170,6 +173,30 @@ export const getRequirementStatusHistory = async (requirementId: string) => {
   const remote = await rms();
   if (remote) return remote.getRequirementStatusHistory(requirementId);
   return requirementsRepository.getStatusHistory(requirementId);
+};
+
+export const getRequirementTasks = async (requirementId: string) => {
+  const remote = await rms();
+  if (remote) return remote.getRequirementTasksByRequirementId(requirementId);
+  return requirementTasksRepository.getByRequirementId(requirementId);
+};
+
+export const createRequirementTask = async (input: RequirementTaskCreateInput) => {
+  const remote = await rms();
+  if (remote) return remote.createRequirementTask(input);
+  return requirementTasksRepository.create(input);
+};
+
+export const updateRequirementTask = async (id: string, input: RequirementTaskUpdateInput) => {
+  const remote = await rms();
+  if (remote) return remote.updateRequirementTask(id, input);
+  return requirementTasksRepository.update(id, input);
+};
+
+export const deleteRequirementTask = async (id: string) => {
+  const remote = await rms();
+  if (remote) return remote.deleteRequirementTask(id);
+  return requirementTasksRepository.delete(id);
 };
 
 export const getTimeEntries = async () => {

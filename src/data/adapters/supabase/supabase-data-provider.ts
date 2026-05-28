@@ -40,6 +40,11 @@ export class SupabaseDataProvider implements AppDataProvider {
   createRequirementComment = (input: Parameters<RmsDataAccess["createRequirementComment"]>[0]) =>
     this.access.createRequirementComment(input);
   getRequirementStatusHistory = (requirementId: string) => this.access.getRequirementStatusHistory(requirementId);
+  getRequirementTasksByRequirementId = (requirementId: string) => this.access.getRequirementTasksByRequirementId(requirementId);
+  createRequirementTask = (input: Parameters<RmsDataAccess["createRequirementTask"]>[0]) => this.access.createRequirementTask(input);
+  updateRequirementTask = (id: string, input: Parameters<RmsDataAccess["updateRequirementTask"]>[1]) =>
+    this.access.updateRequirementTask(id, input);
+  deleteRequirementTask = (id: string) => this.access.deleteRequirementTask(id);
 
   getTimeEntries = () => this.access.getTimeEntries();
   getTimeEntryById = (id: string) => this.access.getTimeEntryById(id);

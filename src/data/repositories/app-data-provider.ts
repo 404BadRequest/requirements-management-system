@@ -7,6 +7,7 @@ import type { ClientCreateInput, ClientUpdateInput } from "@/data/contracts/clie
 import type { ProfileCreateInput, ProfileUpdateInput } from "@/data/contracts/profiles-contract";
 import type { CatalogCreateInput, CatalogUpdateInput } from "@/data/contracts/settings-catalog-contract";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
+import type { RequirementTaskCreateInput, RequirementTaskUpdateInput } from "@/data/contracts/requirement-tasks-contract";
 import type {
   AppNotification,
   BudgetAllocation,
@@ -24,6 +25,7 @@ import type {
   Requirement,
   RequirementComment,
   RequirementStatusHistory,
+  RequirementTask,
   SettingsCatalogEntry,
   SettingsCatalogKind,
   TimeEntry,
@@ -68,6 +70,10 @@ export interface AppDataProvider {
   getRequirementComments(requirementId: string): Promise<RequirementComment[]>;
   createRequirementComment(input: { requirementId: string; userId: string; body: string }): Promise<RequirementComment>;
   getRequirementStatusHistory(requirementId: string): Promise<RequirementStatusHistory[]>;
+  getRequirementTasksByRequirementId(requirementId: string): Promise<RequirementTask[]>;
+  createRequirementTask(input: RequirementTaskCreateInput): Promise<RequirementTask>;
+  updateRequirementTask(id: string, input: RequirementTaskUpdateInput): Promise<RequirementTask | undefined>;
+  deleteRequirementTask(id: string): Promise<boolean>;
 
   getTimeEntries(): Promise<TimeEntry[]>;
   getTimeEntryById(id: string): Promise<TimeEntry | undefined>;

@@ -190,6 +190,20 @@ export interface RequirementStatusHistory {
   changedAt: string;
 }
 
+export type RequirementTaskStatus = "pending" | "in_progress" | "done";
+
+export interface RequirementTask {
+  id: string;
+  requirementId: string;
+  title: string;
+  description: string;
+  status: RequirementTaskStatus;
+  estimatedHours: number | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuditLog {
   id: string;
   entityType: string;
