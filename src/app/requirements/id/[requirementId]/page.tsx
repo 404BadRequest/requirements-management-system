@@ -304,40 +304,6 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         ) : null}
       </section>
 
-      {/* Banner de cubicación — solo si hay ítem vinculado */}
-      {cubicacionCalc && linkedCubicacion && (
-        <RequirementCubicacionBanner
-          contractId={requirement.contractId ?? linkedCubicacion.contractId}
-          totalHoras={cubicacionCalc.totalHoras}
-          usedHorasTotal={usedHorasTotal}
-          senior={{
-            label: "Ingeniero Senior",
-            allocatedHoras: cubicacionCalc.seniorHoras,
-            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
-          }}
-          ingeniero={{
-            label: "Ingeniero",
-            allocatedHoras: cubicacionCalc.ingenieroHoras,
-            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
-          }}
-          junior={{
-            label: "Ingeniero Junior",
-            allocatedHoras: cubicacionCalc.juniorHoras,
-            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
-          }}
-          director={{
-            label: "Director",
-            allocatedHoras: cubicacionCalc.directorHoras,
-            usedHoras: Math.round(usedByBucket.director * 100) / 100,
-          }}
-          disenador={{
-            label: "Diseñador",
-            allocatedHoras: cubicacionCalc.disenadorHoras,
-            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
-          }}
-        />
-      )}
-
       <section className={`grid grid-cols-1 gap-4 ${cubicacionCalc ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
         <article className="surface-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Cliente</h3>
@@ -388,9 +354,39 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         )}
       </section>
 
-      <section id="tasks-section">
-        <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
-      </section>
+      {/* Horas presupuestadas vs utilizadas por perfil (cubicación vinculada) */}
+      {cubicacionCalc && linkedCubicacion && (
+        <RequirementCubicacionBanner
+          contractId={requirement.contractId ?? linkedCubicacion.contractId}
+          totalHoras={cubicacionCalc.totalHoras}
+          usedHorasTotal={usedHorasTotal}
+          senior={{
+            label: "Ingeniero Senior",
+            allocatedHoras: cubicacionCalc.seniorHoras,
+            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
+          }}
+          ingeniero={{
+            label: "Ingeniero",
+            allocatedHoras: cubicacionCalc.ingenieroHoras,
+            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
+          }}
+          junior={{
+            label: "Ingeniero Junior",
+            allocatedHoras: cubicacionCalc.juniorHoras,
+            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
+          }}
+          director={{
+            label: "Director",
+            allocatedHoras: cubicacionCalc.directorHoras,
+            usedHoras: Math.round(usedByBucket.director * 100) / 100,
+          }}
+          disenador={{
+            label: "Diseñador",
+            allocatedHoras: cubicacionCalc.disenadorHoras,
+            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
+          }}
+        />
+      )}
 
       <section id="hours-section">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -418,6 +414,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
           canPickAnyOwner={canManageAnyTimeEntry}
         />
+      </section>
+
+      <section id="tasks-section">
+        <RequirementTasksPanel requirementId={requirementId} initialTasks={tasks} canManage={canManageTasks} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-5">
