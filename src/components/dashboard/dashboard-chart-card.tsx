@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { BarChart3 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useUiStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -40,11 +41,12 @@ export const DashboardChartCard = ({
   weekBarTargetHours?: number;
 }) => {
   const [mounted, setMounted] = useState(false);
+  const { resolvedTheme } = useTheme();
   const density = useUiStore((s) => s.density);
   const compact = density === "compact";
   const baseH = compact ? 200 : 240;
   const chartH = tall ? (compact ? 228 : 300) : baseH;
-  const dark = false;
+  const dark = mounted && resolvedTheme === "dark";
 
   useEffect(() => setMounted(true), []);
 

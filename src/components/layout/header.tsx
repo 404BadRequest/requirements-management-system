@@ -9,6 +9,7 @@ import { ChatDockAssistant } from "@/components/chat/chat-dock-assistant";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import { QuickActionsMenu } from "@/components/layout/quick-actions-menu";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { AppSessionUser } from "@/lib/auth/session";
 import type { CommandNavItem } from "@/lib/navigation/filter-nav";
 import { isNavActive, type MainNavClientLink } from "@/components/layout/nav-links";
@@ -64,7 +65,7 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, 
             />
             <div className="min-w-0 leading-none">
               <div className="inline-flex max-w-full flex-col">
-                <p className="truncate text-sm font-bold uppercase tracking-[0.06em] text-[#0B1F3A]">Requirement System</p>
+                <p className="truncate text-sm font-bold uppercase tracking-[0.06em] text-foreground">Requirement System</p>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">TI</p>
                   <span className="h-px min-w-10 flex-1 bg-primary/35" aria-hidden />
@@ -88,6 +89,7 @@ function HeaderInner({ sessionUser, commandItems, navLinks, notificationUnread, 
           <ChatDockAssistant enabled={canReadChat} unreadCount={chatUnreadCount} placement="floating" />
         </div>
         <QuickActionsMenu />
+        <ThemeToggle />
         <UserMenu user={sessionUser} />
       </div>
 

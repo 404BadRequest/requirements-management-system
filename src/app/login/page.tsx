@@ -1,4 +1,5 @@
 import { loginAction } from "@/app/login/actions";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import Image from "next/image";
 
 export default async function LoginPage({
@@ -11,6 +12,9 @@ export default async function LoginPage({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(20,60,180,0.11),transparent_45%),radial-gradient(circle_at_84%_12%,rgba(40,130,255,0.1),transparent_42%),radial-gradient(circle_at_52%_88%,rgba(20,60,180,0.08),transparent_40%)]" />
       <div className="relative mx-auto grid min-h-screen w-full max-w-6xl items-center gap-6 px-4 py-8 lg:grid-cols-[1.15fr,0.85fr] lg:px-8">
         <section className="surface-card border border-primary/20 bg-primary/5 p-6 shadow-soft lg:p-10">
@@ -26,7 +30,7 @@ export default async function LoginPage({
               />
               <div className="min-w-0">
                 <div className="inline-flex max-w-full flex-col">
-                  <p className="truncate text-[1.45rem] font-bold uppercase tracking-[0.06em] text-[#0B1F3A] sm:text-[1.7rem]">
+                  <p className="truncate text-[1.45rem] font-bold uppercase tracking-[0.06em] text-foreground sm:text-[1.7rem]">
                     Requirement System
                   </p>
                   <div className="mt-0.5 flex items-center gap-3">

@@ -79,19 +79,41 @@ html[data-density="compact"] {
 }
 
 .dark {
-  --background: 0 0% 92%;
-  --foreground: 0 0% 14%;
-  --card: 0 0% 96%;
-  --card-foreground: 0 0% 14%;
-  --muted: 0 0% 90%;
-  --muted-foreground: 0 0% 34%;
-  --border: 0 0% 66%;
-  --primary: 214 38% 40%;
-  --primary-foreground: 0 0% 100%;
-  --accent: 207 53% 51%;
-  --accent-foreground: 0 0% 100%;
-  --danger: 357 79% 43%;
-  --ring: 214 38% 40%;
+  --background: 222 28% 8%;
+  --foreground: 210 20% 96%;
+  --card: 222 24% 11%;
+  --card-foreground: 210 20% 96%;
+  --muted: 222 18% 16%;
+  --muted-foreground: 215 14% 68%;
+  --border: 222 16% 24%;
+
+  --primary: 214 45% 58%;
+  --primary-foreground: 222 28% 8%;
+  --accent: 207 55% 58%;
+  --accent-foreground: 222 28% 8%;
+  --danger: 357 75% 58%;
+  --warning: 38 90% 55%;
+  --success: 145 50% 48%;
+  --ring: 214 45% 58%;
+
+  --chart-1: 214 45% 62%;
+  --chart-2: 207 55% 62%;
+  --chart-3: 28 85% 62%;
+  --chart-4: 170 45% 50%;
+  --chart-5: 270 42% 62%;
+
+  --status-backlog:  220 14% 62%;
+  --status-progress: 214 65% 62%;
+  --status-review:   38 88% 58%;
+  --status-done:     145 48% 52%;
+  --status-blocked:  2 70% 58%;
+
+  --priority-high:   2 70% 58%;
+  --priority-medium: 38 88% 58%;
+  --priority-low:    145 48% 52%;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.55);
 }
 
 body {

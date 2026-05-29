@@ -9,13 +9,13 @@ const CORP_ORANGE = "#9a6a2a";
 const SERIES_LIGHT = [CORP_RED, CORP_BLUE, CORP_GRAY, CORP_GREEN, CORP_ORANGE];
 const SERIES_DARK = SERIES_LIGHT;
 
-function axisColors(dark: boolean) {
+function axisColors(isDarkTheme: boolean) {
   return {
-    text: dark ? "hsl(0 0% 14%)" : "hsl(0 0% 24%)",
-    line: dark ? "hsl(0 0% 66%)" : "hsl(0 0% 70%)",
-    split: dark ? "hsl(0 0% 75% / 0.7)" : "hsl(0 0% 78% / 0.85)",
-    tooltipBg: dark ? "hsl(0 0% 96%)" : "hsl(0 0% 96%)",
-    tooltipBorder: dark ? "hsl(0 0% 66%)" : "hsl(0 0% 66%)",
+    text: isDarkTheme ? "hsl(210 20% 88%)" : "hsl(0 0% 24%)",
+    line: isDarkTheme ? "hsl(222 16% 28%)" : "hsl(0 0% 70%)",
+    split: isDarkTheme ? "hsl(222 16% 22% / 0.85)" : "hsl(0 0% 78% / 0.85)",
+    tooltipBg: isDarkTheme ? "hsl(222 24% 11%)" : "hsl(0 0% 96%)",
+    tooltipBorder: isDarkTheme ? "hsl(222 16% 28%)" : "hsl(0 0% 66%)",
   };
 }
 

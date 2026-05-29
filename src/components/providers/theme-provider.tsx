@@ -1,9 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
-/**
- * Tema fijo del sistema: no requerimos inyección de script de `next-themes`.
- * Mantener este wrapper evita tocar el resto del layout.
- */
-export const ThemeProvider = ({ children }: { children: ReactNode }) => <>{children}</>;
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  return (
+    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="rms-theme">
+      {children}
+    </NextThemesProvider>
+  );
+}

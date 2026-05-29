@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata = {
   title: "Portal de Cliente · RST",
@@ -24,9 +25,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">TI</p>
             </div>
           </div>
-          <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-            Vista de solo lectura
-          </span>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              Vista de solo lectura
+            </span>
+          </div>
         </div>
       </header>
       <main id="main-content" className="mx-auto max-w-7xl px-4 py-5 md:px-6">{children}</main>
