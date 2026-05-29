@@ -2,6 +2,8 @@ import type { Client, ContractBudget, FinancialReferenceRates, Profile, Requirem
 import { calculateBillingAmount } from "@/lib/calculations/billing";
 import { convertBillingAmountToClp } from "@/lib/calculations/currency-to-clp";
 import { formatBillingLineTotal } from "@/lib/formatting/rates";
+import { filterEntriesForReport } from "@/lib/reports/report-filters";
+import { computeLineValuation } from "@/lib/reports/report-valuation";
 
 export type SpendReportRow = {
   id: string;
@@ -47,9 +49,6 @@ export type BuildSpendReportParams = {
   referenceRates: FinancialReferenceRates;
 };
 
-function entryDateInRange(date: string, from: string, to: string): boolean {
-  return date >= from && date <= to;
-}
 
 export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow[] {
   const {
@@ -67,6 +66,13 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
     referenceRates,
   } = params;
 
+  const filteredEntries = filterEntriesForReport(entries, requirements, contracts, {
+    from: fromDate,
+    to: toDate,
+    clientId: clientIdFilter,
+    projectId: projectIdFilter,
+  });
+
   const requirementById = new Map(requirements.map((r) => [r.id, r]));
   const userById = new Map(users.map((u) => [u.id, u]));
   const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -76,9 +82,7 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
   type Agg = { minutes: number };
   const agg = new Map<string, Agg>();
 
-  for (const entry of entries) {
-    if (!entryDateInRange(entry.date, fromDate, toDate)) continue;
-
+  for (const entry of filteredEntries) {
     let clientKey: string;
 
     if (entry.clientId) {
@@ -93,15 +97,6 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
       clientKey = contract.clientId;
     } else {
       clientKey = "__no_req__";
-    }
-
-    if (clientIdFilter && clientKey !== clientIdFilter) continue;
-
-    if (projectIdFilter) {
-      const entryProjectId = entry.requirementId
-        ? requirementById.get(entry.requirementId)?.projectId
-        : entry.projectId;
-      if (entryProjectId !== projectIdFilter) continue;
     }
 
     const user = userById.get(entry.userId);
@@ -156,13 +151,10 @@ export function buildSpendReport(params: BuildSpendReportParams): SpendReportRow
       const contract = contractById.get(contractId);
       const markup = contract?.markupPercentage ?? 40;
       const opex = contract?.opexPercentage ?? 10;
-      
-      revenueClp = amountClp * (1 + markup / 100);
-      
-      // Margen = Venta - Costo Directo - OPEX (calculado sobre el costo directo)
-      const opexAmount = amountClp * (opex / 100);
-      marginClp = revenueClp - amountClp - opexAmount;
-      marginPercentage = (marginClp / revenueClp) * 100;
+      const valuation = computeLineValuation(amountClp, markup, opex);
+      revenueClp = valuation.revenueClp;
+      marginClp = valuation.marginClp;
+      marginPercentage = valuation.marginPercentage;
     }
 
     const revenueClpDisplay = revenueClp !== null ? formatBillingLineTotal(revenueClp, "CLP") : "—";
