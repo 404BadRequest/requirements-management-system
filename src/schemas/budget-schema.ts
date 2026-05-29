@@ -9,7 +9,7 @@ export const contractProfileAllocationSchema = z.object({
 const budgetBaseObject = z.object({
   projectId: z.string().min(1, "Proyecto requerido"),
   clientId: z.string().min(1, "Cliente requerido"),
-  scope: z.string().min(1, "Scope requerido"),
+  scope: z.string().min(1, "Ámbito requerido"),
   code: z.string().min(2, "Código requerido"),
   name: z.string().min(3, "Nombre requerido"),
   startDate: z.string().min(1, "Fecha inicio requerida"),

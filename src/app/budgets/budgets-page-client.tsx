@@ -142,6 +142,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
     () => scopes.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label })),
     [scopes],
   );
+  const scopeLabelByCode = useMemo(() => new Map(scopes.map((scope) => [scope.code, scope.label])), [scopes]);
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]));
     return (id: string) => m.get(id) ?? id;
@@ -199,7 +200,11 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           </Link>
         ),
       },
-      { accessorKey: "scopeCode", header: "Ámbito" },
+      {
+        accessorKey: "scopeCode",
+        header: "Ámbito",
+        cell: ({ row }) => scopeLabelByCode.get(row.original.scopeCode) ?? row.original.scopeCode,
+      },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "dateRange", header: "Vigencia" },
       {
@@ -251,7 +256,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           ),
       },
     ],
-    [canWrite, contracts, reload],
+    [canWrite, contracts, reload, scopeLabelByCode],
   );
 
   const openCreateModal = () => {
@@ -402,7 +407,7 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           description="Define vigencia del contrato y la bolsa de horas por perfil."
         >
           {scopeOptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Configura ámbitos (scopes) en Configuración antes de crear contratos.</p>
+            <p className="text-sm text-muted-foreground">Configura ámbitos en Configuración antes de crear contratos.</p>
           ) : (
             <BudgetForm
               key={formKey}

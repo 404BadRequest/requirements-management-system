@@ -112,14 +112,17 @@ export const BudgetForm = ({
           ))}
         </select>
       </FormField>
-      <FormField label="Scope" error={errors.scope?.message}>
+      <FormField label="Ámbito" error={errors.scope?.message}>
         <select className="field-control w-full" {...form.register("scope")}>
           {scopes.map((scope) => (
             <option key={scope.code} value={scope.code}>
-              {scope.code}
+              {scope.label}
             </option>
           ))}
         </select>
+        <p className="text-xs text-muted-foreground">
+          Clasifica el tipo de trabajo que cubre el contrato (p. ej. proyecto, operación o soporte).
+        </p>
       </FormField>
       <div className="grid gap-3 sm:grid-cols-1">
         <FormField label="Nombre contrato" error={errors.name?.message}>
