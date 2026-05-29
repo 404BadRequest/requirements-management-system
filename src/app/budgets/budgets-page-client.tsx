@@ -405,6 +405,8 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           onClose={() => setCreateOpen(false)}
           title="Nuevo contrato"
           description="Define vigencia del contrato y la bolsa de horas por perfil."
+          dialogClassName="max-w-xl max-h-none overflow-visible"
+          bodyClassName="py-4"
         >
           {scopeOptions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Configura ámbitos en Configuración antes de crear contratos.</p>
@@ -437,6 +439,8 @@ export function BudgetsPageClient({ canWrite, canExport }: BudgetsPageClientProp
           }}
           title="Editar contrato"
           description={editTarget ? `Actualiza la configuración de «${editTarget.name}».` : "Edita contrato"}
+          dialogClassName="max-w-xl max-h-none overflow-visible"
+          bodyClassName="py-4"
         >
           {editTarget ? (
             <BudgetForm

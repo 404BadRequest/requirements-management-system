@@ -112,7 +112,11 @@ export const BudgetForm = ({
           ))}
         </select>
       </FormField>
-      <FormField label="Ámbito" error={errors.scope?.message}>
+      <FormField
+        label="Ámbito"
+        hint="Tipo de trabajo que cubre el contrato (proyecto, operación, soporte…)."
+        error={errors.scope?.message}
+      >
         <select className="field-control w-full" {...form.register("scope")}>
           {scopes.map((scope) => (
             <option key={scope.code} value={scope.code}>
@@ -120,9 +124,6 @@ export const BudgetForm = ({
             </option>
           ))}
         </select>
-        <p className="text-xs text-muted-foreground">
-          Clasifica el tipo de trabajo que cubre el contrato (p. ej. proyecto, operación o soporte).
-        </p>
       </FormField>
       <div className="grid gap-3 sm:grid-cols-1">
         <FormField label="Nombre contrato" error={errors.name?.message}>
@@ -147,26 +148,33 @@ export const BudgetForm = ({
           />
         </FormField>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Markup (Margen %) para estimar Venta" error={errors.markupPercentage?.message}>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            className="field-control w-full"
-            {...form.register("markupPercentage", { valueAsNumber: true })}
-          />
-        </FormField>
-        <FormField label="OPEX (%)" error={errors.opexPercentage?.message}>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            className="field-control w-full"
-            {...form.register("opexPercentage", { valueAsNumber: true })}
-          />
-        </FormField>
-      </div>
+      <section className="rounded-[2px] border border-border/70 bg-muted/15 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Valorización</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            label="Markup (%)"
+            hint="Margen sobre costo para estimar venta."
+            error={errors.markupPercentage?.message}
+          >
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className="field-control w-full"
+              {...form.register("markupPercentage", { valueAsNumber: true })}
+            />
+          </FormField>
+          <FormField label="OPEX (%)" hint="Porcentaje de operación sobre el costo." error={errors.opexPercentage?.message}>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className="field-control w-full"
+              {...form.register("opexPercentage", { valueAsNumber: true })}
+            />
+          </FormField>
+        </div>
+      </section>
       <div className="rounded-[2px] border border-border/70 bg-muted/20 p-3">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bolsa por perfil</p>
