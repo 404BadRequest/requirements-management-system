@@ -7,12 +7,13 @@ import {
   getClients,
   getContractBudgets,
   getFinancialReferenceRates,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalUsers,
   getProjects,
   getRequirements,
   getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
+import { filterOperationalTimeEntries } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
@@ -75,21 +76,23 @@ export default async function ReportsPage({
     await Promise.all([
       getTimeEntries(),
       getRequirements(),
-      getUsers(),
+      getOperationalUsers(),
       getClients(),
-      getProfiles(),
+      getOperationalProfiles(),
       getCatalogByKind("time_entry_category"),
       getFinancialReferenceRates(),
       getContractBudgets(),
       getProjects(),
     ]);
 
+  const operationalEntries = filterOperationalTimeEntries(entries, users, profiles);
+
   const categoryLabelByCode = new Map(categories.filter((c) => c.active).map((c) => [c.code, c.label]));
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
   const scopedRequirements = ownScope
     ? requirements.filter((requirement) => requirement.ownerId === currentDirectoryUserId)
     : requirements;
-  const scopedEntries = ownScope ? entries.filter((entry) => entry.userId === currentDirectoryUserId) : entries;
+  const scopedEntries = ownScope ? operationalEntries.filter((entry) => entry.userId === currentDirectoryUserId) : operationalEntries;
   const scopedClientIds = new Set(scopedRequirements.map((requirement) => requirement.clientId));
   const activeClients = clients.filter((c) => c.active && (!ownScope || scopedClientIds.has(c.id)));
   const activeProjects = projects.filter((p) => p.active);

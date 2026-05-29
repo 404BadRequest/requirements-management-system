@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildTeamDirectoryRows, isValidRoleFilter } from "@/app/team/team-page-utils";
-import { getProfiles, getRequirements, getTimeEntries, getUsers, getFinancialReferenceRates } from "@/data/repositories/server-db";
+import { getOperationalProfiles, getOperationalTimeEntries, getOperationalUsers, getRequirements, getFinancialReferenceRates } from "@/data/repositories/server-db";
 import { assertPermission } from "@/lib/auth/permissions";
 import { getAppSession } from "@/lib/auth/session";
 import { defaultTeamDateRange, normalizeDateRange } from "@/lib/calculations/team-utilization";
@@ -23,10 +23,10 @@ export async function GET(req: NextRequest) {
   const activeOnly = req.nextUrl.searchParams.get("activeOnly") !== "0";
 
   const [users, entries, requirements, profiles, referenceRates] = await Promise.all([
-    getUsers(),
-    getTimeEntries(),
+    getOperationalUsers(),
+    getOperationalTimeEntries(),
     getRequirements(),
-    getProfiles(),
+    getOperationalProfiles(),
     getFinancialReferenceRates(),
   ]);
 

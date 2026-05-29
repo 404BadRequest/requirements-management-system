@@ -1,6 +1,7 @@
 import { SettingsPageIntro } from "@/components/settings/settings-page-intro";
 import { SettingsProfilesPanel } from "@/components/settings/settings-profiles-panel";
 import { getProfiles, getUsers } from "@/data/repositories/server-db";
+import { filterOperationalProfiles } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 
@@ -8,7 +9,7 @@ export default async function SettingsProfilesPage() {
   const sessionUser = await requirePermission("settings.read");
   const canWrite = roleHasPermission(sessionUser.role, "settings.write");
   const [profiles, users] = await Promise.all([getProfiles(), getUsers()]);
-  const sorted = [...profiles].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const sorted = filterOperationalProfiles([...profiles]).sort((a, b) => a.name.localeCompare(b.name, "es"));
   const rows = sorted.map((p) => ({
     ...p,
     linkedCount: users.filter((u) => u.profileId === p.id).length,

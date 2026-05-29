@@ -33,7 +33,13 @@ import type {
   Project,
   RequirementStatusHistory,
   SettingsCatalogKind,
+  User,
 } from "@/types/domain";
+import {
+  filterOperationalProfiles,
+  filterOperationalTimeEntries,
+  filterOperationalUsers,
+} from "@/lib/profiles/operational-scope";
 
 const requirementsRepository = new MockRequirementsRepository();
 const requirementTasksRepository = new MockRequirementTasksRepository();
@@ -99,6 +105,20 @@ export const getProfiles = async (): Promise<Profile[]> => {
   const remote = await rms();
   if (remote) return remote.getProfiles();
   return profilesRepository.getAll();
+};
+
+/** Perfiles utilizables en horas, presupuestos y reportes (excluye Administrador). */
+export const getOperationalProfiles = async (): Promise<Profile[]> =>
+  filterOperationalProfiles(await getProfiles());
+
+export const getOperationalUsers = async (): Promise<User[]> => {
+  const [users, profiles] = await Promise.all([getUsers(), getProfiles()]);
+  return filterOperationalUsers(users, profiles);
+};
+
+export const getOperationalTimeEntries = async () => {
+  const [entries, users, profiles] = await Promise.all([getTimeEntries(), getUsers(), getProfiles()]);
+  return filterOperationalTimeEntries(entries, users, profiles);
 };
 export const createProfile = async (input: ProfileCreateInput) => {
   const remote = await rms();
@@ -310,6 +330,9 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
     getClients(),
     getContractBudgets(),
   ]);
+  const operationalUsers = filterOperationalUsers(users, profiles);
+  const operationalProfiles = filterOperationalProfiles(profiles);
+  const operationalEntries = filterOperationalTimeEntries(entries, users, profiles);
 
   const filteredRequirements = requirements.filter((item) => {
     if (filters?.projectId && item.projectId !== filters.projectId) return false;
@@ -320,7 +343,7 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
     return true;
   });
 
-  const filteredEntries = entries.filter((item) => {
+  const filteredEntries = operationalEntries.filter((item) => {
     if (filters?.projectId && item.projectId !== filters.projectId) return false;
     if (filters?.clientId) {
       const requirementClientId = item.requirementId
@@ -343,14 +366,14 @@ export const getDashboardMetrics = async (filters?: DashboardFilters) => {
   let loggedHoursToday = 0;
   if (filters?.ownerId) {
     const todayStr = new Date().toISOString().slice(0, 10);
-    loggedHoursToday = entries
+    loggedHoursToday = operationalEntries
       .filter(e => e.userId === filters.ownerId && e.date === todayStr)
       .reduce((sum, e) => sum + (e.durationMinutes / 60), 0);
   }
 
   const metrics = calculateDashboardMetrics(filteredRequirements, filteredEntries, filteredBudgets, {
-    users,
-    profiles,
+    users: operationalUsers,
+    profiles: operationalProfiles,
     clients,
     contracts,
     referenceRates: await getFinancialReferenceRates(),

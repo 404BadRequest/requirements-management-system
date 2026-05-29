@@ -9,16 +9,17 @@ import {
   getContractBudgets,
   getContractProfileAllocations,
   getFinancialReferenceRates,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalUsers,
   getRequirements,
   getTimeEntryById,
-  getUsers,
   updateTimeEntry,
 } from "@/data/repositories/server-db";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { resolveContractIdForTimeEntry } from "@/lib/contracts/resolve-contract";
+import { assertOperationalProfileIds, assertOperationalUserId, resolveOperationalActorUserId } from "@/lib/profiles/operational-scope";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { Role } from "@/types/domain";
 import { timeEntryBatchSchema, timeEntrySchema, type TimeEntryBatchInput, type TimeEntryInput } from "@/schemas/time-entry-schema";
@@ -34,7 +35,7 @@ export async function loadNewTimeEntryFormData() {
     throw new Error("Debes iniciar sesión.");
   }
   const [usersData, requirementsData, catRows, contracts, clientsData] = await Promise.all([
-    getUsers(),
+    getOperationalUsers(),
     getRequirements(),
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
@@ -51,7 +52,7 @@ export async function loadNewTimeEntryFormData() {
       ? [{ id: me.id, name: me.name }]
       : [{ id: resolvedId, name: user.name || user.email }];
 
-  const profiles = await getProfiles();
+  const profiles = await getOperationalProfiles();
 
   return {
     users: encargadoOptions,
@@ -87,8 +88,8 @@ function resolveContractProfileForTimeEntry(input: {
   manualProfileId: string | null;
   canOverride: boolean;
   workerUserId: string;
-  users: Awaited<ReturnType<typeof getUsers>>;
-  profiles: Awaited<ReturnType<typeof getProfiles>>;
+  users: Awaited<ReturnType<typeof getOperationalUsers>>;
+  profiles: Awaited<ReturnType<typeof getOperationalProfiles>>;
   allocations: Awaited<ReturnType<typeof getContractProfileAllocations>>;
   contracts: Awaited<ReturnType<typeof getContractBudgets>>;
   ufToClp: number;
@@ -140,14 +141,14 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
   const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
     getRequirements(),
     getContractBudgets(),
     getContractProfileAllocations(),
-    getProfiles(),
+    getOperationalProfiles(),
     getFinancialReferenceRates(),
   ]);
   const payload = { ...input, endTime: input.endTime ? input.endTime : null };
@@ -162,6 +163,11 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
     }
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
+  } else {
+    assertOperationalUserId(payload.userId, activeUsers, profiles);
+  }
+  if (payload.contractProfileId) {
+    assertOperationalProfileIds([payload.contractProfileId], profiles);
   }
   payload.contractId = resolveContractIdForTimeEntry({
     contractId: canPickEncargadoForOthers(user.role) ? payload.contractId : null,
@@ -250,14 +256,14 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
     throw new Error("No se encontró la hora a editar.");
   }
 
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
   const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
     getRequirements(),
     getContractBudgets(),
     getContractProfileAllocations(),
-    getProfiles(),
+    getOperationalProfiles(),
     getFinancialReferenceRates(),
   ]);
   const pickAny = canPickEncargadoForOthers(user.role);
@@ -278,6 +284,11 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
     }
   } else if (!activeUsers.some((u) => u.id === payload.userId)) {
     throw new Error("El encargado seleccionado no es válido o está inactivo.");
+  } else {
+    assertOperationalUserId(payload.userId, activeUsers, profiles);
+  }
+  if (payload.contractProfileId) {
+    assertOperationalProfileIds([payload.contractProfileId], profiles);
   }
   payload.contractId = resolveContractIdForTimeEntry({
     contractId: pickAny ? payload.contractId : current.contractId,
@@ -326,7 +337,7 @@ export async function deleteTimeEntryAction(id: string) {
     throw new Error("No se encontró la hora a eliminar.");
   }
 
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
   const requirements = await getRequirements();
@@ -368,7 +379,7 @@ export async function deleteTimeEntriesBatchAction(ids: string[]) {
     throw new Error("Debes iniciar sesión.");
   }
 
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
   const requirements = await getRequirements();
@@ -603,13 +614,14 @@ export async function bulkCreateTimeEntriesFromImportAction(
   if (!user) throw new Error("Debes iniciar sesión.");
 
   const [users, requirements, contracts, categories] = await Promise.all([
-    getUsers(),
+    getOperationalUsers(),
     getRequirements(),
     getContractBudgets(),
     getCatalogByKind("time_entry_category"),
   ]);
 
-  const userId   = resolveDirectoryUserIdForSession(user, users);
+  const userId = resolveOperationalActorUserId(user, users);
+  assertOperationalUserId(userId, users);
   const validCategories = new Set(categories.map((c) => c.code));
 
   // Mapa de requerimientos por título (lowercase) para lookup

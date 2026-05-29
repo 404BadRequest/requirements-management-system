@@ -3,7 +3,7 @@ import { getAppSession } from "@/lib/auth/session";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
-import { getCatalogByKind, getClients, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { getCatalogByKind, getClients, getOperationalTimeEntries, getRequirements, getUsers } from "@/data/repositories/server-db";
 
 const MAX_RESULTS_PER_SECTION = 8;
 
@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
   }
 
   const normalizedQuery = q.toLowerCase();
-  const [requirements, timeEntries, users, clients, requirementStatuses] = await Promise.all([
+  const [requirements, allTimeEntries, users, clients, requirementStatuses] = await Promise.all([
     canSearchRequirements ? getRequirements() : Promise.resolve([]),
-    canSearchTimeEntries ? getTimeEntries() : Promise.resolve([]),
+    canSearchTimeEntries ? getOperationalTimeEntries() : Promise.resolve([]),
     getUsers(),
     getClients(),
     getCatalogByKind("requirement_status"),
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     .slice(0, MAX_RESULTS_PER_SECTION)
     .map(({ searchBlob: _searchBlob, ...item }) => item);
 
-  const timeEntryResults = timeEntries
+  const timeEntryResults = allTimeEntries
     .filter((item) => (ownScope ? item.userId === resolvedUserId : true))
     .map((item) => ({
       id: item.id,

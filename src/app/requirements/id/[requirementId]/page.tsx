@@ -7,14 +7,15 @@ import {
   getClients,
   getContractBudgets,
   getCubicacionItemByRequirementId,
+  getOperationalTimeEntries,
+  getProfiles,
   getRequirementById,
   getRequirementComments,
   getRequirements,
   getRequirementTasks,
-  getTimeEntries,
   getUsers,
-  getProfiles,
 } from "@/data/repositories/server-db";
+import { filterOperationalProfiles, filterOperationalUsers } from "@/lib/profiles/operational-scope";
 import { calcCubicacionRow } from "@/lib/calculations/cubicacion";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
@@ -117,7 +118,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     tasks,
   ] = await Promise.all([
     getRequirementComments(requirementId),
-    getTimeEntries(),
+    getOperationalTimeEntries(),
     getRequirements(),
     getClients(),
     getUsers(),
@@ -134,6 +135,8 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     notFound();
   }
 
+  const operationalUsers = filterOperationalUsers(users, profiles);
+  const operationalProfiles = filterOperationalProfiles(profiles);
   const requirementEntries = entries.filter((entry) => entry.requirementId === requirementId);
   const clientName = clients.find((c) => c.id === requirement.clientId)?.name ?? requirement.clientId;
   const userById = new Map(users.map((u) => [u.id, u]));
@@ -272,7 +275,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
         priorityLabel={priorityLabel}
         priorityColor={priorityCatalogColor}
         ownerId={requirement.ownerId}
-        owners={users.map((u) => ({ id: u.id, name: u.name }))}
+        owners={operationalUsers.map((u) => ({ id: u.id, name: u.name }))}
         canReassignOwner={canReassignOwner}
         canChangeStatus={canPostObservations}
         statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
@@ -286,7 +289,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
               .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
             statusOptions={requirementStatuses.filter((s) => s.active).map((s) => ({ code: s.code, label: s.label }))}
             priorityOptions={requirementPriorities.filter((p) => p.active).map((p) => ({ code: p.code, label: p.label }))}
-            owners={users.map((u) => ({ id: u.id, name: u.name }))}
+            owners={operationalUsers.map((u) => ({ id: u.id, name: u.name }))}
             canManageRequirement={canManageRequirement}
             triggerLabel="Editar requerimiento"
             triggerClassName="btn-secondary py-2 text-sm"
@@ -333,13 +336,13 @@ export default async function RequirementDetailPage({ params }: { params: Promis
               byCategory={byCategory.map(({ label, hoursDisplay }) => ({ label, hoursDisplay }))}
               totalHoursDisplay={minutesToHoursDisplay(totalMinutes)}
               imputationCount={requirementEntries.length}
-              users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+              users={operationalUsers.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
               clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
               requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
               contracts={contracts
                 .filter((contract) => contract.active)
                 .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
-              contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
+              contractProfiles={operationalProfiles.map((profile) => ({ id: profile.id, label: profile.name }))}
               categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canPickAnyOwner={canManageAnyTimeEntry}
               embedded

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getCatalogByKind, getClients, getUsers } from "@/data/repositories/server-db";
+import { getCatalogByKind, getClients, getOperationalUsers } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
@@ -21,7 +21,7 @@ export async function GET() {
 
   const [clients, users, statusCatalog, priorityCatalog] = await Promise.all([
     getClients(),
-    getUsers(),
+    getOperationalUsers(),
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
   ]);

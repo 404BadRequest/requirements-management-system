@@ -10,11 +10,12 @@ import {
   getContractBudgets,
   getContractProfileAllocations,
   getFinancialReferenceRates,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalUsers,
   getRequirements,
   getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
+import { filterOperationalTimeEntries } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
@@ -39,20 +40,26 @@ export default async function TimeEntriesPage({
   const prefillUserId = userIdParam && !duplicateId && canPickAnyOwner ? userIdParam : "";
   const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations, referenceRates] = await Promise.all([
     getTimeEntries(),
-    getUsers(),
+    getOperationalUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
-    getProfiles(),
+    getOperationalProfiles(),
     getContractProfileAllocations(),
     getFinancialReferenceRates(),
   ]);
+  const operationalEntries = filterOperationalTimeEntries(entries, users, profiles);
   const categoryLabelByCode = new Map(
     timeCategories.filter((c) => c.active).map((c) => [c.code, formatCatalogLabel(c.code, c.label)]),
   );
   const profileLabelById = new Map(profiles.map((profile) => [profile.id, profile.name]));
-  const validContractProfileKeys = new Set(contractAllocations.map((allocation) => `${allocation.contractId}::${allocation.profileId}`));
+  const operationalProfileIds = new Set(profiles.map((profile) => profile.id));
+  const validContractProfileKeys = new Set(
+    contractAllocations
+      .filter((allocation) => operationalProfileIds.has(allocation.profileId))
+      .map((allocation) => `${allocation.contractId}::${allocation.profileId}`),
+  );
 
   const resolveContractStatus = (entry: (typeof entries)[number]) => {
     if (!entry.contractId) return "Sin contrato";
@@ -111,7 +118,7 @@ export default async function TimeEntriesPage({
   })();
 
   const selectedUserId = canPickAnyOwner && users.some((u) => u.id === userIdParam) ? userIdParam : "";
-  const filteredEntries = entries.filter((entry) => {
+  const filteredEntries = operationalEntries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
     if (selectedUserId && entry.userId !== selectedUserId) return false;
     if (selectedClientId) {

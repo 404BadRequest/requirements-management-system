@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getCatalogByKind, getUsers } from "@/data/repositories/server-db";
+import { getCatalogByKind, getOperationalUsers } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: "Solo Admin y Project Manager pueden descargar la plantilla masiva." }, { status: 403 });
   }
 
-  const [users, categories] = await Promise.all([getUsers(), getCatalogByKind("time_entry_category")]);
+  const [users, categories] = await Promise.all([getOperationalUsers(), getCatalogByKind("time_entry_category")]);
   const activeUsers = users.filter((entry) => entry.active);
   const defaultUserId = resolveDirectoryUserIdForSession(user, activeUsers);
   const defaultCategory = categories.find((entry) => entry.active)?.code ?? "analisis";

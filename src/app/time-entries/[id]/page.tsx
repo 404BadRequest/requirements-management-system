@@ -8,12 +8,15 @@ import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
+  getOperationalProfiles,
+  getOperationalUsers,
   getProfiles,
   getProjects,
   getRequirements,
   getTimeEntryById,
   getUsers,
 } from "@/data/repositories/server-db";
+import { filterOperationalProfiles, filterOperationalUsers } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { requirementDetailPath } from "@/lib/routes/requirements";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
@@ -42,7 +45,7 @@ function formatDateTime(iso: string): string {
 export default async function TimeEntryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await requirePermission("time_entries.read");
   const { id } = await params;
-  const [entry, users, profiles, requirements, clients, projects, categories, contracts] = await Promise.all([
+  const [entry, allUsers, allProfiles, requirements, clients, projects, categories, contracts] = await Promise.all([
     getTimeEntryById(id),
     getUsers(),
     getProfiles(),
@@ -52,20 +55,22 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
   ]);
+  const users = filterOperationalUsers(allUsers, allProfiles);
+  const profiles = filterOperationalProfiles(allProfiles);
 
   if (!entry) {
     notFound();
   }
 
-  const user = users.find((u) => u.id === entry.userId);
-  const profile = user ? profiles.find((p) => p.id === user.profileId) : undefined;
+  const user = allUsers.find((u) => u.id === entry.userId);
+  const profile = user ? allProfiles.find((p) => p.id === user.profileId) : undefined;
   const requirement = entry.requirementId ? requirements.find((r) => r.id === entry.requirementId) : undefined;
   const client = requirement ? clients.find((c) => c.id === requirement.clientId) : (entry.clientId ? clients.find((c) => c.id === entry.clientId) : undefined);
   const project = projects.find((p) => p.id === entry.projectId);
   const contract = entry.contractId ? contracts.find((row) => row.id === entry.contractId) : undefined;
-  const contractProfile = entry.contractProfileId ? profiles.find((row) => row.id === entry.contractProfileId) : undefined;
+  const contractProfile = entry.contractProfileId ? allProfiles.find((row) => row.id === entry.contractProfileId) : undefined;
   const categoryLabel = catalogLabel(categories, entry.category);
-  const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, users);
+  const currentDirectoryUserId = resolveDirectoryUserIdForSession(sessionUser, allUsers);
   const canPickAnyOwner = sessionUser.role === "Admin" || sessionUser.role === "Project Manager";
   if (sessionUser.role === "Contributor" && entry.userId !== currentDirectoryUserId) {
     notFound();

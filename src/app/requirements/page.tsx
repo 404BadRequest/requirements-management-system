@@ -2,7 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { RequirementsPageClient } from "@/app/requirements/requirements-page-client";
-import { getUsers } from "@/data/repositories/server-db";
+import { getOperationalUsers } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 
 export default async function RequirementsPage({
@@ -22,7 +22,7 @@ export default async function RequirementsPage({
   const { nueva, clientId = "", ownerId = "" } = await searchParams;
   const autoOpenNewModal = canWrite && (nueva === "1" || nueva === "true");
 
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(user, users);
 
   return (

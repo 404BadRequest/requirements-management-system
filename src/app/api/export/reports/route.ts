@@ -5,12 +5,13 @@ import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
+  getContractProfileAllocations,
   getFinancialReferenceRates,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalTimeEntries,
+  getOperationalUsers,
   getProjects,
   getRequirements,
-  getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import {
@@ -47,11 +48,11 @@ export async function GET(req: NextRequest) {
 
   const [entries, requirements, users, clients, profiles, categories, referenceRates, contracts, projects] =
     await Promise.all([
-      getTimeEntries(),
+      getOperationalTimeEntries(),
       getRequirements(),
-      getUsers(),
+      getOperationalUsers(),
       getClients(),
-      getProfiles(),
+      getOperationalProfiles(),
       getCatalogByKind("time_entry_category"),
       getFinancialReferenceRates(),
       getContractBudgets(),

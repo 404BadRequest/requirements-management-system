@@ -12,10 +12,11 @@ import {
   getCubicacionItems,
   getFinancialReferenceRates,
   getCatalogByKind,
+  getOperationalProfiles,
+  getOperationalUsers,
   getProfiles,
   getRequirements,
   getTimeEntries,
-  getUsers,
   updateBudget,
   updateCubicacionItem,
   updateRequirement,
@@ -28,6 +29,14 @@ import type { SettingsCatalogEntry } from "@/types/domain";
 import type { BudgetInput } from "@/schemas/budget-schema";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
 import { calculateContractConsumptions } from "@/lib/calculations/contract-budget";
+import {
+  assertOperationalProfileIds,
+  filterOperationalProfiles,
+  filterOperationalTimeEntries,
+  filterOperationalUsers,
+  isAdministrativeProfile,
+  resolveOperationalActorUserId,
+} from "@/lib/profiles/operational-scope";
 import {
   type TrafficRisk,
   calculateContractHealthScore,
@@ -62,9 +71,9 @@ export async function loadBudgetsPageData(projectId?: string) {
   const [contractsData, allocationsData, profilesData, entries, users, clientsData, scopeRows, referenceRates] = await Promise.all([
     getContractBudgets(),
     getContractProfileAllocations(),
-    getProfiles(),
+    getOperationalProfiles(),
     getTimeEntries(),
-    getUsers(),
+    getOperationalUsers(),
     getClients(),
     getCatalogByKind("budget_scope"),
     getFinancialReferenceRates(),
@@ -72,12 +81,15 @@ export async function loadBudgetsPageData(projectId?: string) {
   const pid = projectId?.trim() || undefined;
   const contractsFiltered = pid ? contractsData.filter((contract) => contract.projectId === pid) : contractsData;
   const contractIds = new Set(contractsFiltered.map((contract) => contract.id));
-  const allocationsFiltered = allocationsData.filter((allocation) => contractIds.has(allocation.contractId));
+  const allocationsFiltered = allocationsData
+    .filter((allocation) => contractIds.has(allocation.contractId))
+    .filter((allocation) => profilesData.some((profile) => profile.id === allocation.profileId));
   const entriesFiltered = pid ? entries.filter((e) => e.projectId === pid) : entries;
+  const operationalEntries = filterOperationalTimeEntries(entriesFiltered, users, profilesData);
   const consumption = calculateContractConsumptions({
     contracts: contractsFiltered,
     allocations: allocationsFiltered,
-    entries: entriesFiltered,
+    entries: operationalEntries,
     users,
     profiles: profilesData,
     referenceRates,
@@ -94,7 +106,7 @@ export async function loadBudgetsPageData(projectId?: string) {
     consumption.byContractProfile.map((row) => [`${row.contractId}::${row.profileId}`, row]),
   );
 
-  const equivalentEntryRows = entriesFiltered
+  const equivalentEntryRows = operationalEntries
     .map((entry) => {
       if (!entry.contractId) return null;
       const contract = contractById.get(entry.contractId);
@@ -151,7 +163,7 @@ export async function loadBudgetsPageData(projectId?: string) {
       });
       expectedMinutesByDateGlobal += deviation.expectedMinutesByDate;
 
-      const contractUnallocatedMinutes = entriesFiltered
+      const contractUnallocatedMinutes = operationalEntries
         .filter((entry) => entry.contractId === contract.id)
         .filter((entry) => !entry.contractProfileId || !allocationKeySet.has(`${entry.contractId}::${entry.contractProfileId}`))
         .reduce((acc, entry) => acc + entry.durationMinutes, 0);
@@ -271,9 +283,9 @@ export async function loadBudgetContractDetailData(contractId: string) {
   const [contractsData, allocationsData, profilesData, entries, users, requirements, clientsData, referenceRates, timeCategories, cubicacionItems] = await Promise.all([
     getContractBudgets(),
     getContractProfileAllocations(),
-    getProfiles(),
+    getOperationalProfiles(),
     getTimeEntries(),
-    getUsers(),
+    getOperationalUsers(),
     getRequirements(),
     getClients(),
     getFinancialReferenceRates(),
@@ -286,8 +298,14 @@ export async function loadBudgetContractDetailData(contractId: string) {
     throw new Error("No se encontró el contrato solicitado.");
   }
 
-  const allocations = allocationsData.filter((row) => row.contractId === contractId);
-  const entriesForContract = entries.filter((row) => row.contractId === contractId);
+  const allocations = allocationsData
+    .filter((row) => row.contractId === contractId)
+    .filter((row) => profilesData.some((profile) => profile.id === row.profileId));
+  const entriesForContract = filterOperationalTimeEntries(
+    entries.filter((row) => row.contractId === contractId),
+    users,
+    profilesData,
+  );
   const consumption = calculateContractConsumptions({
     contracts: [contract],
     allocations,
@@ -512,6 +530,11 @@ export async function loadBudgetContractDetailData(contractId: string) {
 export async function createBudgetAction(values: BudgetInput) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.write");
+  const allProfiles = await getProfiles();
+  assertOperationalProfileIds(
+    values.allocations.map((allocation) => allocation.profileId),
+    allProfiles,
+  );
   const contracts = await getContractBudgets();
   const nextNumber =
     contracts
@@ -531,6 +554,11 @@ export async function createBudgetAction(values: BudgetInput) {
 export async function updateBudgetAction(id: string, values: BudgetInput) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.write");
+  const allProfiles = await getProfiles();
+  assertOperationalProfileIds(
+    values.allocations.map((allocation) => allocation.profileId),
+    allProfiles,
+  );
   const contracts = await getContractBudgets();
   const current = contracts.find((contract) => contract.id === id);
   if (!current) {
@@ -588,7 +616,7 @@ export async function createCubicacionItemAction(input: CubicacionItemCreateInpu
   if (!requirementId) {
     const [contracts, users, statuses, priorities] = await Promise.all([
       getContractBudgets(),
-      getUsers(),
+      getOperationalUsers(),
       getCatalogByKind("requirement_status"),
       getCatalogByKind("requirement_priority"),
     ]);
@@ -597,7 +625,7 @@ export async function createCubicacionItemAction(input: CubicacionItemCreateInpu
 
     const defaultStatus = statuses.find((s) => s.active)?.code ?? "BACKLOG";
     const defaultPriority = priorities.find((p) => p.active)?.code ?? "P2";
-    const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+    const ownerId = user ? resolveOperationalActorUserId(user, users) : "";
 
     const newReq = await createRequirement({
       projectId: contract.projectId,
@@ -699,7 +727,7 @@ export async function bulkCreateCubicacionItemsAction(
 
   const [contracts, users, statuses, priorities, existingReqs, existingCubi] = await Promise.all([
     getContractBudgets(),
-    getUsers(),
+    getOperationalUsers(),
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
     getRequirements(),
@@ -711,7 +739,7 @@ export async function bulkCreateCubicacionItemsAction(
 
   const defaultStatus   = statuses.find((s) => s.active)?.code ?? "BACKLOG";
   const defaultPriority = priorities.find((p) => p.active)?.code ?? "P2";
-  const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+  const ownerId = user ? resolveOperationalActorUserId(user, users) : "";
 
   // Mapa de requerimientos ya existentes para este contrato (título normalizado → id)
   const existingReqsByTitle = new Map(

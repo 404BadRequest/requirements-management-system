@@ -26,7 +26,7 @@ import {
   getClients,
   getDashboardMetrics,
   getFinancialReferenceRates,
-  getUsers,
+  getOperationalUsers,
 } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
@@ -120,7 +120,7 @@ export default async function DashboardPage({
       getCatalogByKind("requirement_status"),
       getCatalogByKind("requirement_priority"),
       getCatalogByKind("time_entry_category"),
-      getUsers(),
+      getOperationalUsers(),
     ]);
 
   const resolvedUserId = resolveDirectoryUserIdForSession(sessionUser, users);

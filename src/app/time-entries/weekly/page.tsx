@@ -6,11 +6,10 @@ import {
   getCatalogByKind,
   getClients,
   getContractBudgets,
-  getContractProfileAllocations,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalTimeEntries,
+  getOperationalUsers,
   getRequirements,
-  getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { roleHasPermission } from "@/lib/auth/permissions";
@@ -24,15 +23,14 @@ export default async function WeeklyTimesheetPage({
   const canEditAnyEntry = user.role === "Admin" || user.role === "Project Manager";
   const { weekStart, userId } = await searchParams;
 
-  const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations] = await Promise.all([
-    getTimeEntries(),
-    getUsers(),
+  const [entries, users, requirements, clients, timeCategories, contracts, profiles] = await Promise.all([
+    getOperationalTimeEntries(),
+    getOperationalUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
     getContractBudgets(),
-    getProfiles(),
-    getContractProfileAllocations(),
+    getOperationalProfiles(),
   ]);
 
   const activeUsers = users.filter((u) => u.active);

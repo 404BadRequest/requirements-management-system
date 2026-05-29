@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
-import { getClients, getContractBudgets, getContractProfileAllocations, getProfiles, getRequirements, getTimeEntries, getUsers } from "@/data/repositories/server-db";
+import { getClients, getContractBudgets, getContractProfileAllocations, getOperationalProfiles, getOperationalTimeEntries, getOperationalUsers, getRequirements } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { csvEscape } from "@/lib/export/csv-escape";
 
@@ -19,12 +19,12 @@ export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("projectId")?.trim() ?? "";
 
   const [entries, users, requirements, clients, contracts, profiles, contractAllocations] = await Promise.all([
-    getTimeEntries(),
-    getUsers(),
+    getOperationalTimeEntries(),
+    getOperationalUsers(),
     getRequirements(),
     getClients(),
     getContractBudgets(),
-    getProfiles(),
+    getOperationalProfiles(),
     getContractProfileAllocations(),
   ]);
   const userMap = new Map(users.map((u) => [u.id, u.name]));

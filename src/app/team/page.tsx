@@ -6,11 +6,12 @@ import { KpiCard } from "@/components/common/kpi-card";
 import { UtilizationPanel } from "@/components/reports/utilization-panel";
 import {
   getFinancialReferenceRates,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalUsers,
   getRequirements,
   getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
+import { filterOperationalTimeEntries } from "@/lib/profiles/operational-scope";
 import { getAppSession } from "@/lib/auth/session";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/rsc-guard";
@@ -30,7 +31,6 @@ import { buildTeamDirectoryRows, isValidRoleFilter } from "@/app/team/team-page-
 import type { Role } from "@/types/domain";
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "Admin", label: "Admin" },
   { value: "Project Manager", label: "Project Manager" },
   { value: "Contributor", label: "Contributor" },
   { value: "Viewer", label: "Viewer" },
@@ -64,12 +64,14 @@ export default async function TeamPage({
   const activeOnly = sp.activeOnly !== "0";
 
   const [users, entries, requirements, profiles, referenceRates] = await Promise.all([
-    getUsers(),
+    getOperationalUsers(),
     getTimeEntries(),
     getRequirements(),
-    getProfiles(),
+    getOperationalProfiles(),
     getFinancialReferenceRates(),
   ]);
+
+  const operationalEntries = filterOperationalTimeEntries(entries, users, profiles);
 
   const filters = {
     from,
@@ -79,8 +81,8 @@ export default async function TeamPage({
     activeOnly,
   };
 
-  const rows = buildTeamDirectoryRows(users, entries, requirements, profiles, filters, referenceRates.weeklyCapacityHours);
-  const periodEntries = filterEntriesByDateRange(entries, from, to);
+  const rows = buildTeamDirectoryRows(users, operationalEntries, requirements, profiles, filters, referenceRates.weeklyCapacityHours);
+  const periodEntries = filterEntriesByDateRange(operationalEntries, from, to);
   const minutesByUser = sumMinutesByUser(periodEntries);
   const filteredUsers = users.filter((item) => {
     if (activeOnly && !item.active) return false;

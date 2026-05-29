@@ -9,6 +9,7 @@ import {
   getContractBudgets,
   getRequirementById,
   getRequirements,
+  getOperationalUsers,
   getUsers,
   updateRequirement,
   createRequirementComment,
@@ -17,6 +18,7 @@ import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { resolveContractIdByContext } from "@/lib/contracts/resolve-contract";
+import { assertOperationalUserId, resolveOperationalActorUserId } from "@/lib/profiles/operational-scope";
 import { recordAuditSafely } from "@/lib/audit/record-audit";
 import { logServerActionEvent } from "@/lib/logging/server-action-log";
 import { requirementDetailPath } from "@/lib/routes/requirements";
@@ -40,7 +42,7 @@ export async function loadRequirementsPageData(): Promise<{
   }
   const [requirementsData, usersData, clientsData, statuses, priorities, contractsData] = await Promise.all([
     getRequirements(),
-    getUsers(),
+    getOperationalUsers(),
     getClients(),
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
@@ -68,11 +70,14 @@ export async function createRequirementAction(input: RequirementInput) {
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const users = await getUsers();
+  const users = await getOperationalUsers();
   const resolvedUserId = resolveDirectoryUserIdForSession(user, users);
   const contracts = await getContractBudgets();
   const nowDate = new Date().toISOString().slice(0, 10);
   const payload = user.role === "Contributor" ? { ...input, ownerId: resolvedUserId } : input;
+  if (user.role !== "Contributor") {
+    assertOperationalUserId(payload.ownerId, users);
+  }
   payload.contractId = resolveContractIdByContext({
     contractId: payload.contractId,
     clientId: payload.clientId,
@@ -118,7 +123,7 @@ export async function updateRequirementAction(id: string, input: Parameters<type
     return undefined;
   }
   if (user.role === "Contributor") {
-    const users = await getUsers();
+    const users = await getOperationalUsers();
     const resolvedUserId = resolveDirectoryUserIdForSession(user, users);
     if (prev.ownerId !== resolvedUserId) {
       throw new Error("No autorizado para editar requerimientos de otros usuarios.");
@@ -136,6 +141,10 @@ export async function updateRequirementAction(id: string, input: Parameters<type
       contracts,
     }),
   };
+  if (input.ownerId !== undefined) {
+    const users = await getOperationalUsers();
+    assertOperationalUserId(input.ownerId, users);
+  }
   const next = await updateRequirement(id, nextInput, { changedById: user.id });
   if (user && prev && next) {
     void recordAuditSafely({
@@ -189,6 +198,7 @@ export async function updateRequirementFullAction(id: string, input: Requirement
   const prev = await getRequirementById(id);
   const contracts = await getContractBudgets();
   const nowDate = new Date().toISOString().slice(0, 10);
+  assertOperationalUserId(input.ownerId, await getOperationalUsers());
   const nextInput = {
     ...input,
     contractId: resolveContractIdByContext({
@@ -489,9 +499,9 @@ export async function bulkCreateRequirementsAction(
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.write");
 
-  const [users, contracts] = await Promise.all([getUsers(), getContractBudgets()]);
+  const [users, contracts] = await Promise.all([getOperationalUsers(), getContractBudgets()]);
 
-  const ownerId = user ? resolveDirectoryUserIdForSession(user, users) : "";
+  const ownerId = user ? resolveOperationalActorUserId(user, users) : "";
   const contract = contractId ? contracts.find((c) => c.id === contractId) : null;
   const projectId = contract?.projectId ?? "proj-main";
   const nowDate = new Date().toISOString().slice(0, 10);

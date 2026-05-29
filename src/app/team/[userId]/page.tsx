@@ -5,11 +5,13 @@ import {
   getCatalogByKind,
   getClients,
   getFinancialReferenceRates,
+  getOperationalProfiles,
   getProfiles,
   getRequirements,
   getTimeEntries,
   getUsers,
 } from "@/data/repositories/server-db";
+import { isAdministrativeUser } from "@/lib/profiles/operational-scope";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import {
@@ -68,6 +70,8 @@ export default async function TeamMemberPage({
 
   const member = users.find((user) => user.id === userId);
   if (!member) notFound();
+  const profileById = new Map(profiles.map((item) => [item.id, item]));
+  if (isAdministrativeUser(member, profileById)) notFound();
 
   const profile = profiles.find((item) => item.id === member.profileId);
   const clientById = new Map(clients.map((client) => [client.id, client.name]));

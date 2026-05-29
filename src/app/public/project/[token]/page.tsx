@@ -4,10 +4,10 @@ import {
   getClients,
   getContractBudgets,
   getContractProfileAllocations,
-  getProfiles,
+  getOperationalProfiles,
+  getOperationalTimeEntries,
+  getOperationalUsers,
   getRequirements,
-  getTimeEntries,
-  getUsers,
 } from "@/data/repositories/server-db";
 import { RequirementKanbanBoard } from "@/components/requirements/requirement-kanban-board";
 import { ClientPortalInsights } from "@/components/public/client-portal-insights";
@@ -30,11 +30,11 @@ export default async function PublicProjectPortalPage({
       getRequirements(),
       getContractBudgets(),
       getContractProfileAllocations(),
-      getTimeEntries(),
+      getOperationalTimeEntries(),
       getCatalogByKind("requirement_status"),
       getCatalogByKind("time_entry_category"),
-      getProfiles(),
-      getUsers(),
+      getOperationalProfiles(),
+      getOperationalUsers(),
     ]);
 
   const client = clientId ? clients.find((item) => item.id === clientId) : null;

@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { RequirementKanbanBoard } from "@/components/requirements/requirement-kanban-board";
-import { getCatalogByKind, getClients, getRequirements, getUsers } from "@/data/repositories/server-db";
+import { getCatalogByKind, getClients, getOperationalUsers, getRequirements } from "@/data/repositories/server-db";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
@@ -21,7 +21,7 @@ export default async function RequirementsKanbanPage({
     getRequirements(),
     getCatalogByKind("requirement_status"),
     getClients(),
-    getUsers(),
+    getOperationalUsers(),
   ]);
   const ownScope = user.role === "Contributor";
   const currentDirectoryUserId = resolveDirectoryUserIdForSession(user, users);
