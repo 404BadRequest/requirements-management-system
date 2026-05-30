@@ -206,6 +206,12 @@ body {
     transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease;
   }
 
+  .data-table-shell--expand {
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
   .data-table-shell table {
     @apply min-w-full text-sm;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   flexRender,
@@ -32,6 +32,10 @@ type Props<TData> = {
   enableGlobalFilter?: boolean;
   globalFilterPlaceholder?: string;
   pageSize?: number;
+  /** Opciones del selector de filas por página (ej. 5, 10, 15). */
+  pageSizeOptions?: number[];
+  /** Muestra select para elegir cuántas filas ver por página, incluida la opción «Todos». */
+  enablePageSizeSelector?: boolean;
   /** Mensaje cuando no hay filas en los datos de origen */
   emptyTitle?: string;
   emptyDescription?: string;
@@ -60,6 +64,8 @@ export function DataTable<TData>({
   enableGlobalFilter = true,
   globalFilterPlaceholder = "Buscar en la tabla…",
   pageSize = 15,
+  pageSizeOptions = [5, 10, 15],
+  enablePageSizeSelector = true,
   emptyTitle = "Sin registros",
   emptyDescription = "No hay filas que mostrar con los criterios actuales.",
   emptyAction,
@@ -73,17 +79,33 @@ export function DataTable<TData>({
   const compact = density === "compact";
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const resolvedPageSizeOptions = useMemo(() => {
+    const options = [...pageSizeOptions];
+    if (!options.includes(pageSize)) {
+      options.push(pageSize);
+    }
+    return [...new Set(options)].sort((a, b) => a - b);
+  }, [pageSize, pageSizeOptions]);
+  const [pageSizeChoice, setPageSizeChoice] = useState<string>(String(pageSize));
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
+
+  useEffect(() => {
+    setPageSizeChoice(String(pageSize));
+    setPagination({ pageIndex: 0, pageSize });
+  }, [pageSize]);
 
   const table = useReactTable({
     data,
     columns,
-    state: { 
-      sorting, 
+    state: {
+      sorting,
+      pagination,
       ...(enableGlobalFilter ? { globalFilter } : {}),
-      ...(enableRowSelection && rowSelection ? { rowSelection } : {})
+      ...(enableRowSelection && rowSelection ? { rowSelection } : {}),
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
     ...(enableRowSelection && onRowSelectionChange ? { onRowSelectionChange } : {}),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -94,15 +116,64 @@ export function DataTable<TData>({
     enableGlobalFilter,
     enableRowSelection,
     ...(getRowId ? { getRowId } : {}),
-    initialState: { pagination: { pageSize } },
   });
+
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const showingAllRows = enablePageSizeSelector && pageSizeChoice === "all";
+
+  useEffect(() => {
+    if (!enablePageSizeSelector || pageSizeChoice !== "all") return;
+    const nextPageSize = Math.max(filteredCount, 1);
+    setPagination((current) => {
+      if (current.pageSize === nextPageSize && current.pageIndex === 0) return current;
+      return { pageIndex: 0, pageSize: nextPageSize };
+    });
+  }, [enablePageSizeSelector, pageSizeChoice, filteredCount]);
+
+  const handlePageSizeChoiceChange = (value: string) => {
+    setPageSizeChoice(value);
+    if (value === "all") {
+      setPagination({ pageIndex: 0, pageSize: Math.max(filteredCount, 1) });
+      return;
+    }
+    setPagination({ pageIndex: 0, pageSize: Number(value) });
+  };
 
   const pageIndex = table.getState().pagination.pageIndex;
   const tablePageSize = table.getState().pagination.pageSize;
   const pageCount = Math.max(1, table.getPageCount());
-  const filteredCount = table.getFilteredRowModel().rows.length;
   const from = filteredCount === 0 ? 0 : pageIndex * tablePageSize + 1;
   const to = Math.min((pageIndex + 1) * tablePageSize, filteredCount);
+
+  const showingSummary = (
+    <p className={cn("tabular-nums text-muted-foreground", compact ? "text-[13px]" : "text-sm")}>
+      Mostrando <span className="font-medium text-foreground">{from}</span>–
+      <span className="font-medium text-foreground">{to}</span> de{" "}
+      <span className="font-medium text-foreground">{filteredCount}</span>
+      {filteredCount !== data.length ? (
+        <span className="text-muted-foreground"> (total {data.length})</span>
+      ) : null}
+    </p>
+  );
+
+  const pageSizeSelector = enablePageSizeSelector ? (
+    <label className="inline-flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+      <span className="whitespace-nowrap">Filas por página</span>
+      <select
+        className="field-control min-w-[5.5rem] py-1.5 text-xs sm:text-sm"
+        value={pageSizeChoice}
+        onChange={(event) => handlePageSizeChoiceChange(event.target.value)}
+        aria-label="Filas por página"
+      >
+        {resolvedPageSizeOptions.map((option) => (
+          <option key={option} value={String(option)}>
+            {option}
+          </option>
+        ))}
+        <option value="all">Todos</option>
+      </select>
+    </label>
+  ) : null;
 
   const showToolbar = enableGlobalFilter && data.length > 0;
 
@@ -128,17 +199,29 @@ export function DataTable<TData>({
 
   return (
     <div className={cn("surface-card p-[length:var(--density-inset-pad)]", compact ? "space-y-2.5" : "space-y-3")}>
-      {showToolbar ? (
-        <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder={globalFilterPlaceholder}
-            className="field-control w-full rounded-[2px] border-border bg-card py-2.5 pl-10 pr-3 text-sm shadow-sm"
-            aria-label="Filtrar tabla"
-          />
+      {showToolbar || (enablePageSizeSelector && !emptyFiltered) ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {showToolbar ? (
+            <div className="relative min-w-[12rem] flex-1 max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder={globalFilterPlaceholder}
+                className="field-control w-full rounded-[2px] border-border bg-card py-2.5 pl-10 pr-3 text-sm shadow-sm"
+                aria-label="Filtrar tabla"
+              />
+            </div>
+          ) : (
+            <div className="flex-1" aria-hidden />
+          )}
+          {enablePageSizeSelector && !emptyFiltered ? (
+            <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4">
+              {showingSummary}
+              {pageSizeSelector}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -159,7 +242,12 @@ export function DataTable<TData>({
           <div
             className={cn(
               "data-table-shell",
-              compact ? "max-h-[min(62vh,520px)] text-[13px]" : "max-h-[min(72vh,800px)]",
+              enablePageSizeSelector
+                ? "data-table-shell--expand"
+                : compact
+                  ? "max-h-[min(62vh,520px)] text-[13px]"
+                  : "max-h-[min(72vh,800px)]",
+              compact && enablePageSizeSelector ? "text-[13px]" : null,
             )}
           >
             <table aria-describedby={captionId}>
@@ -218,18 +306,12 @@ export function DataTable<TData>({
           </div>
           <div
             className={cn(
-              "flex flex-wrap items-center justify-between gap-3 border-t border-border/50 text-muted-foreground",
+              "flex flex-wrap items-center gap-3 border-t border-border/50 text-muted-foreground",
+              enablePageSizeSelector ? "justify-end" : "justify-between",
               compact ? "pt-3 text-[13px]" : "pt-4 text-sm",
             )}
           >
-            <p className="tabular-nums">
-              Mostrando <span className="font-medium text-foreground">{from}</span>–
-              <span className="font-medium text-foreground">{to}</span> de{" "}
-              <span className="font-medium text-foreground">{filteredCount}</span>
-              {filteredCount !== data.length ? (
-                <span className="text-muted-foreground"> (total {data.length})</span>
-              ) : null}
-            </p>
+            {!enablePageSizeSelector ? showingSummary : null}
             <div className="flex items-center gap-2">
               <span className="text-xs tabular-nums sm:text-sm">
                 Página {pageIndex + 1} / {pageCount}
@@ -238,7 +320,7 @@ export function DataTable<TData>({
                 type="button"
                 className="btn-secondary px-3 py-1.5 text-xs sm:text-sm"
                 onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                disabled={!table.getCanPreviousPage() || showingAllRows}
               >
                 Anterior
               </button>
@@ -246,7 +328,7 @@ export function DataTable<TData>({
                 type="button"
                 className="btn-secondary px-3 py-1.5 text-xs sm:text-sm"
                 onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                disabled={!table.getCanNextPage() || showingAllRows}
               >
                 Siguiente
               </button>
