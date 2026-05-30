@@ -308,6 +308,73 @@ export async function deleteRequirementsBatchAction(ids: string[]) {
   return deletedCount;
 }
 
+export type RequirementBatchUpdateInput = {
+  ids: string[];
+  ownerId?: string;
+  status?: string;
+  priority?: string;
+};
+
+export async function updateRequirementsBatchAction(input: RequirementBatchUpdateInput) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "requirements.write");
+  if (!user) throw new Error("Debes iniciar sesión.");
+
+  const uniqueIds = [...new Set(input.ids.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    throw new Error("Selecciona al menos un requerimiento.");
+  }
+
+  const patch: Parameters<typeof updateRequirementAction>[1] = {};
+  if (input.ownerId !== undefined) {
+    if (user.role !== "Admin" && user.role !== "Project Manager") {
+      throw new Error("Solo Admin o Project Manager pueden reasignar responsables en lote.");
+    }
+    patch.ownerId = input.ownerId.trim();
+  }
+  if (input.status !== undefined) {
+    patch.status = input.status.trim();
+  }
+  if (input.priority !== undefined) {
+    if (user.role !== "Admin" && user.role !== "Project Manager") {
+      throw new Error("Solo Admin o Project Manager pueden cambiar la prioridad en lote.");
+    }
+    patch.priority = input.priority.trim();
+  }
+  if (Object.keys(patch).length === 0) {
+    throw new Error("Indica qué campo actualizar.");
+  }
+
+  let updatedCount = 0;
+  const errors: Array<{ id: string; message: string }> = [];
+  for (const id of uniqueIds) {
+    try {
+      const next = await updateRequirementAction(id, patch);
+      if (next) {
+        updatedCount += 1;
+      } else {
+        errors.push({ id, message: "No se encontró el requerimiento." });
+      }
+    } catch (error) {
+      errors.push({
+        id,
+        message: error instanceof Error ? error.message : "No se pudo actualizar.",
+      });
+    }
+  }
+
+  logServerActionEvent({
+    action: "requirement.update.batch",
+    entityType: "requirement",
+    entityId: uniqueIds.join(","),
+    outcome: updatedCount > 0 ? "ok" : "error",
+    detail: updatedCount > 0 ? `${updatedCount} updated, ${errors.length} failed` : "none_updated",
+  });
+
+  revalidatePath("/", "layout");
+  return { updatedCount, failedCount: errors.length, errors };
+}
+
 export async function addRequirementCommentAction(requirementId: string, formData: FormData) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "requirements.write");

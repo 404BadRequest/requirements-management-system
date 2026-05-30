@@ -16,6 +16,7 @@ import { PriorityBadge, StatusBadge } from "@/components/common/badges";
 import { RequirementForm } from "@/components/forms/requirement-form";
 import { RequirementEditModal } from "@/components/requirements/requirement-edit-modal";
 import { RequirementsBulkUploadModal } from "@/components/requirements/requirements-bulk-upload-modal";
+import { RequirementsBulkActionsBar } from "@/components/requirements/requirements-bulk-actions-bar";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import {
   createRequirementAction,
@@ -203,10 +204,11 @@ export function RequirementsPageClient({
   );
   const activeClients = useMemo(() => clients.filter((c) => c.active), [clients]);
   const canShowForm = statusOpts.length > 0 && priorityOpts.length > 0 && activeClients.length > 0;
-  const selectedCount = Object.keys(rowSelection).length;
+  const canBulkSelect = canDelete || canReassignOwner || canChangeStatus || canManageRequirement;
+  const selectedIds = useMemo(() => Object.keys(rowSelection), [rowSelection]);
+  const selectedCount = selectedIds.length;
 
   const handleBulkDelete = async () => {
-    const selectedIds = Object.keys(rowSelection);
     if (selectedIds.length === 0) return;
 
     setIsBulkDeleting(true);
@@ -230,7 +232,7 @@ export function RequirementsPageClient({
 
   const columns = useMemo<ColumnDef<Requirement>[]>(() => {
     const base: ColumnDef<Requirement>[] = [
-      ...(canDelete
+      ...(canBulkSelect
         ? [
             {
               id: "select",
@@ -343,7 +345,7 @@ export function RequirementsPageClient({
         },
       },
     ];
-  }, [canWrite, canDelete, canReassignOwner, canManageRequirement, canChangeStatus, currentDirectoryUserId, clientById, ownerById, statusOpts]);
+  }, [canWrite, canDelete, canBulkSelect, canReassignOwner, canManageRequirement, canChangeStatus, currentDirectoryUserId, clientById, ownerById, statusOpts, priorityOpts]);
 
   const openNewRequirementModal = () => {
     setNewFormKey((k) => k + 1);
@@ -694,29 +696,29 @@ export function RequirementsPageClient({
         />
       ) : (
         <>
-          {canDelete && selectedCount > 0 ? (
-            <div className="mb-4 flex items-center justify-between rounded-[2px] border border-border bg-muted/30 px-4 py-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                {selectedCount} requerimiento{selectedCount !== 1 ? "s" : ""} seleccionado{selectedCount !== 1 ? "s" : ""}
-              </span>
-              <ConfirmDialog
-                label="Eliminar seleccionados"
-                title={`¿Eliminar ${selectedCount} requerimiento${selectedCount !== 1 ? "s" : ""}?`}
-                description="Esta acción no se puede deshacer."
-                triggerClassName="rounded-[2px] border border-danger px-3 py-1.5 text-xs text-danger"
-                confirmLabel="Eliminar"
-                confirmLoadingLabel="Eliminando..."
-                disabled={isBulkDeleting}
-                onConfirm={handleBulkDelete}
-              />
-            </div>
+          {canBulkSelect && selectedCount > 0 ? (
+            <RequirementsBulkActionsBar
+              selectedIds={selectedIds}
+              selectedCount={selectedCount}
+              owners={owners}
+              statusOptions={statusOpts}
+              priorityOptions={priorityOpts}
+              canDelete={canDelete}
+              canReassignOwner={canReassignOwner}
+              canChangeStatus={canChangeStatus}
+              canManageRequirement={canManageRequirement}
+              isBulkDeleting={isBulkDeleting}
+              onBulkDelete={handleBulkDelete}
+              onUpdated={reload}
+              onClearSelection={() => setRowSelection({})}
+            />
           ) : null}
           <DataTable
             data={filteredRequirements}
             columns={columns}
             pageSize={10}
             globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
-            enableRowSelection={canDelete}
+            enableRowSelection={canBulkSelect}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
             getRowId={(row) => row.id}
