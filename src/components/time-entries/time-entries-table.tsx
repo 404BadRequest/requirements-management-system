@@ -12,6 +12,7 @@ import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 import type { TimeEntry } from "@/types/domain";
 import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
+import { requirementDetailPath } from "@/lib/routes/requirements";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,9 @@ export type TimeEntryRow = {
   durationMinutes: number;
   durationLabel: string;
   clientLabel: string;
+  requirementId: string | null;
+  requirementTitle: string | null;
+  taskDescription: string;
   contractStatus: string;
   openEndWarning?: boolean;
 };
@@ -126,6 +130,36 @@ export function TimeEntriesTable({
       },
       { accessorKey: "date", header: "Fecha" },
       { accessorKey: "userName", header: "Encargado" },
+      {
+        id: "requirement",
+        accessorFn: (row) =>
+          [row.requirementTitle, row.taskDescription, row.requirementId].filter(Boolean).join(" "),
+        header: "Requerimiento",
+        cell: ({ row }) => {
+          const { requirementId, requirementTitle, taskDescription } = row.original;
+          if (requirementId && requirementTitle) {
+            return (
+              <div className="max-w-xs">
+                <Link
+                  href={requirementDetailPath(requirementId)}
+                  className="line-clamp-2 font-medium text-primary hover:underline"
+                >
+                  {requirementTitle}
+                </Link>
+                {taskDescription ? (
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{taskDescription}</p>
+                ) : null}
+              </div>
+            );
+          }
+          return (
+            <div className="max-w-xs">
+              <span className="text-xs text-muted-foreground">Sin requerimiento</span>
+              {taskDescription ? <p className="mt-0.5 line-clamp-2 text-sm">{taskDescription}</p> : null}
+            </div>
+          );
+        },
+      },
       { accessorKey: "category", header: "Categoría" },
       {
         accessorKey: "openEndWarning",
@@ -279,7 +313,7 @@ export function TimeEntriesTable({
       <DataTable
         data={rows}
         columns={columns}
-        globalFilterPlaceholder="Buscar por ID, fecha, persona, categoría o cliente…"
+        globalFilterPlaceholder="Buscar por ID, requerimiento, tarea, persona, categoría o cliente…"
         pageSize={10}
         enableRowSelection={true}
         rowSelection={rowSelection}

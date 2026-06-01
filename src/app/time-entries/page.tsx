@@ -348,6 +348,9 @@ export default async function TimeEntriesPage({
             durationMinutes: entry.durationMinutes,
             durationLabel: entry.endTime ? `${(entry.durationMinutes / 60).toFixed(2)} h` : "En curso",
             clientLabel: clientCell(entry.requirementId),
+            requirementId: entry.requirementId,
+            requirementTitle: entry.requirementId ? (requirementMap.get(entry.requirementId)?.title ?? null) : null,
+            taskDescription: entry.taskDescription,
             contractStatus: resolveContractStatus(entry),
             openEndWarning: !entry.endTime,
           }))}
