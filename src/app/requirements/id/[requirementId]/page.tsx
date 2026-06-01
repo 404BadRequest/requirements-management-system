@@ -20,6 +20,7 @@ import { calcCubicacionRow } from "@/lib/calculations/cubicacion";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { formatStatusLabel } from "@/lib/formatting/status-label";
 import { RequirementHoursPanel } from "@/components/requirements/requirement-hours-panel";
 import { RequirementObservationsChat } from "@/components/requirements/requirement-observations-chat";
@@ -114,6 +115,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     requirementStatuses,
     requirementPriorities,
     contracts,
+    budgetScopes,
     linkedCubicacion,
     tasks,
   ] = await Promise.all([
@@ -127,6 +129,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     getCatalogByKind("requirement_status"),
     getCatalogByKind("requirement_priority"),
     getContractBudgets(),
+    getCatalogByKind("budget_scope"),
     getCubicacionItemByRequirementId(requirementId),
     getRequirementTasks(requirementId),
   ]);
@@ -338,10 +341,8 @@ export default async function RequirementDetailPage({ params }: { params: Promis
               imputationCount={requirementEntries.length}
               users={operationalUsers.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
               clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
-              requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-              contracts={contracts
-                .filter((contract) => contract.active)
-                .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
+              requirements={mapRequirementsForTimeEntryForm(requirements)}
+              contracts={mapContractsForTimeEntryForm(contracts, budgetScopes.filter((row) => row.active))}
               contractProfiles={operationalProfiles.map((profile) => ({ id: profile.id, label: profile.name }))}
               categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canPickAnyOwner={canManageAnyTimeEntry}

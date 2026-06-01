@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 import type { TimeEntry } from "@/types/domain";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,8 +48,8 @@ export function TimeEntriesTable({
   rows: TimeEntryRow[];
   users: { id: string; name: string }[];
   clients: { id: string; name: string }[];
-  requirements: { id: string; title: string; clientId: string }[];
-  contracts?: { id: string; clientId: string; label: string }[];
+  requirements: TimeEntryFormRequirement[];
+  contracts?: TimeEntryFormContract[];
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;

@@ -25,6 +25,7 @@ import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import type { SettingsCatalogEntry } from "@/types/domain";
 import type { BudgetInput } from "@/schemas/budget-schema";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
@@ -280,7 +281,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
   const { user } = await getAppSession();
   assertPermission(user?.role, "budgets.read");
 
-  const [contractsData, allocationsData, profilesData, entries, users, requirements, clientsData, referenceRates, timeCategories, cubicacionItems] = await Promise.all([
+  const [contractsData, allocationsData, profilesData, entries, users, requirements, clientsData, referenceRates, timeCategories, budgetScopes, cubicacionItems] = await Promise.all([
     getContractBudgets(),
     getContractProfileAllocations(),
     getOperationalProfiles(),
@@ -290,6 +291,7 @@ export async function loadBudgetContractDetailData(contractId: string) {
     getClients(),
     getFinancialReferenceRates(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
     getCubicacionItems(contractId),
   ]);
 
@@ -515,10 +517,8 @@ export async function loadBudgetContractDetailData(contractId: string) {
     },
     users: users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name })),
     clients: clientsData.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name })),
-    requirements: requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId })),
-    contracts: contractsData
-      .filter((c) => c.active)
-      .map((c) => ({ id: c.id, clientId: c.clientId, label: `${c.code} · ${c.name}` })),
+    requirements: mapRequirementsForTimeEntryForm(requirements),
+    contracts: mapContractsForTimeEntryForm(contractsData, budgetScopes.filter((row) => row.active)),
     contractProfiles: profilesData.map((p) => ({ id: p.id, label: p.name })),
     categories: timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: formatCatalogLabel(c.code, c.label) })),
     canPickAnyOwner,

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
 import type { TimeEntry } from "@/types/domain";
 
@@ -128,8 +129,8 @@ export function WeeklyTimesheetClient({
   entries: TimeEntry[];
   users: { id: string; name: string }[];
   clients: { id: string; name: string }[];
-  requirements: { id: string; title: string; clientId: string }[];
-  contracts: { id: string; clientId: string; label: string }[];
+  requirements: TimeEntryFormRequirement[];
+  contracts: TimeEntryFormContract[];
   contractProfiles: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   targetUserId: string;

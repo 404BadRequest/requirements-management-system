@@ -12,6 +12,7 @@ import {
   getRequirements,
 } from "@/data/repositories/server-db";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { roleHasPermission } from "@/lib/auth/permissions";
 
 export default async function WeeklyTimesheetPage({
@@ -23,12 +24,13 @@ export default async function WeeklyTimesheetPage({
   const canEditAnyEntry = user.role === "Admin" || user.role === "Project Manager";
   const { weekStart, userId } = await searchParams;
 
-  const [entries, users, requirements, clients, timeCategories, contracts, profiles] = await Promise.all([
+  const [entries, users, requirements, clients, timeCategories, budgetScopes, contracts, profiles] = await Promise.all([
     getOperationalTimeEntries(),
     getOperationalUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
     getContractBudgets(),
     getOperationalProfiles(),
   ]);
@@ -55,8 +57,8 @@ export default async function WeeklyTimesheetPage({
         entries={userEntries}
         users={activeUsers.map((u) => ({ id: u.id, name: u.name }))}
         clients={clients.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}
-        requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-        contracts={contracts.filter((c) => c.active).map((c) => ({ id: c.id, clientId: c.clientId, label: `${c.code} · ${c.name}` }))}
+        requirements={mapRequirementsForTimeEntryForm(requirements)}
+        contracts={mapContractsForTimeEntryForm(contracts, budgetScopes.filter((row) => row.active))}
         contractProfiles={profiles.map((p) => ({ id: p.id, label: p.name }))}
         categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
         targetUserId={targetUserId}

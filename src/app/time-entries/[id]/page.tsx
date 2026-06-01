@@ -19,6 +19,7 @@ import {
 import { filterOperationalProfiles, filterOperationalUsers } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { requirementDetailPath } from "@/lib/routes/requirements";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
 import type { SettingsCatalogEntry } from "@/types/domain";
@@ -45,7 +46,7 @@ function formatDateTime(iso: string): string {
 export default async function TimeEntryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await requirePermission("time_entries.read");
   const { id } = await params;
-  const [entry, allUsers, allProfiles, requirements, clients, projects, categories, contracts] = await Promise.all([
+  const [entry, allUsers, allProfiles, requirements, clients, projects, categories, budgetScopes, contracts] = await Promise.all([
     getTimeEntryById(id),
     getUsers(),
     getProfiles(),
@@ -53,6 +54,7 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
     getClients(),
     getProjects(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
     getContractBudgets(),
   ]);
   const users = filterOperationalUsers(allUsers, allProfiles);
@@ -106,10 +108,8 @@ export default async function TimeEntryDetailPage({ params }: { params: Promise<
               entry={entry}
               users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
               clients={clients.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}
-              requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-              contracts={contracts
-                .filter((c) => c.active)
-                .map((c) => ({ id: c.id, clientId: c.clientId, label: `${c.code} · ${c.name}` }))}
+              requirements={mapRequirementsForTimeEntryForm(requirements)}
+              contracts={mapContractsForTimeEntryForm(contracts, budgetScopes.filter((row) => row.active))}
               contractProfiles={profiles.map((p) => ({ id: p.id, label: p.name }))}
               categories={categories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
               canEdit={canEditEntry}

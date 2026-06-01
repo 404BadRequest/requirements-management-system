@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { TimeEntryForm } from "@/components/forms/time-entry-form";
 import { updateTimeEntryAction } from "@/app/time-entries/new/data-actions";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import type { TimeEntry } from "@/types/domain";
 
 export function TimeEntryEditModal({
@@ -26,8 +27,8 @@ export function TimeEntryEditModal({
   entry: TimeEntry;
   users: { id: string; name: string }[];
   clients: { id: string; name: string }[];
-  requirements: { id: string; title: string; clientId: string }[];
-  contracts?: { id: string; clientId: string; label: string }[];
+  requirements: TimeEntryFormRequirement[];
+  contracts?: TimeEntryFormContract[];
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canEdit: boolean;

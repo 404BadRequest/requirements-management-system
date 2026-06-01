@@ -19,6 +19,7 @@ import { filterOperationalTimeEntries } from "@/lib/profiles/operational-scope";
 import { requirePermission } from "@/lib/auth/rsc-guard";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 
 export default async function TimeEntriesPage({
@@ -38,12 +39,13 @@ export default async function TimeEntriesPage({
   const openNewModal = canCreate && (nueva === "1" || nueva === "true");
   const prefillRequirementId = requirementIdParam && !duplicateId ? requirementIdParam : "";
   const prefillUserId = userIdParam && !duplicateId && canPickAnyOwner ? userIdParam : "";
-  const [entries, users, requirements, clients, timeCategories, contracts, profiles, contractAllocations, referenceRates] = await Promise.all([
+  const [entries, users, requirements, clients, timeCategories, budgetScopes, contracts, profiles, contractAllocations, referenceRates] = await Promise.all([
     getTimeEntries(),
     getOperationalUsers(),
     getRequirements(),
     getClients(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
     getContractBudgets(),
     getOperationalProfiles(),
     getContractProfileAllocations(),
@@ -324,10 +326,8 @@ export default async function TimeEntriesPage({
         <TimeEntriesTable
           users={users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
           clients={clients.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name }))}
-          requirements={requirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId }))}
-          contracts={contracts
-            .filter((contract) => contract.active)
-            .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` }))}
+          requirements={mapRequirementsForTimeEntryForm(requirements)}
+          contracts={mapContractsForTimeEntryForm(contracts, budgetScopes.filter((row) => row.active))}
           contractProfiles={profiles.map((profile) => ({ id: profile.id, label: profile.name }))}
           categories={timeCategories.filter((c) => c.active).map((c) => ({ code: c.code, label: c.label }))}
           canPickAnyOwner={canPickAnyOwner}

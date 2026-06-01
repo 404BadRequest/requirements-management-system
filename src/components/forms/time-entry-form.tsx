@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { timeEntryBatchSchema, timeEntrySchema, type TimeEntryBatchInput, type TimeEntryInput } from "@/schemas/time-entry-schema";
+import { resolveTimeEntryCategoryFromContractScope } from "@/lib/contracts/resolve-time-entry-category";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import { FormField } from "@/components/forms/form-field";
 
 export const TimeEntryForm = ({
@@ -26,8 +28,8 @@ export const TimeEntryForm = ({
   users: { id: string; name: string }[];
   clients: { id: string; name: string }[];
   categories: { code: string; label: string }[];
-  requirements: { id: string; title: string; clientId: string }[];
-  contracts?: { id: string; clientId: string; label: string }[];
+  requirements: TimeEntryFormRequirement[];
+  contracts?: TimeEntryFormContract[];
   contractProfiles?: { id: string; label: string }[];
   canOverrideContract?: boolean;
   canOverrideContractProfile?: boolean;
@@ -117,6 +119,20 @@ export const TimeEntryForm = ({
     () => requirements.find((requirement) => requirement.id === selectedRequirementId) ?? null,
     [requirements, selectedRequirementId],
   );
+  const activeContractId = useMemo(() => {
+    if (canOverrideContract && selectedContractId) return selectedContractId;
+    if (selectedRequirement?.contractId) return selectedRequirement.contractId;
+    return selectedContractId;
+  }, [canOverrideContract, selectedContractId, selectedRequirement]);
+  const activeContract = useMemo(
+    () => contracts.find((contract) => contract.id === activeContractId) ?? null,
+    [activeContractId, contracts],
+  );
+  const lockedCategoryFromContract = useMemo(() => {
+    if (!activeContract?.scope) return null;
+    return resolveTimeEntryCategoryFromContractScope(activeContract.scope, categories);
+  }, [activeContract, categories]);
+  const lockedCategoryLabel = activeContract?.scopeLabel ?? lockedCategoryFromContract;
   const initialClientId = defaultValues?.clientId ?? selectedRequirement?.clientId ?? contracts.find((contract) => contract.id === selectedContractId)?.clientId ?? clients[0]?.id ?? "";
   const [selectedClientId, setSelectedClientId] = useState(initialClientId);
   const filteredRequirements = useMemo(
@@ -158,6 +174,11 @@ export const TimeEntryForm = ({
       setQuickEndError(null);
     }
   }, [quickEndError, watchedEndTime, watchedStartTime]);
+
+  useEffect(() => {
+    if (!lockedCategoryFromContract) return;
+    form.setValue("category", lockedCategoryFromContract, { shouldDirty: true, shouldValidate: true });
+  }, [form, lockedCategoryFromContract]);
 
   return (
     <form
@@ -345,14 +366,26 @@ export const TimeEntryForm = ({
           </select>
         )}
       </FormField>
-      <FormField label="Categoria">
-        <select className="field-control w-full" {...form.register("category")}>
-          {categories.map((item) => (
-            <option key={item.code} value={item.code}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+      <FormField label="Categoria" error={form.formState.errors.category?.message}>
+        {lockedCategoryFromContract ? (
+          <div className="space-y-1">
+            <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm font-medium text-foreground">
+              {lockedCategoryLabel}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Definida por el ámbito del contrato vinculado.
+            </p>
+            <input type="hidden" {...form.register("category")} />
+          </div>
+        ) : (
+          <select className="field-control w-full" {...form.register("category")}>
+            {categories.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        )}
       </FormField>
       <FormField label="Cliente">
         <select

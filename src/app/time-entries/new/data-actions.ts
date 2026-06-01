@@ -19,6 +19,8 @@ import { getAppSession } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
 import { resolveContractIdForTimeEntry } from "@/lib/contracts/resolve-contract";
+import { resolveTimeEntryCategoryForContract } from "@/lib/contracts/resolve-time-entry-category";
+import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { assertOperationalProfileIds, assertOperationalUserId, resolveOperationalActorUserId } from "@/lib/profiles/operational-scope";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import type { Role } from "@/types/domain";
@@ -34,10 +36,11 @@ export async function loadNewTimeEntryFormData() {
   if (!user) {
     throw new Error("Debes iniciar sesión.");
   }
-  const [usersData, requirementsData, catRows, contracts, clientsData] = await Promise.all([
+  const [usersData, requirementsData, catRows, budgetScopes, contracts, clientsData] = await Promise.all([
     getOperationalUsers(),
     getRequirements(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
     getContractBudgets(),
     getClients(),
   ]);
@@ -59,10 +62,8 @@ export async function loadNewTimeEntryFormData() {
     encargadoLocked: !pickAny,
     defaultUserId: resolvedId,
     clients: clientsData.filter((client) => client.active).map((client) => ({ id: client.id, name: client.name })),
-    requirements: visibleRequirements.map((r) => ({ id: r.id, title: r.title, clientId: r.clientId })),
-    contracts: contracts
-      .filter((contract) => contract.active)
-      .map((contract) => ({ id: contract.id, clientId: contract.clientId, label: `${contract.code} · ${contract.name}` })),
+    requirements: mapRequirementsForTimeEntryForm(visibleRequirements),
+    contracts: mapContractsForTimeEntryForm(contracts, budgetScopes.filter((row) => row.active)),
     contractProfiles: profiles.map((profile) => ({ id: profile.id, label: profile.name })),
     canOverrideContract: pickAny,
     canOverrideContractProfile: pickAny,
@@ -144,12 +145,13 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
+  const [requirements, contracts, allocations, profiles, referenceRates, timeCategories] = await Promise.all([
     getRequirements(),
     getContractBudgets(),
     getContractProfileAllocations(),
     getOperationalProfiles(),
     getFinancialReferenceRates(),
+    getCatalogByKind("time_entry_category"),
   ]);
   const payload = { ...input, endTime: input.endTime ? input.endTime : null };
   if (!canPickEncargadoForOthers(user.role)) {
@@ -189,6 +191,14 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
     ufToClp: referenceRates.ufToClp,
     usdToClp: referenceRates.usdToClp,
   });
+  const categoryFromContract = resolveTimeEntryCategoryForContract(
+    payload.contractId,
+    contracts,
+    timeCategories.filter((row) => row.active),
+  );
+  if (categoryFromContract) {
+    payload.category = categoryFromContract;
+  }
   const created = await createTimeEntry(payload);
   revalidatePath("/time-entries");
   revalidatePath("/dashboard");
@@ -259,12 +269,13 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   const users = await getOperationalUsers();
   const activeUsers = users.filter((u) => u.active);
   const resolvedId = resolveDirectoryUserIdForSession(user, activeUsers);
-  const [requirements, contracts, allocations, profiles, referenceRates] = await Promise.all([
+  const [requirements, contracts, allocations, profiles, referenceRates, timeCategories] = await Promise.all([
     getRequirements(),
     getContractBudgets(),
     getContractProfileAllocations(),
     getOperationalProfiles(),
     getFinancialReferenceRates(),
+    getCatalogByKind("time_entry_category"),
   ]);
   const pickAny = canPickEncargadoForOthers(user.role);
 
@@ -310,6 +321,14 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
     ufToClp: referenceRates.ufToClp,
     usdToClp: referenceRates.usdToClp,
   });
+  const categoryFromContract = resolveTimeEntryCategoryForContract(
+    payload.contractId,
+    contracts,
+    timeCategories.filter((row) => row.active),
+  );
+  if (categoryFromContract) {
+    payload.category = categoryFromContract;
+  }
 
   const updated = await updateTimeEntry(id, payload);
   if (!updated) {
@@ -613,11 +632,12 @@ export async function bulkCreateTimeEntriesFromImportAction(
   assertPermission(user?.role, "time_entries.write");
   if (!user) throw new Error("Debes iniciar sesión.");
 
-  const [users, requirements, contracts, categories] = await Promise.all([
+  const [users, requirements, contracts, categories, budgetScopes] = await Promise.all([
     getOperationalUsers(),
     getRequirements(),
     getContractBudgets(),
     getCatalogByKind("time_entry_category"),
+    getCatalogByKind("budget_scope"),
   ]);
 
   const userId = resolveOperationalActorUserId(user, users);
@@ -664,8 +684,6 @@ export async function bulkCreateTimeEntriesFromImportAction(
         }
       }
 
-      const category = validCategories.has(row.category) ? row.category : "Proyecto";
-
       const resolvedContractId = resolveContractIdForTimeEntry({
         requirementId,
         contractId,
@@ -674,6 +692,15 @@ export async function bulkCreateTimeEntriesFromImportAction(
         requirements,
         contracts,
       });
+
+      const categoryFromContract = resolveTimeEntryCategoryForContract(
+        resolvedContractId,
+        contracts,
+        categories.filter((row) => row.active),
+      );
+      const category =
+        categoryFromContract ??
+        (validCategories.has(row.category) ? row.category : budgetScopes.find((row) => row.active)?.code ?? "Proyecto");
 
       const payload: TimeEntryInput = {
         projectId,

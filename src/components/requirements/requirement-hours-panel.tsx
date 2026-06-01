@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { RowActionMenu } from "@/components/common/row-action-menu";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
 import { deleteTimeEntryAction } from "@/app/time-entries/new/data-actions";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import { cn } from "@/lib/utils/cn";
 import type { TimeEntry } from "@/types/domain";
 
@@ -53,8 +54,8 @@ export function RequirementHoursPanel({
   imputationCount: number;
   users: { id: string; name: string }[];
   clients: { id: string; name: string }[];
-  requirements: { id: string; title: string; clientId: string }[];
-  contracts?: { id: string; clientId: string; label: string }[];
+  requirements: TimeEntryFormRequirement[];
+  contracts?: TimeEntryFormContract[];
   contractProfiles?: { id: string; label: string }[];
   categories: { code: string; label: string }[];
   canPickAnyOwner: boolean;

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { TimeEntryForm } from "@/components/forms/time-entry-form";
 import { createTimeEntriesBatchAction, createTimeEntryAction, loadNewTimeEntryFormData } from "@/app/time-entries/new/data-actions";
+import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import type { TimeEntryInput } from "@/schemas/time-entry-schema";
 
 function NewTimeEntryModalForm({
@@ -17,8 +18,8 @@ function NewTimeEntryModalForm({
 }) {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
-  const [requirements, setRequirements] = useState<{ id: string; title: string; clientId: string }[]>([]);
-  const [contracts, setContracts] = useState<{ id: string; clientId: string; label: string }[]>([]);
+  const [requirements, setRequirements] = useState<TimeEntryFormRequirement[]>([]);
+  const [contracts, setContracts] = useState<TimeEntryFormContract[]>([]);
   const [contractProfiles, setContractProfiles] = useState<{ id: string; label: string }[]>([]);
   const [categories, setCategories] = useState<{ code: string; label: string }[]>([]);
   const [defaultUserId, setDefaultUserId] = useState<string | undefined>();
