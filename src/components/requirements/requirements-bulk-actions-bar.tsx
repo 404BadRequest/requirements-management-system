@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { updateRequirementsBatchAction } from "@/app/requirements/data-actions";
 
-type BulkAction = "status" | "owner" | "priority";
+type BulkAction = "status" | "owner" | "priority" | "contract";
+
+const NO_CONTRACT_VALUE = "__none__";
 
 export function RequirementsBulkActionsBar({
   selectedIds,
   selectedCount,
   owners,
+  contracts,
+  selectedRequirements,
   statusOptions,
   priorityOptions,
   canDelete,
@@ -26,6 +30,8 @@ export function RequirementsBulkActionsBar({
   selectedIds: string[];
   selectedCount: number;
   owners: { id: string; name: string }[];
+  contracts: { id: string; clientId: string; label: string }[];
+  selectedRequirements: Array<{ id: string; clientId: string; title: string }>;
   statusOptions: { code: string; label: string }[];
   priorityOptions: { code: string; label: string }[];
   canDelete: boolean;
@@ -41,14 +47,26 @@ export function RequirementsBulkActionsBar({
   const [bulkValue, setBulkValue] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const selectedClientIds = useMemo(
+    () => new Set(selectedRequirements.map((requirement) => requirement.clientId)),
+    [selectedRequirements],
+  );
+
+  const compatibleContracts = useMemo(
+    () => contracts.filter((contract) => selectedClientIds.has(contract.clientId)),
+    [contracts, selectedClientIds],
+  );
+
   const openBulkAction = (action: BulkAction) => {
     setBulkAction(action);
     if (action === "status") {
       setBulkValue(statusOptions[0]?.code ?? "");
     } else if (action === "owner") {
       setBulkValue(owners[0]?.id ?? "");
-    } else {
+    } else if (action === "priority") {
       setBulkValue(priorityOptions[0]?.code ?? "");
+    } else {
+      setBulkValue(compatibleContracts[0]?.id ?? NO_CONTRACT_VALUE);
     }
   };
 
@@ -63,7 +81,7 @@ export function RequirementsBulkActionsBar({
   };
 
   const handleBulkUpdate = async () => {
-    if (!bulkAction || !bulkValue || isUpdating) return;
+    if (!bulkAction || bulkValue === "" || isUpdating) return;
 
     setIsUpdating(true);
     try {
@@ -72,7 +90,12 @@ export function RequirementsBulkActionsBar({
           ? { ids: selectedIds, status: bulkValue }
           : bulkAction === "owner"
             ? { ids: selectedIds, ownerId: bulkValue }
-            : { ids: selectedIds, priority: bulkValue };
+            : bulkAction === "priority"
+              ? { ids: selectedIds, priority: bulkValue }
+              : {
+                  ids: selectedIds,
+                  contractId: bulkValue === NO_CONTRACT_VALUE ? null : bulkValue,
+                };
 
       const result = await updateRequirementsBatchAction(payload);
       if (result.updatedCount === 0) {
@@ -81,7 +104,13 @@ export function RequirementsBulkActionsBar({
       }
 
       const label =
-        bulkAction === "status" ? "estado" : bulkAction === "owner" ? "responsable" : "prioridad";
+        bulkAction === "status"
+          ? "estado"
+          : bulkAction === "owner"
+            ? "responsable"
+            : bulkAction === "priority"
+              ? "prioridad"
+              : "contrato";
       if (result.failedCount > 0) {
         toast.warning(
           `${result.updatedCount} requerimiento(s) actualizado(s); ${result.failedCount} no se pudieron cambiar de ${label}.`,
@@ -107,7 +136,9 @@ export function RequirementsBulkActionsBar({
         ? "Reasignar responsable por lote"
         : bulkAction === "priority"
           ? "Cambiar prioridad por lote"
-          : "";
+          : bulkAction === "contract"
+            ? "Asignar contrato por lote"
+            : "";
 
   const modalDescription =
     bulkAction === "status"
@@ -116,7 +147,9 @@ export function RequirementsBulkActionsBar({
         ? `Asigna un nuevo responsable a ${selectedCount} requerimiento${selectedCount !== 1 ? "s" : ""} seleccionado${selectedCount !== 1 ? "s" : ""}.`
         : bulkAction === "priority"
           ? `Aplica una nueva prioridad a ${selectedCount} requerimiento${selectedCount !== 1 ? "s" : ""} seleccionado${selectedCount !== 1 ? "s" : ""}.`
-          : "";
+          : bulkAction === "contract"
+            ? `Asigna un contrato compatible al cliente de cada requerimiento seleccionado (${selectedCount}).`
+            : "";
 
   return (
     <>
@@ -136,9 +169,14 @@ export function RequirementsBulkActionsBar({
             </button>
           ) : null}
           {canManageRequirement ? (
-            <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => openBulkAction("priority")}>
-              Cambiar prioridad
-            </button>
+            <>
+              <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => openBulkAction("contract")}>
+                Asignar contrato
+              </button>
+              <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => openBulkAction("priority")}>
+                Cambiar prioridad
+              </button>
+            </>
           ) : null}
           {canDelete ? (
             <ConfirmDialog
@@ -169,7 +207,13 @@ export function RequirementsBulkActionsBar({
           >
             <label className="grid gap-1.5">
               <span className="field-label">
-                {bulkAction === "status" ? "Nuevo estado" : bulkAction === "owner" ? "Nuevo responsable" : "Nueva prioridad"}
+                {bulkAction === "status"
+                  ? "Nuevo estado"
+                  : bulkAction === "owner"
+                    ? "Nuevo responsable"
+                    : bulkAction === "priority"
+                      ? "Nueva prioridad"
+                      : "Contrato"}
               </span>
               <select
                 className="field-control w-full"
@@ -190,15 +234,41 @@ export function RequirementsBulkActionsBar({
                           {owner.name}
                         </option>
                       ))
-                    : priorityOptions.map((opt) => (
-                        <option key={opt.code} value={opt.code}>
-                          {opt.label}
-                        </option>
-                      ))}
+                    : bulkAction === "priority"
+                      ? priorityOptions.map((opt) => (
+                          <option key={opt.code} value={opt.code}>
+                            {opt.label}
+                          </option>
+                        ))
+                      : (
+                          <>
+                            <option value={NO_CONTRACT_VALUE}>Sin contrato específico</option>
+                            {compatibleContracts.map((contract) => (
+                              <option key={contract.id} value={contract.id}>
+                                {contract.label}
+                              </option>
+                            ))}
+                          </>
+                        )}
               </select>
             </label>
+            {bulkAction === "contract" && selectedClientIds.size > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                Hay requerimientos de varios clientes; solo se listan contratos compatibles con cada uno. Los que no
+                coincidan se omitirán con un aviso.
+              </p>
+            ) : null}
+            {bulkAction === "contract" && compatibleContracts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No hay contratos activos para el cliente de los requerimientos seleccionados.
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2 pt-1">
-              <button type="submit" className="btn-primary py-2 text-sm" disabled={isUpdating || !bulkValue}>
+              <button
+                type="submit"
+                className="btn-primary py-2 text-sm"
+                disabled={isUpdating || bulkValue === "" || (bulkAction === "contract" && compatibleContracts.length === 0 && bulkValue !== NO_CONTRACT_VALUE)}
+              >
                 {isUpdating ? (
                   <span className="inline-flex items-center gap-2">
                     <span

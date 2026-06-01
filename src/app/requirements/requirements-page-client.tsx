@@ -207,6 +207,14 @@ export function RequirementsPageClient({
   const canBulkSelect = canDelete || canReassignOwner || canChangeStatus || canManageRequirement;
   const selectedIds = useMemo(() => Object.keys(rowSelection), [rowSelection]);
   const selectedCount = selectedIds.length;
+  const selectedRequirements = useMemo(
+    () =>
+      selectedIds
+        .map((id) => requirements.find((requirement) => requirement.id === id))
+        .filter((requirement): requirement is Requirement => Boolean(requirement))
+        .map((requirement) => ({ id: requirement.id, clientId: requirement.clientId, title: requirement.title })),
+    [requirements, selectedIds],
+  );
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
@@ -701,6 +709,8 @@ export function RequirementsPageClient({
               selectedIds={selectedIds}
               selectedCount={selectedCount}
               owners={owners}
+              contracts={contracts}
+              selectedRequirements={selectedRequirements}
               statusOptions={statusOpts}
               priorityOptions={priorityOpts}
               canDelete={canDelete}

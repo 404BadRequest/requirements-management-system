@@ -133,13 +133,28 @@ export async function updateRequirementAction(id: string, input: Parameters<type
   const nowDate = new Date().toISOString().slice(0, 10);
   const nextInput = {
     ...input,
-    contractId: resolveContractIdByContext({
-      contractId: input.contractId,
-      clientId: input.clientId ?? prev.clientId,
-      projectId: input.projectId ?? prev.projectId,
-      atDate: nowDate,
-      contracts,
-    }),
+    ...(input.contractId !== undefined
+      ? {
+          contractId:
+            input.contractId === null
+              ? null
+              : resolveContractIdByContext({
+                  contractId: input.contractId,
+                  clientId: input.clientId ?? prev.clientId,
+                  projectId: input.projectId ?? prev.projectId,
+                  atDate: nowDate,
+                  contracts,
+                }),
+        }
+      : {
+          contractId: resolveContractIdByContext({
+            contractId: input.contractId,
+            clientId: input.clientId ?? prev.clientId,
+            projectId: input.projectId ?? prev.projectId,
+            atDate: nowDate,
+            contracts,
+          }),
+        }),
   };
   if (input.ownerId !== undefined) {
     const users = await getOperationalUsers();
@@ -313,6 +328,7 @@ export type RequirementBatchUpdateInput = {
   ownerId?: string;
   status?: string;
   priority?: string;
+  contractId?: string | null;
 };
 
 export async function updateRequirementsBatchAction(input: RequirementBatchUpdateInput) {
@@ -341,15 +357,46 @@ export async function updateRequirementsBatchAction(input: RequirementBatchUpdat
     }
     patch.priority = input.priority.trim();
   }
-  if (Object.keys(patch).length === 0) {
+  const updatingContract = input.contractId !== undefined;
+  if (updatingContract && user.role !== "Admin" && user.role !== "Project Manager") {
+    throw new Error("Solo Admin o Project Manager pueden asignar contratos en lote.");
+  }
+  if (!updatingContract && Object.keys(patch).length === 0) {
     throw new Error("Indica qué campo actualizar.");
   }
+
+  let contracts: Awaited<ReturnType<typeof getContractBudgets>> = [];
+  let requirements: Awaited<ReturnType<typeof getRequirements>> = [];
+  if (updatingContract) {
+    [contracts, requirements] = await Promise.all([getContractBudgets(), getRequirements()]);
+  }
+  const requirementById = new Map(requirements.map((requirement) => [requirement.id, requirement]));
 
   let updatedCount = 0;
   const errors: Array<{ id: string; message: string }> = [];
   for (const id of uniqueIds) {
     try {
-      const next = await updateRequirementAction(id, patch);
+      if (updatingContract) {
+        const prev = requirementById.get(id) ?? (await getRequirementById(id));
+        if (!prev) {
+          errors.push({ id, message: "No se encontró el requerimiento." });
+          continue;
+        }
+        if (input.contractId !== null) {
+          const contract = contracts.find((row) => row.id === input.contractId);
+          if (!contract?.active) {
+            throw new Error("El contrato seleccionado no es válido o está inactivo.");
+          }
+          if (contract.clientId !== prev.clientId) {
+            throw new Error("El contrato no pertenece al cliente del requerimiento.");
+          }
+        }
+      }
+
+      const next = await updateRequirementAction(
+        id,
+        updatingContract ? { ...patch, contractId: input.contractId ?? null } : patch,
+      );
       if (next) {
         updatedCount += 1;
       } else {
