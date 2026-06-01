@@ -14,6 +14,10 @@ import {
 import { aggregateBillingEstimateByClient, calculateBillingAmount } from "@/lib/calculations/billing";
 import { convertBillingAmountToClp } from "@/lib/calculations/currency-to-clp";
 import { calculateDashboardMetrics } from "@/lib/calculations/dashboard";
+import {
+  calculateContractConsumptions,
+  resolveBillableMinutesForContractEntry,
+} from "@/lib/calculations/contract-budget";
 import { formatBillingLineTotal, formatHourlyRateDisplay } from "@/lib/formatting/rates";
 import { normalizeName } from "@/lib/normalization/users";
 import { budgetsMock } from "@/data/mock/budgets";
@@ -172,5 +176,136 @@ describe("calculations", () => {
     expect(formatHourlyRateDisplay(125000, "CLP")).toContain("125");
     expect(formatHourlyRateDisplay(2.5, "UF")).toContain("UF");
     expect(formatBillingLineTotal(10, "UF")).toContain("UF");
+  });
+
+  it("descuenta horas reloj cuando el perfil contractual coincide con el real", () => {
+    const referenceRates = { id: "default", ufToClp: 40550, usdToClp: 950, weeklyCapacityHours: 40, updatedAt: "" };
+    const juniorProfile = {
+      id: "prof-junior",
+      name: "Ingeniero junior",
+      hourlyRate: 0.15,
+      rateCurrency: "UF",
+      active: true,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const billable = resolveBillableMinutesForContractEntry({
+      durationMinutes: 253,
+      workerProfileId: "prof-junior",
+      targetProfileId: "prof-junior",
+      workerProfile: juniorProfile,
+      targetUfRate: 1,
+      referenceRates,
+    });
+    expect(billable).toBe(253);
+  });
+
+  it("ajusta consumo por tarifa UF cuando el perfil contractual es distinto", () => {
+    const referenceRates = { id: "default", ufToClp: 40550, usdToClp: 950, weeklyCapacityHours: 40, updatedAt: "" };
+    const juniorProfile = {
+      id: "prof-junior",
+      name: "Ingeniero junior",
+      hourlyRate: 0.15,
+      rateCurrency: "UF",
+      active: true,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const billable = resolveBillableMinutesForContractEntry({
+      durationMinutes: 120,
+      workerProfileId: "prof-junior",
+      targetProfileId: "prof-senior",
+      workerProfile: juniorProfile,
+      targetUfRate: 1,
+      referenceRates,
+    });
+    expect(billable).toBeCloseTo(18, 5);
+  });
+
+  it("agrega consumo por perfil con horas reloj cuando el perfil coincide", () => {
+    const referenceRates = { id: "default", ufToClp: 40550, usdToClp: 950, weeklyCapacityHours: 40, updatedAt: "" };
+    const profiles = [
+      {
+        id: "prof-junior",
+        name: "Ingeniero junior",
+        hourlyRate: 0.15,
+        rateCurrency: "UF",
+        active: true,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ];
+    const users = [
+      {
+        id: "user-j",
+        name: "Joaquín",
+        email: "j@x.com",
+        aliases: [],
+        profileId: "prof-junior",
+        active: true,
+        role: "Contributor" as const,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ];
+    const contracts = [
+      {
+        id: "contract-1",
+        clientId: "client-1",
+        projectId: "proj-main",
+        scope: "Proyecto",
+        code: "CTR-001",
+        name: "Contrato",
+        startDate: "2026-01-01",
+        endDate: "2026-12-31",
+        rateUfPerHour: 1,
+        markupPercentage: 40,
+        opexPercentage: 10,
+        active: true,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ];
+    const allocations = [
+      {
+        id: "alloc-j",
+        contractId: "contract-1",
+        profileId: "prof-junior",
+        quotedMinutes: 3780,
+        rateUfPerHour: null,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ];
+    const entries = [
+      {
+        id: "te-1",
+        projectId: "proj-main",
+        clientId: "client-1",
+        requirementId: "req-1",
+        contractId: "contract-1",
+        contractProfileId: "prof-junior",
+        category: "Proyecto",
+        taskDescription: "Trabajo",
+        date: "2026-06-01",
+        startTime: "09:00",
+        endTime: "13:22",
+        durationMinutes: 262,
+        userId: "user-j",
+        observations: "",
+        createdAt: "",
+        updatedAt: "",
+      },
+    ];
+    const consumption = calculateContractConsumptions({
+      contracts,
+      allocations,
+      entries,
+      users,
+      profiles,
+      referenceRates,
+    });
+    expect(consumption.byContractProfile[0]?.usedMinutes).toBe(262);
+    expect(consumption.byContractProfile[0]?.usedMinutes / 60).toBeCloseTo(4.37, 2);
   });
 });

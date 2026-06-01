@@ -166,7 +166,7 @@ export function ContractDetailPanel({
       },
       {
         accessorKey: "equivalentMinutesUsed",
-        header: "Horas equivalentes",
+        header: "Horas imputadas",
         meta: { align: "right" },
         cell: ({ row }) => row.original.equivalentHoursLabel,
       },
@@ -278,7 +278,11 @@ export function ContractDetailPanel({
       ) : null}
 
       <article className="surface-card p-4">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Bolsa por perfil</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Bolsa por perfil</h2>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Las horas usadas reflejan el registro cuando la persona trabaja bajo su mismo perfil contractual. Si la hora se
+          imputa a otro perfil del contrato, el consumo se ajusta por tarifa UF.
+        </p>
         <DataTable
           data={profileAllocationRows}
           columns={allocationColumns}

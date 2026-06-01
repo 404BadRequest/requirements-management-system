@@ -29,7 +29,7 @@ import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@
 import type { SettingsCatalogEntry } from "@/types/domain";
 import type { BudgetInput } from "@/schemas/budget-schema";
 import type { CubicacionItemCreateInput, CubicacionItemUpdateInput } from "@/data/contracts/cubicacion-contract";
-import { calculateContractConsumptions } from "@/lib/calculations/contract-budget";
+import { calculateContractConsumptions, resolveBillableMinutesForContractEntry } from "@/lib/calculations/contract-budget";
 import {
   assertOperationalProfileIds,
   filterOperationalProfiles,
@@ -47,24 +47,6 @@ import {
   calculateMisallocationMetrics,
   estimateDepletionDate,
 } from "@/lib/calculations/contract-health";
-
-function profileHourlyRateInUf(input: {
-  hourlyRate: number;
-  rateCurrency: string;
-  ufToClp: number;
-  usdToClp: number;
-}): number | null {
-  const currency = input.rateCurrency.trim().toUpperCase();
-  if (currency === "UF") return input.hourlyRate;
-  if (currency === "CLP") {
-    return input.ufToClp > 0 ? input.hourlyRate / input.ufToClp : null;
-  }
-  if (currency === "USD") {
-    if (input.ufToClp <= 0) return null;
-    return (input.hourlyRate * input.usdToClp) / input.ufToClp;
-  }
-  return null;
-}
 
 export async function loadBudgetsPageData(projectId?: string) {
   const { user } = await getAppSession();
@@ -116,21 +98,21 @@ export async function loadBudgetsPageData(projectId?: string) {
       if (!worker) return null;
       const workerProfile = profileById.get(worker.profileId);
       if (!workerProfile) return null;
-      const workerUfRate = profileHourlyRateInUf({
-        hourlyRate: workerProfile.hourlyRate,
-        rateCurrency: workerProfile.rateCurrency,
-        ufToClp: referenceRates.ufToClp,
-        usdToClp: referenceRates.usdToClp,
-      });
-      if (!workerUfRate || workerUfRate <= 0) return null;
       const targetProfileId = entry.contractProfileId ?? worker.profileId;
       const allocation = allocationByKey.get(`${entry.contractId}::${targetProfileId}`);
       if (!allocation) return null;
       const targetUfRate = allocation.rateUfPerHour ?? contract.rateUfPerHour;
-      if (!targetUfRate || targetUfRate <= 0) return null;
-      const equivalentMinutes = entry.durationMinutes * (workerUfRate / targetUfRate);
-      const ufConsumed = (equivalentMinutes / 60) * targetUfRate;
-      return { contractId: entry.contractId, date: entry.date, equivalentMinutes, ufConsumed };
+      const billableMinutes = resolveBillableMinutesForContractEntry({
+        durationMinutes: entry.durationMinutes,
+        workerProfileId: worker.profileId,
+        targetProfileId,
+        workerProfile,
+        targetUfRate,
+        referenceRates,
+      });
+      if (billableMinutes === null) return null;
+      const ufConsumed = (billableMinutes / 60) * targetUfRate;
+      return { contractId: entry.contractId, date: entry.date, equivalentMinutes: billableMinutes, ufConsumed };
     })
     .filter((row): row is { contractId: string; date: string; equivalentMinutes: number; ufConsumed: number } => Boolean(row));
 
@@ -330,39 +312,28 @@ export async function loadBudgetContractDetailData(contractId: string) {
   const currentDirectoryUserId = user ? resolveDirectoryUserIdForSession(user, users) : "";
   const today = new Date().toISOString().slice(0, 10);
 
-  const toUfHourlyRate = (params: { hourlyRate: number; rateCurrency: string }): number | null => {
-    const currency = params.rateCurrency.trim().toUpperCase();
-    if (currency === "UF") return params.hourlyRate;
-    if (currency === "CLP") {
-      return referenceRates.ufToClp > 0 ? params.hourlyRate / referenceRates.ufToClp : null;
-    }
-    if (currency === "USD") {
-      if (referenceRates.ufToClp <= 0) return null;
-      return (params.hourlyRate * referenceRates.usdToClp) / referenceRates.ufToClp;
-    }
-    return null;
-  };
-
   const equivalentEntryRows = entriesForContract
     .map((entry) => {
       const worker = userById.get(entry.userId);
       if (!worker) return null;
       const workerProfile = profileById.get(worker.profileId);
       if (!workerProfile) return null;
-      const workerUfRate = toUfHourlyRate({
-        hourlyRate: workerProfile.hourlyRate,
-        rateCurrency: workerProfile.rateCurrency,
-      });
-      if (!workerUfRate || workerUfRate <= 0) return null;
       const targetProfileId = entry.contractProfileId ?? worker.profileId;
       const allocation = allocations.find((row) => row.profileId === targetProfileId);
       if (!allocation) return null;
       const targetUfRate = allocation.rateUfPerHour ?? contract.rateUfPerHour;
-      if (!targetUfRate || targetUfRate <= 0) return null;
-      const equivalentMinutes = entry.durationMinutes * (workerUfRate / targetUfRate);
+      const billableMinutes = resolveBillableMinutesForContractEntry({
+        durationMinutes: entry.durationMinutes,
+        workerProfileId: worker.profileId,
+        targetProfileId,
+        workerProfile,
+        targetUfRate,
+        referenceRates,
+      });
+      if (billableMinutes === null) return null;
       return {
         entry,
-        equivalentMinutes,
+        equivalentMinutes: billableMinutes,
       };
     })
     .filter((row): row is { entry: (typeof entriesForContract)[number]; equivalentMinutes: number } => Boolean(row));

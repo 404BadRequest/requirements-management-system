@@ -1,5 +1,43 @@
 import type { ContractBudget, ContractProfileAllocation, FinancialReferenceRates, Profile, TimeEntry, User } from "@/types/domain";
 
+export function profileHourlyRateInUf(
+  profile: Pick<Profile, "hourlyRate" | "rateCurrency">,
+  referenceRates: FinancialReferenceRates,
+): number | null {
+  const currency = profile.rateCurrency.trim().toUpperCase();
+  if (currency === "UF") return profile.hourlyRate;
+  if (currency === "CLP") {
+    return referenceRates.ufToClp > 0 ? profile.hourlyRate / referenceRates.ufToClp : null;
+  }
+  if (currency === "USD") {
+    if (referenceRates.ufToClp <= 0) return null;
+    return (profile.hourlyRate * referenceRates.usdToClp) / referenceRates.ufToClp;
+  }
+  return null;
+}
+
+/**
+ * Minutos que descuentan la bolsa contractual del contrato.
+ * Mismo perfil real y contractual → horas reloj (1:1).
+ * Perfil contractual distinto → ajuste por tarifa UF del trabajador vs tarifa del perfil en contrato.
+ */
+export function resolveBillableMinutesForContractEntry(input: {
+  durationMinutes: number;
+  workerProfileId: string;
+  targetProfileId: string;
+  workerProfile: Profile;
+  targetUfRate: number;
+  referenceRates: FinancialReferenceRates;
+}): number | null {
+  if (input.workerProfileId === input.targetProfileId) {
+    return input.durationMinutes;
+  }
+  const workerUfRate = profileHourlyRateInUf(input.workerProfile, input.referenceRates);
+  if (!workerUfRate || workerUfRate <= 0) return null;
+  if (!input.targetUfRate || input.targetUfRate <= 0) return null;
+  return input.durationMinutes * (workerUfRate / input.targetUfRate);
+}
+
 export type ContractConsumption = {
   contractId: string;
   usedMinutes: number;
@@ -45,19 +83,6 @@ export function calculateContractConsumptions(input: {
   let unallocatedCount = 0;
   let unallocatedMinutes = 0;
 
-  const toUfHourlyRate = (profile: Profile): number | null => {
-    const currency = profile.rateCurrency.trim().toUpperCase();
-    if (currency === "UF") return profile.hourlyRate;
-    if (currency === "CLP") {
-      return input.referenceRates.ufToClp > 0 ? profile.hourlyRate / input.referenceRates.ufToClp : null;
-    }
-    if (currency === "USD") {
-      if (input.referenceRates.ufToClp <= 0) return null;
-      return (profile.hourlyRate * input.referenceRates.usdToClp) / input.referenceRates.ufToClp;
-    }
-    return null;
-  };
-
   for (const entry of input.entries) {
     if (!entry.contractId) continue;
     const workerProfileId = userProfileById.get(entry.userId);
@@ -73,13 +98,6 @@ export function calculateContractConsumptions(input: {
       unallocatedMinutes += entry.durationMinutes;
       continue;
     }
-    const workerUfRate = toUfHourlyRate(workerProfile);
-    if (!workerUfRate || workerUfRate <= 0) {
-      unallocatedCount += 1;
-      unallocatedMinutes += entry.durationMinutes;
-      continue;
-    }
-
     const targetProfileId = entry.contractProfileId ?? workerProfileId;
     const allocation = input.allocations.find((row) => row.contractId === entry.contractId && row.profileId === targetProfileId);
     if (!allocation) {
@@ -89,16 +107,23 @@ export function calculateContractConsumptions(input: {
     }
 
     const targetUfRate = allocation.rateUfPerHour ?? contract.rateUfPerHour;
-    if (!targetUfRate || targetUfRate <= 0) {
+    const billableMinutes = resolveBillableMinutesForContractEntry({
+      durationMinutes: entry.durationMinutes,
+      workerProfileId,
+      targetProfileId,
+      workerProfile,
+      targetUfRate,
+      referenceRates: input.referenceRates,
+    });
+    if (billableMinutes === null) {
       unallocatedCount += 1;
       unallocatedMinutes += entry.durationMinutes;
       continue;
     }
 
-    const equivalentMinutes = entry.durationMinutes * (workerUfRate / targetUfRate);
-    usedByContract.set(entry.contractId, (usedByContract.get(entry.contractId) ?? 0) + equivalentMinutes);
+    usedByContract.set(entry.contractId, (usedByContract.get(entry.contractId) ?? 0) + billableMinutes);
     const key = `${entry.contractId}::${targetProfileId}`;
-    usedByContractProfile.set(key, (usedByContractProfile.get(key) ?? 0) + equivalentMinutes);
+    usedByContractProfile.set(key, (usedByContractProfile.get(key) ?? 0) + billableMinutes);
   }
 
   const byContract = input.contracts.map((contract) => {
