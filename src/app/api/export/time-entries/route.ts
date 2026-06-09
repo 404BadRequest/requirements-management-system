@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     categoryLabelByCode,
     userNameById: userMap,
   });
-  const buffer = buildTimeEntriesWorkbookBuffer(exportRows);
+  const buffer = await buildTimeEntriesWorkbookBuffer(exportRows);
   const today = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(buffer, {

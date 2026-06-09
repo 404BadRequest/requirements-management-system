@@ -18,6 +18,7 @@ import {
   calculateContractConsumptions,
   resolveBillableMinutesForContractEntry,
 } from "@/lib/calculations/contract-budget";
+import { formatDurationAsHms } from "@/lib/export/time-entries-workbook";
 import { formatBillingLineTotal, formatHourlyRateDisplay } from "@/lib/formatting/rates";
 import { normalizeName } from "@/lib/normalization/users";
 import { budgetsMock } from "@/data/mock/budgets";
@@ -176,6 +177,12 @@ describe("calculations", () => {
     expect(formatHourlyRateDisplay(125000, "CLP")).toContain("125");
     expect(formatHourlyRateDisplay(2.5, "UF")).toContain("UF");
     expect(formatBillingLineTotal(10, "UF")).toContain("UF");
+  });
+
+  it("formatea duración como H:MM:SS para exportación Excel", () => {
+    expect(formatDurationAsHms(30)).toBe("0:30:00");
+    expect(formatDurationAsHms(60)).toBe("1:00:00");
+    expect(formatDurationAsHms(90)).toBe("1:30:00");
   });
 
   it("descuenta horas reloj cuando el perfil contractual coincide con el real", () => {
