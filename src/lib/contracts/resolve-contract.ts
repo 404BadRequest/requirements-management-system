@@ -28,15 +28,17 @@ export function resolveContractIdByContext(input: ResolveContractInput): string 
 export function resolveContractIdForTimeEntry(input: {
   contractId: string | null | undefined;
   requirementId: string | null;
+  clientId?: string | null;
   projectId: string;
   date: string;
   requirements: Requirement[];
   contracts: ContractBudget[];
 }): string | null {
   const requirement = input.requirementId ? input.requirements.find((row) => row.id === input.requirementId) : undefined;
+  const clientId = (requirement?.clientId ?? input.clientId ?? "").trim();
   return resolveContractIdByContext({
     contractId: input.contractId ?? requirement?.contractId,
-    clientId: requirement?.clientId ?? "",
+    clientId,
     projectId: input.projectId,
     atDate: input.date,
     contracts: input.contracts,

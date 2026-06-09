@@ -174,6 +174,7 @@ export async function createTimeEntryAction(input: TimeEntryInput) {
   payload.contractId = resolveContractIdForTimeEntry({
     contractId: canPickEncargadoForOthers(user.role) ? payload.contractId : null,
     requirementId: payload.requirementId,
+    clientId: payload.clientId,
     projectId: payload.projectId,
     date: payload.date,
     requirements,
@@ -304,6 +305,7 @@ export async function updateTimeEntryAction(id: string, input: TimeEntryInput) {
   payload.contractId = resolveContractIdForTimeEntry({
     contractId: pickAny ? payload.contractId : current.contractId,
     requirementId: payload.requirementId,
+    clientId: payload.clientId,
     projectId: payload.projectId,
     date: payload.date,
     requirements,
@@ -687,6 +689,7 @@ export async function bulkCreateTimeEntriesFromImportAction(
       const resolvedContractId = resolveContractIdForTimeEntry({
         requirementId,
         contractId,
+        clientId,
         projectId,
         date: row.date,
         requirements,

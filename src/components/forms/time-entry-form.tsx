@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { timeEntryBatchSchema, timeEntrySchema, type TimeEntryBatchInput, type TimeEntryInput } from "@/schemas/time-entry-schema";
 import { resolveTimeEntryCategoryFromContractScope } from "@/lib/contracts/resolve-time-entry-category";
-import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
+import {
+  defaultTimeEntryCategoryCode,
+  resolveTimeEntryFormContractId,
+  type TimeEntryFormContract,
+  type TimeEntryFormRequirement,
+} from "@/lib/time-entries/form-options";
 import { FormField } from "@/components/forms/form-field";
 
 export const TimeEntryForm = ({
@@ -55,7 +60,7 @@ export const TimeEntryForm = ({
       requirementId: null,
       contractId: null,
       contractProfileId: null,
-      category: categories[0]?.code ?? "Proyecto",
+      category: defaultTimeEntryCategoryCode(categories),
       taskDescription: "",
       date: today,
       startTime: "09:00",
@@ -146,15 +151,45 @@ export const TimeEntryForm = ({
   };
   const selectedRequirementId = form.watch("requirementId");
   const selectedContractId = form.watch("contractId");
+  const watchedDate = form.watch("date");
+  const watchedProjectId = form.watch("projectId");
   const selectedRequirement = useMemo(
     () => requirements.find((requirement) => requirement.id === selectedRequirementId) ?? null,
     [requirements, selectedRequirementId],
   );
+  const initialClientId =
+    defaultValues?.clientId ??
+    selectedRequirement?.clientId ??
+    contracts.find((contract) => contract.id === selectedContractId)?.clientId ??
+    clients[0]?.id ??
+    "";
+  const [selectedClientId, setSelectedClientId] = useState(initialClientId);
+  const autoResolvedContractId = useMemo(
+    () =>
+      resolveTimeEntryFormContractId({
+        contractId: canOverrideContract ? selectedContractId : null,
+        requirement: selectedRequirement,
+        clientId: selectedClientId,
+        projectId: watchedProjectId || "proj-main",
+        date: watchedDate || today,
+        contracts,
+      }),
+    [
+      canOverrideContract,
+      contracts,
+      selectedClientId,
+      selectedContractId,
+      selectedRequirement,
+      today,
+      watchedDate,
+      watchedProjectId,
+    ],
+  );
   const activeContractId = useMemo(() => {
     if (canOverrideContract && selectedContractId) return selectedContractId;
     if (selectedRequirement?.contractId) return selectedRequirement.contractId;
-    return selectedContractId;
-  }, [canOverrideContract, selectedContractId, selectedRequirement]);
+    return autoResolvedContractId ?? selectedContractId;
+  }, [autoResolvedContractId, canOverrideContract, selectedContractId, selectedRequirement]);
   const activeContract = useMemo(
     () => contracts.find((contract) => contract.id === activeContractId) ?? null,
     [activeContractId, contracts],
@@ -164,8 +199,6 @@ export const TimeEntryForm = ({
     return resolveTimeEntryCategoryFromContractScope(activeContract.scope, categories);
   }, [activeContract, categories]);
   const lockedCategoryLabel = activeContract?.scopeLabel ?? lockedCategoryFromContract;
-  const initialClientId = defaultValues?.clientId ?? selectedRequirement?.clientId ?? contracts.find((contract) => contract.id === selectedContractId)?.clientId ?? clients[0]?.id ?? "";
-  const [selectedClientId, setSelectedClientId] = useState(initialClientId);
   const filteredRequirements = useMemo(
     () => requirements.filter((requirement) => requirement.clientId === selectedClientId),
     [requirements, selectedClientId],
@@ -217,6 +250,11 @@ export const TimeEntryForm = ({
     if (!lockedCategoryFromContract) return;
     form.setValue("category", lockedCategoryFromContract, { shouldDirty: true, shouldValidate: true });
   }, [form, lockedCategoryFromContract]);
+
+  useEffect(() => {
+    if (canOverrideContract) return;
+    form.setValue("contractId", autoResolvedContractId, { shouldDirty: true, shouldValidate: true });
+  }, [autoResolvedContractId, canOverrideContract, form]);
 
   return (
     <form
@@ -479,24 +517,40 @@ export const TimeEntryForm = ({
         </select>
       </FormField>
       <FormField label="Contrato (opcional)">
-        <select
-          className="field-control w-full"
-          value={form.watch("contractId") ?? ""}
-          onChange={(event) => form.setValue("contractId", event.target.value || null)}
-          disabled={!canOverrideContract}
-        >
-          <option value="">Asignación automática</option>
-          {filteredContracts.map((contract) => (
-            <option key={contract.id} value={contract.id}>
-              {contract.label}
-            </option>
-          ))}
-        </select>
-        {!canOverrideContract ? (
-          <p className="text-xs text-muted-foreground">
-            El contrato se asigna automáticamente según requerimiento, proyecto y vigencia.
-          </p>
-        ) : null}
+        {canOverrideContract ? (
+          <select
+            className="field-control w-full"
+            value={form.watch("contractId") ?? ""}
+            onChange={(event) => form.setValue("contractId", event.target.value || null)}
+          >
+            <option value="">Asignación automática</option>
+            {filteredContracts.map((contract) => (
+              <option key={contract.id} value={contract.id}>
+                {contract.label}
+              </option>
+            ))}
+          </select>
+        ) : activeContract ? (
+          <div className="space-y-1">
+            <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm font-medium text-foreground">
+              {activeContract.label}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Asignado automáticamente según cliente, proyecto y vigencia del contrato.
+            </p>
+            <input type="hidden" {...form.register("contractId")} />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              Sin contrato vigente único para este cliente y fecha.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Si hay varios contratos activos, un administrador o project manager debe registrar la hora o vincular el requerimiento a un contrato.
+            </p>
+            <input type="hidden" {...form.register("contractId")} />
+          </div>
+        )}
       </FormField>
       <FormField label="Perfil contractual (opcional)">
         <select
