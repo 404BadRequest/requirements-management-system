@@ -11,11 +11,11 @@ const SERIES_DARK = SERIES_LIGHT;
 
 function axisColors(isDarkTheme: boolean) {
   return {
-    text: isDarkTheme ? "hsl(210 20% 88%)" : "hsl(0 0% 24%)",
-    line: isDarkTheme ? "hsl(222 16% 28%)" : "hsl(0 0% 70%)",
-    split: isDarkTheme ? "hsl(222 16% 22% / 0.85)" : "hsl(0 0% 78% / 0.85)",
-    tooltipBg: isDarkTheme ? "hsl(222 24% 11%)" : "hsl(0 0% 96%)",
-    tooltipBorder: isDarkTheme ? "hsl(222 16% 28%)" : "hsl(0 0% 66%)",
+    text: isDarkTheme ? "hsl(0 0% 88%)" : "hsl(0 0% 24%)",
+    line: isDarkTheme ? "hsl(0 0% 28%)" : "hsl(0 0% 70%)",
+    split: isDarkTheme ? "hsl(0 0% 18% / 0.85)" : "hsl(0 0% 78% / 0.85)",
+    tooltipBg: isDarkTheme ? "hsl(0 0% 7%)" : "hsl(0 0% 96%)",
+    tooltipBorder: isDarkTheme ? "hsl(0 0% 24%)" : "hsl(0 0% 66%)",
   };
 }
 
