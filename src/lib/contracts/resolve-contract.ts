@@ -1,11 +1,16 @@
 import type { ContractBudget, Requirement } from "@/types/domain";
 
+export type ResolvableContract = Pick<
+  ContractBudget,
+  "id" | "active" | "clientId" | "projectId" | "startDate" | "endDate"
+>;
+
 type ResolveContractInput = {
   contractId: string | null | undefined;
   clientId: string;
   projectId: string;
   atDate: string;
-  contracts: ContractBudget[];
+  contracts: ResolvableContract[];
 };
 
 export function resolveContractIdByContext(input: ResolveContractInput): string | null {
