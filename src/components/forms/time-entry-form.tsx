@@ -75,13 +75,44 @@ export const TimeEntryForm = ({
     },
   ]);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [quickStartError, setQuickStartError] = useState<string | null>(null);
+  const [quickStartBatchError, setQuickStartBatchError] = useState<string | null>(null);
   const [quickEndError, setQuickEndError] = useState<string | null>(null);
   const [quickEndBatchError, setQuickEndBatchError] = useState<string | null>(null);
   const watchedStartTime = form.watch("startTime");
   const watchedEndTime = form.watch("endTime");
+  const currentLocalDate = () => new Date().toISOString().slice(0, 10);
   const currentLocalTime = () => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  };
+  const applyQuickStartSingle = () => {
+    const now = currentLocalTime();
+    const endTime = form.getValues("endTime");
+    if (endTime && now >= endTime) {
+      setQuickStartError(`La hora actual (${now}) debe ser anterior al término (${endTime}).`);
+      return;
+    }
+    form.setValue("date", currentLocalDate(), { shouldDirty: true, shouldValidate: true });
+    form.setValue("startTime", now, { shouldDirty: true, shouldValidate: true });
+    setQuickStartError(null);
+    setQuickEndError(null);
+  };
+  const applyQuickStartBatch = (index: number) => {
+    const now = currentLocalTime();
+    const block = batchBlocks[index];
+    if (!block) return;
+    if (block.endTime && now >= block.endTime) {
+      setQuickStartBatchError(
+        `Bloque ${index + 1}: la hora actual (${now}) debe ser anterior al término (${block.endTime}).`,
+      );
+      return;
+    }
+    setBatchBlocks((prev) =>
+      prev.map((item, itemIndex) => (itemIndex === index ? { ...item, date: currentLocalDate(), startTime: now } : item)),
+    );
+    setQuickStartBatchError(null);
+    setQuickEndBatchError(null);
   };
   const applyQuickEndSingle = () => {
     const now = currentLocalTime();
@@ -176,6 +207,13 @@ export const TimeEntryForm = ({
   }, [quickEndError, watchedEndTime, watchedStartTime]);
 
   useEffect(() => {
+    if (!quickStartError) return;
+    if (!watchedEndTime || watchedStartTime < watchedEndTime) {
+      setQuickStartError(null);
+    }
+  }, [quickStartError, watchedEndTime, watchedStartTime]);
+
+  useEffect(() => {
     if (!lockedCategoryFromContract) return;
     form.setValue("category", lockedCategoryFromContract, { shouldDirty: true, shouldValidate: true });
   }, [form, lockedCategoryFromContract]);
@@ -243,8 +281,19 @@ export const TimeEntryForm = ({
         <input type="date" className="field-control w-full" {...form.register("date")} disabled={entryMode === "multi"} />
       </FormField>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Hora inicio">
-          <input type="time" className="field-control w-full" {...form.register("startTime")} disabled={entryMode === "multi"} />
+        <FormField label="Hora inicio" error={form.formState.errors.startTime?.message}>
+          <div className="space-y-2">
+            <input type="time" className="field-control w-full" {...form.register("startTime")} disabled={entryMode === "multi"} />
+            <button
+              type="button"
+              className="btn-secondary w-full px-2.5 py-1 text-xs sm:w-auto"
+              onClick={applyQuickStartSingle}
+              disabled={entryMode === "multi"}
+            >
+              Iniciar ahora
+            </button>
+            {quickStartError ? <p className="text-xs text-destructive">{quickStartError}</p> : null}
+          </div>
         </FormField>
         <FormField label="Hora termino" error={form.formState.errors.endTime?.message}>
           <div className="space-y-2">
@@ -303,17 +352,23 @@ export const TimeEntryForm = ({
                   })
                 }
               />
-              <input
-                type="time"
-                className="field-control w-full"
-                value={block.startTime}
-                onChange={(event) =>
-                  setBatchBlocks((prev) => {
-                    setQuickEndBatchError(null);
-                    return prev.map((item, itemIndex) => (itemIndex === index ? { ...item, startTime: event.target.value } : item));
-                  })
-                }
-              />
+              <div className="space-y-1">
+                <input
+                  type="time"
+                  className="field-control w-full"
+                  value={block.startTime}
+                  onChange={(event) =>
+                    setBatchBlocks((prev) => {
+                      setQuickEndBatchError(null);
+                      setQuickStartBatchError(null);
+                      return prev.map((item, itemIndex) => (itemIndex === index ? { ...item, startTime: event.target.value } : item));
+                    })
+                  }
+                />
+                <button type="button" className="btn-secondary w-full px-2 py-1 text-[11px]" onClick={() => applyQuickStartBatch(index)}>
+                  Iniciar ahora
+                </button>
+              </div>
               <div className="space-y-1">
                 <input
                   type="time"
@@ -341,6 +396,7 @@ export const TimeEntryForm = ({
               <p className="self-center text-xs tabular-nums text-muted-foreground">{durationLabel(block.startTime, block.endTime)}</p>
             </div>
           ))}
+          {quickStartBatchError ? <p className="text-xs text-destructive">{quickStartBatchError}</p> : null}
           {quickEndBatchError ? <p className="text-xs text-destructive">{quickEndBatchError}</p> : null}
           {batchError ? <p className="text-xs text-destructive">{batchError}</p> : null}
         </div>

@@ -149,6 +149,7 @@ export default async function TimeEntriesPage({
     if (selectedContractStatus) q.set("contractStatus", selectedContractStatus);
     if (selectedFrom) q.set("from", selectedFrom);
     if (selectedTo) q.set("to", selectedTo);
+    if (selectedUserId) q.set("userId", selectedUserId);
     const s = q.toString();
     return s ? `/api/export/time-entries?${s}` : "/api/export/time-entries";
   })();
@@ -216,7 +217,7 @@ export default async function TimeEntriesPage({
             ) : null}
             {canExport ? (
               <a href={exportHref} className="btn-secondary inline-flex py-2 text-sm no-underline">
-                Exportar CSV
+                Exportar Excel
               </a>
             ) : null}
           </div>
