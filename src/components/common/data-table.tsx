@@ -10,6 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type FilterFn,
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
@@ -21,6 +22,40 @@ type RowMeta = { align?: "left" | "right" | "center" };
 function metaAlign(meta: unknown): RowMeta["align"] | undefined {
   const m = meta as RowMeta | undefined;
   return m?.align;
+}
+
+type StoredTableState = {
+  sorting: SortingState;
+  globalFilter: string;
+  pageSizeChoice: string;
+  pageIndex: number;
+};
+
+function tableStateStorageKey(key: string): string {
+  return `rms.table.${key}`;
+}
+
+function readStoredTableState(key: string | undefined): StoredTableState | null {
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(tableStateStorageKey(key));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredTableState>;
+    return {
+      sorting: Array.isArray(parsed.sorting) ? parsed.sorting : [],
+      globalFilter: typeof parsed.globalFilter === "string" ? parsed.globalFilter : "",
+      pageSizeChoice: typeof parsed.pageSizeChoice === "string" ? parsed.pageSizeChoice : "",
+      pageIndex: typeof parsed.pageIndex === "number" && parsed.pageIndex >= 0 ? parsed.pageIndex : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function resolveStoredPageSize(choice: string, fallback: number): number {
+  if (choice === "all") return fallback;
+  const parsed = Number(choice);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 type Props<TData> = {
@@ -47,6 +82,10 @@ type Props<TData> = {
   rowSelection?: Record<string, boolean>;
   onRowSelectionChange?: (updater: any) => void;
   enableRowSelection?: boolean;
+  /** Clave para persistir búsqueda, orden, paginación y filas por página (sessionStorage). */
+  stateStorageKey?: string;
+  /** Texto buscable por fila (etiquetas visibles, no solo códigos internos). */
+  getGlobalFilterValue?: (row: TData) => string;
   getRowId?: (originalRow: TData, index: number, parent?: any) => string;
 };
 
@@ -73,26 +112,63 @@ export function DataTable<TData>({
   rowSelection,
   onRowSelectionChange,
   enableRowSelection = false,
+  stateStorageKey,
+  getGlobalFilterValue,
   getRowId,
 }: Props<TData>) {
   const density = useUiStore((s) => s.density);
   const compact = density === "compact";
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const storedState = useMemo(() => readStoredTableState(stateStorageKey), [stateStorageKey]);
+  const [sorting, setSorting] = useState<SortingState>(() => storedState?.sorting ?? []);
+  const [globalFilter, setGlobalFilter] = useState(() => storedState?.globalFilter ?? "");
+  const initialPageSizeChoice = storedState?.pageSizeChoice || String(pageSize);
   const resolvedPageSizeOptions = useMemo(() => {
     const options = [...pageSizeOptions];
     if (!options.includes(pageSize)) {
       options.push(pageSize);
     }
+    const storedSize = resolveStoredPageSize(initialPageSizeChoice, pageSize);
+    if (storedSize !== pageSize && !options.includes(storedSize)) {
+      options.push(storedSize);
+    }
     return [...new Set(options)].sort((a, b) => a - b);
-  }, [pageSize, pageSizeOptions]);
-  const [pageSizeChoice, setPageSizeChoice] = useState<string>(String(pageSize));
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
+  }, [initialPageSizeChoice, pageSize, pageSizeOptions]);
+  const [pageSizeChoice, setPageSizeChoice] = useState<string>(initialPageSizeChoice);
+  const [pagination, setPagination] = useState(() => ({
+    pageIndex: storedState?.pageIndex ?? 0,
+    pageSize: resolveStoredPageSize(initialPageSizeChoice, pageSize),
+  }));
 
   useEffect(() => {
+    if (stateStorageKey) return;
     setPageSizeChoice(String(pageSize));
     setPagination({ pageIndex: 0, pageSize });
-  }, [pageSize]);
+  }, [pageSize, stateStorageKey]);
+
+  useEffect(() => {
+    if (!stateStorageKey || typeof window === "undefined") return;
+    const payload: StoredTableState = {
+      sorting,
+      globalFilter,
+      pageSizeChoice,
+      pageIndex: pagination.pageIndex,
+    };
+    sessionStorage.setItem(tableStateStorageKey(stateStorageKey), JSON.stringify(payload));
+  }, [globalFilter, pageSizeChoice, pagination.pageIndex, sorting, stateStorageKey]);
+
+  const globalFilterFn = useMemo<FilterFn<TData>>(
+    () => (row, _columnId, filterValue) => {
+      const needle = String(filterValue ?? "")
+        .trim()
+        .toLowerCase();
+      if (!needle) return true;
+      const haystack = getGlobalFilterValue
+        ? getGlobalFilterValue(row.original)
+        : row.getVisibleCells().map((cell) => String(cell.getValue() ?? "")).join(" ");
+      return haystack.toLowerCase().includes(needle);
+    },
+    [getGlobalFilterValue],
+  );
 
   const table = useReactTable({
     data,
@@ -111,7 +187,7 @@ export function DataTable<TData>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    globalFilterFn: "includesString",
+    globalFilterFn,
     enableSorting,
     enableGlobalFilter,
     enableRowSelection,
@@ -120,6 +196,14 @@ export function DataTable<TData>({
 
   const filteredCount = table.getFilteredRowModel().rows.length;
   const showingAllRows = enablePageSizeSelector && pageSizeChoice === "all";
+
+  useEffect(() => {
+    if (showingAllRows) return;
+    const pageCount = Math.max(1, Math.ceil(filteredCount / Math.max(pagination.pageSize, 1)));
+    if (pagination.pageIndex >= pageCount) {
+      setPagination((current) => ({ ...current, pageIndex: pageCount - 1 }));
+    }
+  }, [filteredCount, pagination.pageIndex, pagination.pageSize, showingAllRows]);
 
   useEffect(() => {
     if (!enablePageSizeSelector || pageSizeChoice !== "all") return;

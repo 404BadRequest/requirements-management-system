@@ -216,6 +216,28 @@ export function RequirementsPageClient({
     [requirements, selectedIds],
   );
 
+  const requirementGlobalFilterValue = useCallback(
+    (requirement: Requirement) => {
+      const statusOpt = statusOpts.find((entry) => entry.code === requirement.status);
+      const priorityOpt = priorityOpts.find((entry) => entry.code === requirement.priority);
+      return [
+        requirement.id,
+        clientById.get(requirement.clientId)?.name,
+        requirement.clientId,
+        ownerById.get(requirement.ownerId),
+        requirement.ownerId,
+        requirement.title,
+        statusOpt?.label,
+        requirement.status,
+        priorityOpt?.label,
+        requirement.priority,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    },
+    [clientById, ownerById, priorityOpts, statusOpts],
+  );
+
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
 
@@ -727,7 +749,10 @@ export function RequirementsPageClient({
             data={filteredRequirements}
             columns={columns}
             pageSize={10}
-            globalFilterPlaceholder="Buscar por ID, cliente, título, estado…"
+            pageSizeOptions={[5, 10, 15, 20, 50]}
+            stateStorageKey="requirements"
+            getGlobalFilterValue={requirementGlobalFilterValue}
+            globalFilterPlaceholder="Buscar por ID, cliente, responsable, título, prioridad o estado…"
             enableRowSelection={canBulkSelect}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
