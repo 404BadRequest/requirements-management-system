@@ -301,11 +301,34 @@ export default async function TimeEntriesPage({
             className="field-control"
           />
         </div>
+        {canPickAnyOwner ? (
+          <div className="flex min-w-[12rem] flex-col gap-2">
+            <label htmlFor="user-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Encargado
+            </label>
+            <select id="user-filter" name="userId" defaultValue={selectedUserId} className="field-control w-full max-w-md">
+              <option value="">Todos</option>
+              {users
+                .filter((u) => u.active)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+        ) : null}
         <button type="submit" className="btn-primary">
           Aplicar filtro
         </button>
       </form>
-      {filteredEntries.length === 0 && !selectedClientId && !selectedContractId && !selectedContractStatus ? (
+      {filteredEntries.length === 0 &&
+      !selectedClientId &&
+      !selectedContractId &&
+      !selectedContractStatus &&
+      !selectedFrom &&
+      !selectedTo &&
+      !selectedUserId ? (
         <div className="surface-card p-[length:var(--density-inset-pad)]">
           <div
             className="rounded-[2px] border border-dashed border-border bg-muted/25 px-4 py-[length:var(--density-empty-py)] text-center text-sm text-muted-foreground"
