@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
@@ -213,7 +213,27 @@ export function TimeEntriesTable({
         },
       },
     ],
-    [canPickAnyOwner, categories, clients, contractProfiles, contracts, requirements, users],
+    [canPickAnyOwner, categories, clients, contractProfiles, contracts, requirements, router, users],
+  );
+
+  const timeEntryGlobalFilterValue = useCallback(
+    (row: TimeEntryRow) =>
+      [
+        row.id,
+        row.date,
+        row.userName,
+        row.requirementTitle,
+        row.requirementId,
+        row.taskDescription,
+        row.category,
+        row.openEndWarning ? "Sin hora termino" : "Cerrado",
+        row.contractStatus,
+        row.durationLabel,
+        row.clientLabel,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    [],
   );
 
   return (
@@ -315,6 +335,9 @@ export function TimeEntriesTable({
         columns={columns}
         globalFilterPlaceholder="Buscar por ID, requerimiento, tarea, persona, categoría o cliente…"
         pageSize={10}
+        pageSizeOptions={[5, 10, 15, 20, 50]}
+        stateStorageKey="time-entries"
+        getGlobalFilterValue={timeEntryGlobalFilterValue}
         enableRowSelection={true}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
