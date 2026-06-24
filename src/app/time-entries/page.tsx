@@ -4,6 +4,7 @@ import { TimeEntriesTable } from "@/components/time-entries/time-entries-table";
 import { TimeEntriesNewModal } from "@/components/time-entries/time-entries-new-modal";
 import { TimeEntriesBulkUploadButton } from "@/components/time-entries/time-entries-bulk-upload-modal";
 import { PersonalUtilizationBanner } from "@/components/time-entries/personal-utilization-banner";
+import { ClearPersistedFiltersButton } from "@/components/common/clear-persisted-filters-button";
 import {
   getCatalogByKind,
   getClients,
@@ -120,6 +121,9 @@ export default async function TimeEntriesPage({
   })();
 
   const selectedUserId = canPickAnyOwner && users.some((u) => u.id === userIdParam) ? userIdParam : "";
+  const hasActiveFilters = Boolean(
+    selectedClientId || selectedContractId || selectedContractStatus || selectedFrom || selectedTo || selectedUserId,
+  );
   const filteredEntries = operationalEntries.filter((entry) => {
     if (ownScope && entry.userId !== currentDirectoryUserId) return false;
     if (selectedUserId && entry.userId !== selectedUserId) return false;
@@ -318,9 +322,14 @@ export default async function TimeEntriesPage({
             </select>
           </div>
         ) : null}
-        <button type="submit" className="btn-primary">
-          Aplicar filtro
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="submit" className="btn-primary">
+            Aplicar filtro
+          </button>
+          {hasActiveFilters ? (
+            <ClearPersistedFiltersButton path="/time-entries" tableStorageKey="time-entries" />
+          ) : null}
+        </div>
       </form>
       {filteredEntries.length === 0 &&
       !selectedClientId &&

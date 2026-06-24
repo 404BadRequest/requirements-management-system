@@ -35,6 +35,11 @@ function tableStateStorageKey(key: string): string {
   return `rms.table.${key}`;
 }
 
+export function clearStoredTableState(key: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(tableStateStorageKey(key));
+}
+
 function readStoredTableState(key: string | undefined): StoredTableState | null {
   if (!key || typeof window === "undefined") return null;
   try {

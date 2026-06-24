@@ -29,6 +29,15 @@ function storageKey(path: string, param: string): string {
   return `rms.filters.${path}.${param}`;
 }
 
+export function clearPersistedFiltersForPath(path: string) {
+  if (typeof window === "undefined") return;
+  const rule = RULES.find((r) => r.path === path);
+  if (!rule) return;
+  for (const param of rule.params) {
+    localStorage.removeItem(storageKey(path, param));
+  }
+}
+
 export function FilterStatePersistence() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
