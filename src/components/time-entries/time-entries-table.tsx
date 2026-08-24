@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { TimeEntryEditModal } from "@/components/time-entries/time-entry-edit-modal";
+import { TimeEntriesBulkActionsBar } from "@/components/time-entries/time-entries-bulk-actions-bar";
 import { deleteTimeEntriesBatchAction, deleteTimeEntryAction, completeTimeEntryNowAction } from "@/app/time-entries/new/data-actions";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { scheduleUndoableAction } from "@/components/common/undoable-action";
@@ -314,22 +315,22 @@ export function TimeEntriesTable({
         />
       ) : null}
 
-      {Object.keys(rowSelection).length > 0 && (
-        <div className="flex items-center justify-between rounded-[2px] border border-border bg-muted/30 px-4 py-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            {Object.keys(rowSelection).length} fila(s) seleccionada(s)
-          </span>
-          <ConfirmDialog
-            label="Eliminar seleccionados"
-            title={`¿Estás seguro de que deseas eliminar las ${Object.keys(rowSelection).length} horas seleccionadas?`}
-            triggerClassName="btn-danger inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
-            confirmLabel="Eliminar"
-            confirmLoadingLabel="Eliminando..."
-            disabled={isDeleting}
-            onConfirm={handleBulkDelete}
-          />
-        </div>
-      )}
+      {Object.keys(rowSelection).length > 0 ? (
+        <TimeEntriesBulkActionsBar
+          selectedIds={Object.keys(rowSelection)}
+          selectedCount={Object.keys(rowSelection).length}
+          owners={users}
+          categories={categories}
+          canReassignOwner={canPickAnyOwner}
+          canDelete={true}
+          isBulkDeleting={isDeleting}
+          onBulkDelete={handleBulkDelete}
+          onUpdated={async () => {
+            router.refresh();
+          }}
+          onClearSelection={() => setRowSelection({})}
+        />
+      ) : null}
       <DataTable
         data={rows}
         columns={columns}

@@ -438,6 +438,88 @@ export async function deleteTimeEntriesBatchAction(ids: string[]) {
   return deletedCount;
 }
 
+export type TimeEntryBatchUpdateInput = {
+  ids: string[];
+  observations?: string;
+  category?: string;
+  userId?: string;
+};
+
+export async function updateTimeEntriesBatchAction(input: TimeEntryBatchUpdateInput) {
+  const { user } = await getAppSession();
+  assertPermission(user?.role, "time_entries.write");
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+
+  const uniqueIds = [...new Set(input.ids.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    throw new Error("Selecciona al menos una hora.");
+  }
+
+  const updatingObservations = input.observations !== undefined;
+  const updatingCategory = input.category !== undefined;
+  const updatingUserId = input.userId !== undefined;
+  if (!updatingObservations && !updatingCategory && !updatingUserId) {
+    throw new Error("Indica qué campo actualizar.");
+  }
+
+  const pickAny = canPickEncargadoForOthers(user.role);
+  if (updatingUserId && !pickAny) {
+    throw new Error("Solo Admin o Project Manager pueden reasignar encargados en lote.");
+  }
+
+  if (updatingCategory) {
+    const timeCategories = await getCatalogByKind("time_entry_category");
+    const activeCodes = new Set(timeCategories.filter((row) => row.active).map((row) => row.code));
+    if (!activeCodes.has(input.category!.trim())) {
+      throw new Error("La categoría seleccionada no es válida o está inactiva.");
+    }
+  }
+
+  let updatedCount = 0;
+  const errors: Array<{ id: string; message: string }> = [];
+
+  for (const id of uniqueIds) {
+    try {
+      const current = await getTimeEntryById(id);
+      if (!current) {
+        errors.push({ id, message: "No se encontró la hora." });
+        continue;
+      }
+
+      await updateTimeEntryAction(id, {
+        projectId: current.projectId,
+        clientId: current.clientId,
+        requirementId: current.requirementId,
+        contractId: current.contractId,
+        contractProfileId: current.contractProfileId,
+        category: updatingCategory ? input.category!.trim() : current.category,
+        taskDescription: current.taskDescription,
+        date: current.date,
+        startTime: current.startTime,
+        endTime: current.endTime,
+        userId: updatingUserId ? input.userId!.trim() : current.userId,
+        observations: updatingObservations ? input.observations! : current.observations,
+      });
+      updatedCount += 1;
+    } catch (error) {
+      errors.push({
+        id,
+        message: error instanceof Error ? error.message : "No se pudo actualizar.",
+      });
+    }
+  }
+
+  revalidatePath("/time-entries");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/team");
+  revalidatePath("/budgets");
+
+  return { updatedCount, failedCount: errors.length, errors };
+}
+
 export async function completeTimeEntryNowAction(input: { id: string; endTime: string }) {
   const endTime = input.endTime?.trim();
   if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {

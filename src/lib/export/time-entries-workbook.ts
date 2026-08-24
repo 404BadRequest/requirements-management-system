@@ -11,6 +11,7 @@ export type TimeEntryExportRow = {
   durationHms: string;
   hoursUsed: number | null;
   assigneeName: string;
+  observations: string;
 };
 
 const HEADERS = [
@@ -22,6 +23,7 @@ const HEADERS = [
   "Duración",
   "Horas utilizadas",
   "Encargado",
+  "Observaciones",
 ] as const;
 
 export function formatDurationAsHms(totalMinutes: number): string {
@@ -54,6 +56,7 @@ export function mapTimeEntriesForExport(
       durationHms: entry.endTime ? formatDurationAsHms(entry.durationMinutes) : "",
       hoursUsed: entry.endTime ? Math.round((entry.durationMinutes / 60) * 100) / 100 : null,
       assigneeName: input.userNameById.get(entry.userId) ?? entry.userId,
+      observations: entry.observations ?? "",
     }));
 }
 
@@ -98,6 +101,7 @@ export async function buildTimeEntriesWorkbookBuffer(rows: TimeEntryExportRow[])
       row.durationHms,
       row.hoursUsed ?? "",
       row.assigneeName,
+      row.observations,
     ]);
     dataRow.alignment = { vertical: "top", wrapText: true };
     const hoursCell = dataRow.getCell(7);
@@ -115,6 +119,7 @@ export async function buildTimeEntriesWorkbookBuffer(rows: TimeEntryExportRow[])
     { width: 12 },
     { width: 14 },
     { width: 22 },
+    { width: 40 },
   ];
 
   sheet.views = [{ state: "frozen", ySplit: 1 }];
