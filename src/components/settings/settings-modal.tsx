@@ -36,7 +36,12 @@ export function SettingsModal({
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     setMounted(true);
@@ -73,7 +78,7 @@ export function SettingsModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -104,7 +109,7 @@ export function SettingsModal({
       document.removeEventListener("keydown", onKeyDown, true);
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || !mounted) return null;
 
