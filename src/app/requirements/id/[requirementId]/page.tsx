@@ -81,14 +81,12 @@ function buildHoursBreakdown(
   return { byProfile, byCategory };
 }
 
-/** Asigna el perfil del usuario a uno de los tres buckets de cubicación. */
-function mapProfileToBucket(profileName: string | undefined): "senior" | "ingeniero" | "junior" | "director" | "disenador" {
+/** Asigna el perfil del usuario a uno de los buckets de % de cubicación. */
+function mapProfileToPctBucket(profileName: string | undefined): "senior" | "ingeniero" | "junior" {
   if (!profileName) return "ingeniero";
   const lower = profileName.toLowerCase();
   if (lower.includes("senior") || lower.includes("sr.")) return "senior";
   if (lower.includes("junior") || lower.includes("jr")) return "junior";
-  if (lower.includes("director")) return "director";
-  if (lower.includes("dise")) return "disenador";
   return "ingeniero";
 }
 
@@ -192,16 +190,22 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   // ── Cubicación vinculada al requerimiento ─────────────────────────────────
   const cubicacionCalc = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
 
-  // Horas usadas por bucket de perfil (Senior / Ingeniero / Junior / Director / Diseñador)
-  const usedByBucket = { senior: 0, ingeniero: 0, junior: 0, director: 0, disenador: 0 };
+  // Horas usadas por bucket de % (Senior / Ingeniero / Junior) y por profileId (directas)
+  const usedByPctBucket = { senior: 0, ingeniero: 0, junior: 0 };
+  const usedByProfileId = new Map<string, number>();
   for (const entry of requirementEntries) {
     const contractProfile = entry.contractProfileId
       ? profileById.get(entry.contractProfileId)
       : undefined;
     const user = userById.get(entry.userId);
     const userProfile = user ? profileById.get(user.profileId) : undefined;
-    const bucket = mapProfileToBucket(contractProfile?.name ?? userProfile?.name);
-    usedByBucket[bucket] += entry.durationMinutes / 60;
+    const profile = contractProfile ?? userProfile;
+    const hours = entry.durationMinutes / 60;
+    const pctBucket = mapProfileToPctBucket(profile?.name);
+    usedByPctBucket[pctBucket] += hours;
+    if (profile?.id) {
+      usedByProfileId.set(profile.id, (usedByProfileId.get(profile.id) ?? 0) + hours);
+    }
   }
   const usedHorasTotal = requirementEntries.reduce((a, e) => a + e.durationMinutes, 0) / 60;
 
@@ -220,6 +224,29 @@ export default async function RequirementDetailPage({ params }: { params: Promis
 
   const tasksDone = tasks.filter((task) => task.status === "done").length;
 
+  const directProfiles = (() => {
+    if (!cubicacionCalc || !linkedCubicacion) return [];
+    const hoursMap = cubicacionCalc.directProfileHours ?? {};
+    const profileIds = new Set([
+      ...Object.keys(hoursMap),
+      ...[...usedByProfileId.keys()],
+    ]);
+    return [...profileIds]
+      .map((profileId) => {
+        const profile = profileById.get(profileId);
+        const allocated = hoursMap[profileId] ?? 0;
+        const used = Math.round((usedByProfileId.get(profileId) ?? 0) * 100) / 100;
+        if (allocated <= 0 && used <= 0) return null;
+        return {
+          label: profile?.name ?? profileId,
+          allocatedHoras: allocated,
+          usedHoras: used,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  })();
+
   const cubicacionBannerProps: RequirementCubicacionBannerProps | null =
     cubicacionCalc && linkedCubicacion && effectiveContractId
       ? {
@@ -229,28 +256,19 @@ export default async function RequirementDetailPage({ params }: { params: Promis
           senior: {
             label: "Ingeniero Senior",
             allocatedHoras: cubicacionCalc.seniorHoras,
-            usedHoras: Math.round(usedByBucket.senior * 100) / 100,
+            usedHoras: Math.round(usedByPctBucket.senior * 100) / 100,
           },
           ingeniero: {
             label: "Ingeniero",
             allocatedHoras: cubicacionCalc.ingenieroHoras,
-            usedHoras: Math.round(usedByBucket.ingeniero * 100) / 100,
+            usedHoras: Math.round(usedByPctBucket.ingeniero * 100) / 100,
           },
           junior: {
             label: "Ingeniero Junior",
             allocatedHoras: cubicacionCalc.juniorHoras,
-            usedHoras: Math.round(usedByBucket.junior * 100) / 100,
+            usedHoras: Math.round(usedByPctBucket.junior * 100) / 100,
           },
-          director: {
-            label: "Director",
-            allocatedHoras: cubicacionCalc.directorHoras,
-            usedHoras: Math.round(usedByBucket.director * 100) / 100,
-          },
-          disenador: {
-            label: "Diseñador",
-            allocatedHoras: cubicacionCalc.disenadorHoras,
-            usedHoras: Math.round(usedByBucket.disenador * 100) / 100,
-          },
+          directProfiles,
         }
       : null;
 

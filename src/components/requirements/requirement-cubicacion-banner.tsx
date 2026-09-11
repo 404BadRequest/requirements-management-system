@@ -18,8 +18,8 @@ export interface RequirementCubicacionBannerProps {
   senior: CubicacionProfileBucket;
   ingeniero: CubicacionProfileBucket;
   junior: CubicacionProfileBucket;
-  director: CubicacionProfileBucket;
-  disenador: CubicacionProfileBucket;
+  /** Horas directas por perfil (cualquier perfil operativo). */
+  directProfiles: CubicacionProfileBucket[];
   variant?: "full" | "compact";
 }
 
@@ -143,8 +143,7 @@ export function RequirementCubicacionBanner({
   senior,
   ingeniero,
   junior,
-  director,
-  disenador,
+  directProfiles,
   variant = "full",
 }: RequirementCubicacionBannerProps) {
   const totalPct = pct(usedHorasTotal, totalHoras);
@@ -153,11 +152,10 @@ export function RequirementCubicacionBanner({
     || senior.usedHoras > senior.allocatedHoras
     || ingeniero.usedHoras > ingeniero.allocatedHoras
     || junior.usedHoras > junior.allocatedHoras
-    || director.usedHoras > director.allocatedHoras
-    || disenador.usedHoras > disenador.allocatedHoras;
+    || directProfiles.some((bucket) => bucket.usedHoras > bucket.allocatedHoras);
 
-  const profileBuckets = [senior, ingeniero, junior, director, disenador].filter(
-    (bucket) => bucket.allocatedHoras > 0,
+  const profileBuckets = [senior, ingeniero, junior, ...directProfiles].filter(
+    (bucket) => bucket.allocatedHoras > 0 || bucket.usedHoras > 0,
   );
 
   const totalSummary = (
@@ -274,7 +272,7 @@ export function RequirementCubicacionBanner({
       </div>
 
       {/* ── Perfiles con horas directas ─────────────────────────────────────── */}
-      {(director.allocatedHoras > 0 || disenador.allocatedHoras > 0) && (
+      {directProfiles.some((b) => b.allocatedHoras > 0 || b.usedHoras > 0) && (
         <>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
@@ -283,9 +281,12 @@ export function RequirementCubicacionBanner({
             </span>
             <div className="flex-1 h-px bg-border" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {director.allocatedHoras > 0 && <ProfileCard bucket={director} />}
-            {disenador.allocatedHoras > 0 && <ProfileCard bucket={disenador} />}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {directProfiles
+              .filter((bucket) => bucket.allocatedHoras > 0 || bucket.usedHoras > 0)
+              .map((bucket) => (
+                <ProfileCard key={bucket.label} bucket={bucket} />
+              ))}
           </div>
         </>
       )}

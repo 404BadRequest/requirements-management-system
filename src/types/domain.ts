@@ -165,8 +165,20 @@ export interface CubicacionItem {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
-  /** Horas directas para perfiles que no pasan por el cálculo de porcentajes. */
+  /**
+   * Horas directas por perfil operativo (profileId → horas).
+   * No pasan por el cálculo de porcentajes de fase/perfil.
+   */
+  directProfileHours: Record<string, number>;
+  /**
+   * @deprecated Preferir `directProfileHours`. Se mantiene sincronizado para
+   * compatibilidad con filas/plantillas legacy de Director.
+   */
   directorHours: number;
+  /**
+   * @deprecated Preferir `directProfileHours`. Se mantiene sincronizado para
+   * compatibilidad con filas/plantillas legacy de Diseñador.
+   */
   disenadorHours: number;
   sortOrder: number;
   createdAt: string;

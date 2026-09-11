@@ -1,4 +1,5 @@
 import type { CubicacionItem } from "@/types/domain";
+import { sumDirectProfileHours } from "@/lib/cubicacion/direct-profile-hours";
 
 export interface CubicacionRowCalc {
   levantamiento: number;
@@ -11,9 +12,13 @@ export interface CubicacionRowCalc {
   ingenieroHoras: number;
   /** juniorHoras = (totalHoras × juniorPct) − qaAjustes  (fórmula: =(H4*0.6)−F4) */
   juniorHoras: number;
-  /** Horas directas del Director — no pasan por cálculo de porcentajes. */
+  /** Suma de horas directas de todos los perfiles. */
+  directHorasTotal: number;
+  /** Horas directas por profileId. */
+  directProfileHours: Record<string, number>;
+  /** @deprecated Compatibilidad — horas del perfil Director si está en el mapa o columna legacy. */
   directorHoras: number;
-  /** Horas directas del Diseñador — no pasan por cálculo de porcentajes. */
+  /** @deprecated Compatibilidad — horas del perfil Diseñador si está en el mapa o columna legacy. */
   disenadorHoras: number;
 }
 
@@ -23,6 +28,8 @@ export interface CubicacionTotals {
   seniorHoras: number;
   ingenieroHoras: number;
   juniorHoras: number;
+  directHorasTotal: number;
+  directProfileHours: Record<string, number>;
   directorHoras: number;
   disenadorHoras: number;
 }
@@ -39,6 +46,7 @@ export function calcCubicacionRow(item: Pick<
   | "seniorPct"
   | "ingeneroPct"
   | "juniorPct"
+  | "directProfileHours"
   | "directorHours"
   | "disenadorHours"
 >): CubicacionRowCalc {
@@ -55,11 +63,17 @@ export function calcCubicacionRow(item: Pick<
   const puestaEnMarcha = round2(c * puestaEnMarchaPct);
 
   // fasesHoras: base para los cálculos de porcentajes por perfil (Senior/Ing./Junior).
-  // No incluye Director ni Diseñador, ya que esos son pass-through.
+  // No incluye horas directas, ya que esas son pass-through.
   const fasesHoras = round2(levantamiento + diseno + c + qaAjustes + puestaEnMarcha);
 
-  // totalHoras: horas totales del ítem incluyendo todos los perfiles.
-  const totalHoras = round2(fasesHoras + directorHours + disenadorHours);
+  const directProfileHours = { ...(item.directProfileHours ?? {}) };
+  let directHorasTotal = sumDirectProfileHours(directProfileHours);
+  // Fallback legacy si el mapa aún no fue rellenado.
+  if (directHorasTotal === 0 && Object.keys(directProfileHours).length === 0) {
+    directHorasTotal = round2((directorHours ?? 0) + (disenadorHours ?? 0));
+  }
+
+  const totalHoras = round2(fasesHoras + directHorasTotal);
 
   const seniorHoras = round2(Math.max(0, fasesHoras * seniorPct - qaAjustes));
   const ingenieroHoras = round2(fasesHoras * ingeneroPct);
@@ -68,8 +82,10 @@ export function calcCubicacionRow(item: Pick<
   return {
     levantamiento, diseno, qaAjustes, puestaEnMarcha, totalHoras,
     seniorHoras, ingenieroHoras, juniorHoras,
-    directorHoras: directorHours,
-    disenadorHoras: disenadorHours,
+    directHorasTotal,
+    directProfileHours,
+    directorHoras: directorHours ?? 0,
+    disenadorHoras: disenadorHours ?? 0,
   };
 }
 
@@ -79,8 +95,10 @@ export function calcCubicacionTotals(items: CubicacionItem[]): CubicacionTotals 
   let seniorHoras = 0;
   let ingenieroHoras = 0;
   let juniorHoras = 0;
+  let directHorasTotal = 0;
   let directorHoras = 0;
   let disenadorHoras = 0;
+  const directProfileHours: Record<string, number> = {};
 
   for (const item of items) {
     const row = calcCubicacionRow(item);
@@ -89,8 +107,12 @@ export function calcCubicacionTotals(items: CubicacionItem[]): CubicacionTotals 
     seniorHoras += row.seniorHoras;
     ingenieroHoras += row.ingenieroHoras;
     juniorHoras += row.juniorHoras;
+    directHorasTotal += row.directHorasTotal;
     directorHoras += row.directorHoras;
     disenadorHoras += row.disenadorHoras;
+    for (const [profileId, hours] of Object.entries(row.directProfileHours)) {
+      directProfileHours[profileId] = round2((directProfileHours[profileId] ?? 0) + hours);
+    }
   }
 
   return {
@@ -99,6 +121,8 @@ export function calcCubicacionTotals(items: CubicacionItem[]): CubicacionTotals 
     seniorHoras: round2(seniorHoras),
     ingenieroHoras: round2(ingenieroHoras),
     juniorHoras: round2(juniorHoras),
+    directHorasTotal: round2(directHorasTotal),
+    directProfileHours,
     directorHoras: round2(directorHoras),
     disenadorHoras: round2(disenadorHoras),
   };

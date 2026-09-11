@@ -10,9 +10,11 @@ export type CubicacionItemCreateInput = {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
-  /** Horas directas del Director (sin cálculo de porcentajes). */
+  /** Horas directas por perfil (profileId → horas). */
+  directProfileHours: Record<string, number>;
+  /** @deprecated Usar directProfileHours. */
   directorHours: number;
-  /** Horas directas del Diseñador (sin cálculo de porcentajes). */
+  /** @deprecated Usar directProfileHours. */
   disenadorHours: number;
   sortOrder: number;
 };

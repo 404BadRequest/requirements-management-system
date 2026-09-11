@@ -673,6 +673,7 @@ export interface BulkCubicacionRowInput {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
+  directProfileHours: Record<string, number>;
   directorHours: number;
   disenadorHours: number;
 }
@@ -764,6 +765,7 @@ export async function bulkCreateCubicacionItemsAction(
         seniorPct:         row.seniorPct,
         ingeneroPct:       row.ingeneroPct,
         juniorPct:         row.juniorPct,
+        directProfileHours: row.directProfileHours ?? {},
         directorHours:     row.directorHours,
         disenadorHours:    row.disenadorHours,
         sortOrder:         nextSortOrder++,

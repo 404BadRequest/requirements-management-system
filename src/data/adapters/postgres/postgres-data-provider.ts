@@ -201,6 +201,14 @@ function mapFinancialSettings(r: Row): FinancialReferenceRates {
 }
 
 function mapCubicacionItem(r: Row): CubicacionItem {
+  const directProfileHours =
+    r.direct_profile_hours && typeof r.direct_profile_hours === "object" && !Array.isArray(r.direct_profile_hours)
+      ? Object.fromEntries(
+          Object.entries(r.direct_profile_hours as Record<string, unknown>)
+            .map(([k, v]) => [k, Number(v)])
+            .filter(([, v]) => Number.isFinite(v) && (v as number) > 0),
+        )
+      : {};
   return {
     id: String(r.id),
     contractId: String(r.contract_id),
@@ -214,6 +222,7 @@ function mapCubicacionItem(r: Row): CubicacionItem {
     seniorPct: Number(r.senior_pct),
     ingeneroPct: Number(r.ingenero_pct),
     juniorPct: Number(r.junior_pct),
+    directProfileHours,
     directorHours: Number(r.director_hours ?? 0),
     disenadorHours: Number(r.disenador_hours ?? 0),
     sortOrder: Number(r.sort_order),
@@ -1118,21 +1127,22 @@ export class PostgresDataProvider implements AppDataProvider {
   async createCubicacionItem(input: CubicacionItemCreateInput): Promise<CubicacionItem> {
     const now = new Date().toISOString();
     const id = `cubi-${crypto.randomUUID().slice(0, 12)}`;
+    const directProfileHours = input.directProfileHours ?? {};
     const { rows } = await queryPg<Row>(
       `insert into rms_cubicacion_items
          (id, contract_id, requirement_id, activity_name, construccion_hours,
           levantamiento_pct, diseno_pct, qa_ajustes_pct, puesta_en_marcha_pct,
           senior_pct, ingenero_pct, junior_pct,
-          director_hours, disenador_hours,
+          director_hours, disenador_hours, direct_profile_hours,
           sort_order, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16,$17,$17)
        returning *`,
       [
         id, input.contractId, input.requirementId ?? null, input.activityName,
         input.construccionHours, input.levantamientoPct, input.disenoPct,
         input.qaAjustesPct, input.puestaEnMarchaPct, input.seniorPct,
         input.ingeneroPct, input.juniorPct,
-        input.directorHours, input.disenadorHours,
+        input.directorHours, input.disenadorHours, JSON.stringify(directProfileHours),
         input.sortOrder, now,
       ],
     );
@@ -1154,9 +1164,13 @@ export class PostgresDataProvider implements AppDataProvider {
     if (input.juniorPct !== undefined) patch.junior_pct = input.juniorPct;
     if (input.directorHours !== undefined) patch.director_hours = input.directorHours;
     if (input.disenadorHours !== undefined) patch.disenador_hours = input.disenadorHours;
+    if (input.directProfileHours !== undefined) patch.direct_profile_hours = JSON.stringify(input.directProfileHours);
     if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
     const keys = Object.keys(patch);
-    const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
+    const setClauses = keys.map((k, i) => {
+      const placeholder = `$${i + 2}`;
+      return k === "direct_profile_hours" ? `${k} = ${placeholder}::jsonb` : `${k} = ${placeholder}`;
+    }).join(", ");
     const values = [id, ...Object.values(patch)];
     const { rows } = await queryPg<Row>(
       `update rms_cubicacion_items set ${setClauses} where id = $1 returning *`,

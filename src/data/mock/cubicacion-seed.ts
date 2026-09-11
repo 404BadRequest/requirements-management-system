@@ -10,6 +10,7 @@ const D = {
   seniorPct: 0.7,
   ingeneroPct: 0.3,
   juniorPct: 0.6,
+  directProfileHours: {} as Record<string, number>,
   directorHours: 0,
   disenadorHours: 0,
 };

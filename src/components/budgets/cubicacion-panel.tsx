@@ -26,10 +26,11 @@ interface CubicacionPanelProps {
   contractId: string;
   initialItems: CubicacionItem[];
   requirements: RequirementOption[];
+  profiles: { id: string; name: string }[];
   canWrite: boolean;
 }
 
-export function CubicacionPanel({ contractId, initialItems, requirements, canWrite }: CubicacionPanelProps) {
+export function CubicacionPanel({ contractId, initialItems, requirements, profiles, canWrite }: CubicacionPanelProps) {
   const [items, setItems] = useState<CubicacionItem[]>(initialItems);
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -70,6 +71,7 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
     seniorPct: number;
     ingeneroPct: number;
     juniorPct: number;
+    directProfileHours: Record<string, number>;
     directorHours: number;
     disenadorHours: number;
   }) => {
@@ -210,7 +212,7 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[1060px] border-collapse text-sm">
+            <table className="w-full min-w-[900px] border-collapse text-sm" style={{ minWidth: `${900 + profiles.length * 90}px` }}>
               <thead>
                 <tr className="border-b border-border">
                   {canWrite ? (
@@ -236,8 +238,9 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                   <th className={headClass}>Senior</th>
                   <th className={headClass}>Ing.</th>
                   <th className={headClass}>Junior</th>
-                  <th className={headClass}>Director</th>
-                  <th className={headClass}>Diseñador</th>
+                  {profiles.map((profile) => (
+                    <th key={profile.id} className={headClass}>{profile.name}</th>
+                  ))}
                   {canWrite ? <th className="px-3 py-2" /> : null}
                 </tr>
               </thead>
@@ -288,8 +291,11 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                       <td className={colClass}>{row.seniorHoras.toFixed(2)}</td>
                       <td className={colClass}>{row.ingenieroHoras.toFixed(2)}</td>
                       <td className={colClass}>{row.juniorHoras.toFixed(2)}</td>
-                      <td className={colClass}>{row.directorHoras.toFixed(2)}</td>
-                      <td className={colClass}>{row.disenadorHoras.toFixed(2)}</td>
+                      {profiles.map((profile) => (
+                        <td key={profile.id} className={colClass}>
+                          {(row.directProfileHours[profile.id] ?? 0).toFixed(2)}
+                        </td>
+                      ))}
                       {canWrite ? (
                         <td className="px-3 py-2.5">
                           <RowActionMenu
@@ -327,8 +333,11 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
                   <td className={`${colClass} font-semibold`}>{totals.seniorHoras.toFixed(2)}</td>
                   <td className={`${colClass} font-semibold`}>{totals.ingenieroHoras.toFixed(2)}</td>
                   <td className={`${colClass} font-semibold`}>{totals.juniorHoras.toFixed(2)}</td>
-                  <td className={`${colClass} font-semibold`}>{totals.directorHoras.toFixed(2)}</td>
-                  <td className={`${colClass} font-semibold`}>{totals.disenadorHoras.toFixed(2)}</td>
+                  {profiles.map((profile) => (
+                    <td key={profile.id} className={`${colClass} font-semibold`}>
+                      {(totals.directProfileHours[profile.id] ?? 0).toFixed(2)}
+                    </td>
+                  ))}
                   {canWrite ? <td /> : null}
                 </tr>
               </tfoot>
@@ -345,12 +354,14 @@ export function CubicacionPanel({ contractId, initialItems, requirements, canWri
           onSave={editItem ? handleUpdate : handleCreate}
           initialValues={editItem ?? undefined}
           requirements={requirements}
+          profiles={profiles}
           title={editItem ? "Editar actividad" : "Nueva actividad"}
         />
 
         {bulkOpen ? (
           <CubicacionBulkUploadModal
             contractId={contractId}
+            profiles={profiles}
             onClose={() => setBulkOpen(false)}
             onImported={(newItems) => {
               setItems((prev) => [...prev, ...newItems]);

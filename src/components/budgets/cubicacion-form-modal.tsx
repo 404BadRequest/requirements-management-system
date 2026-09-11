@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { calcCubicacionRow, CUBICACION_DEFAULTS } from "@/lib/calculations/cubicacion";
+import {
+  legacyDirectHoursFromMap,
+  normalizeDirectProfileHours,
+  setDirectHoursForProfile,
+  sumDirectProfileHours,
+} from "@/lib/cubicacion/direct-profile-hours";
 import type { CubicacionItem } from "@/types/domain";
 
 interface RequirementOption {
@@ -11,7 +17,12 @@ interface RequirementOption {
   title: string;
 }
 
-interface CubicacionFormValues {
+interface ProfileOption {
+  id: string;
+  name: string;
+}
+
+export interface CubicacionFormValues {
   activityName: string;
   requirementId: string | null;
   construccionHours: number;
@@ -22,9 +33,8 @@ interface CubicacionFormValues {
   seniorPct: number;
   ingeneroPct: number;
   juniorPct: number;
-  /** Horas directas del Director (sin cálculo de porcentajes). */
+  directProfileHours: Record<string, number>;
   directorHours: number;
-  /** Horas directas del Diseñador (sin cálculo de porcentajes). */
   disenadorHours: number;
 }
 
@@ -34,6 +44,7 @@ interface CubicacionFormModalProps {
   onSave: (values: CubicacionFormValues) => Promise<void>;
   initialValues?: Partial<CubicacionItem>;
   requirements: RequirementOption[];
+  profiles: ProfileOption[];
   title: string;
 }
 
@@ -42,6 +53,7 @@ const DEFAULT_VALUES: CubicacionFormValues = {
   requirementId: null,
   construccionHours: 0,
   ...CUBICACION_DEFAULTS,
+  directProfileHours: {},
   directorHours: 0,
   disenadorHours: 0,
 };
@@ -74,7 +86,15 @@ function PctInput({ id, label, value, onChange, disabled }: {
   );
 }
 
-export function CubicacionFormModal({ open, onClose, onSave, initialValues, requirements, title }: CubicacionFormModalProps) {
+export function CubicacionFormModal({
+  open,
+  onClose,
+  onSave,
+  initialValues,
+  requirements,
+  profiles,
+  title,
+}: CubicacionFormModalProps) {
   const [values, setValues] = useState<CubicacionFormValues>(DEFAULT_VALUES);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -82,6 +102,25 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
 
   useEffect(() => {
     if (open) {
+      const directProfileHours = normalizeDirectProfileHours(initialValues?.directProfileHours);
+      const legacy = legacyDirectHoursFromMap(directProfileHours, profiles, {
+        directorHours: initialValues?.directorHours,
+        disenadorHours: initialValues?.disenadorHours,
+      });
+      // Si el mapa viene vacío pero hay legacy, reconstruir desde perfiles.
+      let map = directProfileHours;
+      if (Object.keys(map).length === 0) {
+        map = {};
+        for (const profile of profiles) {
+          const lower = profile.name.toLowerCase();
+          if (lower.includes("director") && (initialValues?.directorHours ?? 0) > 0) {
+            map[profile.id] = Number(initialValues?.directorHours);
+          }
+          if (lower.includes("dise") && (initialValues?.disenadorHours ?? 0) > 0) {
+            map[profile.id] = Number(initialValues?.disenadorHours);
+          }
+        }
+      }
       setValues({
         activityName: initialValues?.activityName ?? "",
         requirementId: initialValues?.requirementId ?? null,
@@ -93,27 +132,53 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
         seniorPct: initialValues?.seniorPct ?? CUBICACION_DEFAULTS.seniorPct,
         ingeneroPct: initialValues?.ingeneroPct ?? CUBICACION_DEFAULTS.ingeneroPct,
         juniorPct: initialValues?.juniorPct ?? CUBICACION_DEFAULTS.juniorPct,
-        directorHours: initialValues?.directorHours ?? 0,
-        disenadorHours: initialValues?.disenadorHours ?? 0,
+        directProfileHours: map,
+        directorHours: legacy.directorHours,
+        disenadorHours: legacy.disenadorHours,
       });
       setAdvancedOpen(false);
       setError(null);
     }
-  }, [open, initialValues]);
+  }, [open, initialValues, profiles]);
 
   const set = <K extends keyof CubicacionFormValues>(key: K, val: CubicacionFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: val }));
 
-  const preview = calcCubicacionRow(values);
+  const setDirectHours = (profileId: string, hours: number) => {
+    setValues((prev) => {
+      const directProfileHours = setDirectHoursForProfile(prev.directProfileHours, profileId, hours);
+      const legacy = legacyDirectHoursFromMap(directProfileHours, profiles);
+      return { ...prev, directProfileHours, ...legacy };
+    });
+  };
+
+  const previewItem = useMemo(() => {
+    const legacy = legacyDirectHoursFromMap(values.directProfileHours, profiles);
+    return { ...values, ...legacy };
+  }, [values, profiles]);
+
+  const preview = calcCubicacionRow(previewItem);
+  const directTotal = sumDirectProfileHours(values.directProfileHours);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!values.activityName.trim()) { setError("El nombre de la actividad es obligatorio."); return; }
-    if (values.construccionHours <= 0) { setError("Las horas de construcción deben ser mayores a 0."); return; }
+    if (!values.activityName.trim()) {
+      setError("El nombre de la actividad es obligatorio.");
+      return;
+    }
+    if (values.construccionHours <= 0 && directTotal <= 0) {
+      setError("Indica horas de construcción o al menos una hora directa por perfil.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await onSave(values);
+      const legacy = legacyDirectHoursFromMap(values.directProfileHours, profiles);
+      await onSave({
+        ...values,
+        directProfileHours: normalizeDirectProfileHours(values.directProfileHours),
+        ...legacy,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar la actividad.");
@@ -123,6 +188,8 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
   };
 
   if (!open) return null;
+
+  const showPreview = values.construccionHours > 0 || directTotal > 0;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal>
@@ -135,7 +202,6 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-5 p-6">
-            {/* Actividad y Requerimiento */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2 sm:col-span-2">
                 <label htmlFor="activityName" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -176,15 +242,14 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="construccionHours" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Horas de construcción <span className="text-danger">*</span>
+                  Horas de construcción
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     id="construccionHours"
                     type="number"
-                    min={0.01}
+                    min={0}
                     step="any"
-                    required
                     value={values.construccionHours || ""}
                     onChange={(e) => set("construccionHours", Number(e.target.value))}
                     className="field-control w-28 tabular-nums"
@@ -194,56 +259,42 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
               </div>
             </div>
 
-            {/* Horas directas de perfiles sin cálculo de porcentajes */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Horas directas por perfil
               </p>
               <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-                Estos perfiles se asignan directamente sin pasar por los porcentajes de fase.
+                Estos perfiles se asignan directamente sin pasar por los porcentajes de fase. Se listan todos los perfiles operativos activos.
               </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="directorHours" className="text-xs font-medium text-muted-foreground">
-                    Director
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="directorHours"
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={values.directorHours || ""}
-                      onChange={(e) => set("directorHours", Number(e.target.value))}
-                      placeholder="0"
-                      className="field-control w-28 tabular-nums"
-                    />
-                    <span className="text-sm text-muted-foreground">h</span>
-                  </div>
+              {profiles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No hay perfiles operativos configurados.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {profiles.map((profile) => (
+                    <div key={profile.id} className="flex flex-col gap-2">
+                      <label htmlFor={`direct-${profile.id}`} className="text-xs font-medium text-muted-foreground">
+                        {profile.name}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id={`direct-${profile.id}`}
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={values.directProfileHours[profile.id] || ""}
+                          onChange={(e) => setDirectHours(profile.id, Number(e.target.value))}
+                          placeholder="0"
+                          className="field-control w-28 tabular-nums"
+                        />
+                        <span className="text-sm text-muted-foreground">h</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="disenadorHours" className="text-xs font-medium text-muted-foreground">
-                    Diseñador
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="disenadorHours"
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={values.disenadorHours || ""}
-                      onChange={(e) => set("disenadorHours", Number(e.target.value))}
-                      placeholder="0"
-                      className="field-control w-28 tabular-nums"
-                    />
-                    <span className="text-sm text-muted-foreground">h</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Preview calculado */}
-            {values.construccionHours > 0 && (
+            {showPreview && (
               <div className="rounded-[4px] border border-border/60 bg-muted/30 p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Desglose estimado</p>
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 mb-2">
@@ -260,13 +311,14 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 border-t border-border/40 pt-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 border-t border-border/40 pt-2">
                   {[
                     { label: "Senior", value: preview.seniorHoras },
                     { label: "Ing.", value: preview.ingenieroHoras },
                     { label: "Junior", value: preview.juniorHoras },
-                    { label: "Director", value: preview.directorHoras },
-                    { label: "Diseñador", value: preview.disenadorHoras },
+                    ...profiles
+                      .filter((p) => (preview.directProfileHours[p.id] ?? 0) > 0)
+                      .map((p) => ({ label: p.name, value: preview.directProfileHours[p.id] ?? 0 })),
                   ].map(({ label, value }) => (
                     <div key={label} className="flex flex-col items-center">
                       <span className="text-[10px] text-muted-foreground">{label}</span>
@@ -277,7 +329,6 @@ export function CubicacionFormModal({ open, onClose, onSave, initialValues, requ
               </div>
             )}
 
-            {/* Porcentajes avanzados */}
             <div className="border-t border-border/50 pt-3">
               <button
                 type="button"

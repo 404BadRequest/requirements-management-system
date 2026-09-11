@@ -327,6 +327,7 @@ export function ContractDetailPanel({
         contractId={contractId}
         initialItems={cubicacionItems}
         requirements={requirementsForContract}
+        profiles={contractProfiles.map((p) => ({ id: p.id, name: p.label }))}
         canWrite={canPickAnyOwner}
       />
     </div>
