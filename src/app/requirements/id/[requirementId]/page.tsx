@@ -190,7 +190,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   // ── Cubicación vinculada al requerimiento ─────────────────────────────────
   const cubicacionCalc = linkedCubicacion ? calcCubicacionRow(linkedCubicacion) : null;
 
-  // Horas usadas por bucket de % (Senior / Ingeniero / Junior) y por profileId (directas)
+  // Horas usadas: los perfiles con horas directas presupuestadas van a ese bucket.
+  // El resto (Senior / Ingeniero / Junior por nombre) va solo al bucket de porcentajes.
+  // No mezclar ambos: si no, una hora de senior aparece dos veces y el de 0h "excede".
+  const directAllocatedIds = new Set(Object.keys(cubicacionCalc?.directProfileHours ?? {}));
   const usedByPctBucket = { senior: 0, ingeniero: 0, junior: 0 };
   const usedByProfileId = new Map<string, number>();
   for (const entry of requirementEntries) {
@@ -201,10 +204,10 @@ export default async function RequirementDetailPage({ params }: { params: Promis
     const userProfile = user ? profileById.get(user.profileId) : undefined;
     const profile = contractProfile ?? userProfile;
     const hours = entry.durationMinutes / 60;
-    const pctBucket = mapProfileToPctBucket(profile?.name);
-    usedByPctBucket[pctBucket] += hours;
-    if (profile?.id) {
+    if (profile?.id && directAllocatedIds.has(profile.id)) {
       usedByProfileId.set(profile.id, (usedByProfileId.get(profile.id) ?? 0) + hours);
+    } else {
+      usedByPctBucket[mapProfileToPctBucket(profile?.name)] += hours;
     }
   }
   const usedHorasTotal = requirementEntries.reduce((a, e) => a + e.durationMinutes, 0) / 60;
@@ -227,11 +230,7 @@ export default async function RequirementDetailPage({ params }: { params: Promis
   const directProfiles = (() => {
     if (!cubicacionCalc || !linkedCubicacion) return [];
     const hoursMap = cubicacionCalc.directProfileHours ?? {};
-    const profileIds = new Set([
-      ...Object.keys(hoursMap),
-      ...[...usedByProfileId.keys()],
-    ]);
-    return [...profileIds]
+    return [...Object.keys(hoursMap)]
       .map((profileId) => {
         const profile = profileById.get(profileId);
         const allocated = hoursMap[profileId] ?? 0;
