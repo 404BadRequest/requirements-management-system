@@ -21,10 +21,6 @@ function currentLocalTime(): string {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-function formatEntryDateTime(date: string, time: string): string {
-  return `${date} ${time}`;
-}
-
 export type TimeEntryRow = {
   id: string;
   date: string;
@@ -36,10 +32,10 @@ export type TimeEntryRow = {
   entry?: TimeEntry;
   category: string;
   durationMinutes: number;
+  /** Duración HH:MM, p. ej. "00:28". */
+  durationHm: string;
   /** Duración con unidad, p. ej. "0.47 h". */
   durationLabel: string;
-  /** Duración decimal en horas (solo número). */
-  durationHours: number | null;
   clientLabel: string;
   requirementId: string | null;
   requirementTitle: string | null;
@@ -138,28 +134,38 @@ export function TimeEntriesTable({
         ),
       },
       {
-        id: "startDateTime",
-        accessorFn: (row) => formatEntryDateTime(row.date, row.startTime),
+        accessorKey: "date",
         header: "Fecha inicio",
         cell: ({ row }) => (
-          <span className="whitespace-nowrap tabular-nums">
-            {formatEntryDateTime(row.original.date, row.original.startTime)}
-          </span>
+          <span className="whitespace-nowrap tabular-nums">{row.original.date}</span>
         ),
       },
       {
-        id: "endDateTime",
-        accessorFn: (row) =>
-          row.endTime ? formatEntryDateTime(row.date, row.endTime) : "En curso",
-        header: "Fecha fin",
+        accessorKey: "startTime",
+        header: "Hora inicio",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap tabular-nums">{row.original.startTime}</span>
+        ),
+      },
+      {
+        id: "endTime",
+        accessorFn: (row) => row.endTime ?? "En curso",
+        header: "Hora fin",
         cell: ({ row }) =>
           row.original.endTime ? (
-            <span className="whitespace-nowrap tabular-nums">
-              {formatEntryDateTime(row.original.date, row.original.endTime)}
-            </span>
+            <span className="whitespace-nowrap tabular-nums">{row.original.endTime}</span>
           ) : (
             <span className="text-xs text-amber-700">En curso</span>
           ),
+      },
+      {
+        id: "durationHm",
+        accessorFn: (row) => row.durationHm,
+        header: "Duración (HH:MM)",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap tabular-nums">{row.original.durationHm}</span>
+        ),
+        sortingFn: (a, b) => a.original.durationMinutes - b.original.durationMinutes,
       },
       {
         id: "durationHoursLabel",
@@ -169,18 +175,6 @@ export function TimeEntriesTable({
           <span className="whitespace-nowrap tabular-nums">{row.original.durationLabel}</span>
         ),
         sortingFn: (a, b) => a.original.durationMinutes - b.original.durationMinutes,
-      },
-      {
-        id: "durationHoursNumber",
-        accessorFn: (row) => row.durationHours ?? -1,
-        header: "Duración (núm.)",
-        cell: ({ row }) =>
-          row.original.durationHours == null ? (
-            <span className="text-xs text-muted-foreground">—</span>
-          ) : (
-            <span className="tabular-nums">{row.original.durationHours.toFixed(2)}</span>
-          ),
-        sortingFn: "basic",
       },
       { accessorKey: "userName", header: "Encargado" },
       {
@@ -214,18 +208,6 @@ export function TimeEntriesTable({
         },
       },
       { accessorKey: "category", header: "Categoría" },
-      {
-        accessorKey: "openEndWarning",
-        header: "Estado registro",
-        cell: ({ row }) =>
-          row.original.openEndWarning ? (
-            <span className="inline-flex rounded-[2px] border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-              Sin hora termino
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">Cerrado</span>
-          ),
-      },
       { accessorKey: "contractStatus", header: "Estado contractual" },
       { accessorKey: "clientLabel", header: "Cliente" },
       {
@@ -269,18 +251,15 @@ export function TimeEntriesTable({
         row.id,
         row.date,
         row.startTime,
-        row.endTime,
-        row.endTime ? formatEntryDateTime(row.date, row.endTime) : "En curso",
-        formatEntryDateTime(row.date, row.startTime),
+        row.endTime ?? "En curso",
+        row.durationHm,
+        row.durationLabel,
         row.userName,
         row.requirementTitle,
         row.requirementId,
         row.taskDescription,
         row.category,
-        row.openEndWarning ? "Sin hora termino" : "Cerrado",
         row.contractStatus,
-        row.durationLabel,
-        row.durationHours?.toFixed(2),
         row.clientLabel,
       ]
         .filter(Boolean)
@@ -388,7 +367,7 @@ export function TimeEntriesTable({
         globalFilterPlaceholder="Buscar por ID, requerimiento, tarea, persona, categoría o cliente…"
         pageSize={10}
         pageSizeOptions={[5, 10, 15, 20, 50]}
-        stateStorageKey="time-entries-v2"
+        stateStorageKey="time-entries-v3"
         getGlobalFilterValue={timeEntryGlobalFilterValue}
         enableRowSelection={true}
         rowSelection={rowSelection}

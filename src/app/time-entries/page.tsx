@@ -22,6 +22,7 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { formatCatalogLabel } from "@/lib/formatting/catalog-label";
 import { mapContractsForTimeEntryForm, mapRequirementsForTimeEntryForm } from "@/lib/time-entries/form-options";
 import { resolveDirectoryUserIdForSession } from "@/lib/auth/resolve-directory-user";
+import { formatDurationAsHm } from "@/lib/formatting/duration";
 
 export default async function TimeEntriesPage({
   searchParams,
@@ -381,12 +382,10 @@ export default async function TimeEntriesPage({
                 (!entry.requirementId || requirementMap.get(entry.requirementId)?.ownerId === currentDirectoryUserId)),
             category: categoryLabelByCode.get(entry.category) ?? entry.category,
             durationMinutes: entry.durationMinutes,
+            durationHm: entry.endTime ? formatDurationAsHm(entry.durationMinutes) : "—",
             durationLabel: entry.endTime
               ? `${(Math.round((entry.durationMinutes / 60) * 100) / 100).toFixed(2)} h`
               : "En curso",
-            durationHours: entry.endTime
-              ? Math.round((entry.durationMinutes / 60) * 100) / 100
-              : null,
             clientLabel: clientCell(entry.requirementId),
             requirementId: entry.requirementId,
             requirementTitle: entry.requirementId ? (requirementMap.get(entry.requirementId)?.title ?? null) : null,
