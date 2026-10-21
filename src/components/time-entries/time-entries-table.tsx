@@ -36,9 +36,9 @@ export type TimeEntryRow = {
   entry?: TimeEntry;
   category: string;
   durationMinutes: number;
-  /** Duración en formato horas (H:MM:SS). */
+  /** Duración con unidad, p. ej. "0.47 h". */
   durationLabel: string;
-  /** Duración decimal en horas (número). */
+  /** Duración decimal en horas (solo número). */
   durationHours: number | null;
   clientLabel: string;
   requirementId: string | null;
@@ -142,7 +142,9 @@ export function TimeEntriesTable({
         accessorFn: (row) => formatEntryDateTime(row.date, row.startTime),
         header: "Fecha inicio",
         cell: ({ row }) => (
-          <span className="tabular-nums">{formatEntryDateTime(row.original.date, row.original.startTime)}</span>
+          <span className="whitespace-nowrap tabular-nums">
+            {formatEntryDateTime(row.original.date, row.original.startTime)}
+          </span>
         ),
       },
       {
@@ -152,12 +154,33 @@ export function TimeEntriesTable({
         header: "Fecha fin",
         cell: ({ row }) =>
           row.original.endTime ? (
-            <span className="tabular-nums">
+            <span className="whitespace-nowrap tabular-nums">
               {formatEntryDateTime(row.original.date, row.original.endTime)}
             </span>
           ) : (
             <span className="text-xs text-amber-700">En curso</span>
           ),
+      },
+      {
+        id: "durationHoursLabel",
+        accessorFn: (row) => row.durationLabel,
+        header: "Duración (horas)",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap tabular-nums">{row.original.durationLabel}</span>
+        ),
+        sortingFn: (a, b) => a.original.durationMinutes - b.original.durationMinutes,
+      },
+      {
+        id: "durationHoursNumber",
+        accessorFn: (row) => row.durationHours ?? -1,
+        header: "Duración (núm.)",
+        cell: ({ row }) =>
+          row.original.durationHours == null ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <span className="tabular-nums">{row.original.durationHours.toFixed(2)}</span>
+          ),
+        sortingFn: "basic",
       },
       { accessorKey: "userName", header: "Encargado" },
       {
@@ -204,27 +227,6 @@ export function TimeEntriesTable({
           ),
       },
       { accessorKey: "contractStatus", header: "Estado contractual" },
-      {
-        id: "durationHoursLabel",
-        accessorFn: (row) => row.durationLabel,
-        header: "Duración (horas)",
-        cell: ({ row }) => (
-          <span className="tabular-nums">{row.original.durationLabel}</span>
-        ),
-        sortingFn: (a, b) => a.original.durationMinutes - b.original.durationMinutes,
-      },
-      {
-        id: "durationHoursNumber",
-        accessorFn: (row) => row.durationHours ?? -1,
-        header: "Duración (núm.)",
-        cell: ({ row }) =>
-          row.original.durationHours == null ? (
-            <span className="text-xs text-muted-foreground">—</span>
-          ) : (
-            <span className="tabular-nums">{row.original.durationHours.toFixed(2)}</span>
-          ),
-        sortingFn: "basic",
-      },
       { accessorKey: "clientLabel", header: "Cliente" },
       {
         id: "actions",
@@ -386,7 +388,7 @@ export function TimeEntriesTable({
         globalFilterPlaceholder="Buscar por ID, requerimiento, tarea, persona, categoría o cliente…"
         pageSize={10}
         pageSizeOptions={[5, 10, 15, 20, 50]}
-        stateStorageKey="time-entries"
+        stateStorageKey="time-entries-v2"
         getGlobalFilterValue={timeEntryGlobalFilterValue}
         enableRowSelection={true}
         rowSelection={rowSelection}
