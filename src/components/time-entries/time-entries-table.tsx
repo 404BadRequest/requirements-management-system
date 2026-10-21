@@ -14,7 +14,6 @@ import { RowActionMenu } from "@/components/common/row-action-menu";
 import type { TimeEntry } from "@/types/domain";
 import type { TimeEntryFormContract, TimeEntryFormRequirement } from "@/lib/time-entries/form-options";
 import { requirementDetailPath } from "@/lib/routes/requirements";
-import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 function currentLocalTime(): string {
@@ -22,16 +21,25 @@ function currentLocalTime(): string {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
+function formatEntryDateTime(date: string, time: string): string {
+  return `${date} ${time}`;
+}
+
 export type TimeEntryRow = {
   id: string;
   date: string;
+  startTime: string;
+  endTime: string | null;
   userName: string;
   canEdit?: boolean;
   canDelete?: boolean;
   entry?: TimeEntry;
   category: string;
   durationMinutes: number;
+  /** Duración en formato horas (H:MM:SS). */
   durationLabel: string;
+  /** Duración decimal en horas (número). */
+  durationHours: number | null;
   clientLabel: string;
   requirementId: string | null;
   requirementTitle: string | null;
@@ -129,7 +137,28 @@ export function TimeEntriesTable({
           </Link>
         ),
       },
-      { accessorKey: "date", header: "Fecha" },
+      {
+        id: "startDateTime",
+        accessorFn: (row) => formatEntryDateTime(row.date, row.startTime),
+        header: "Fecha inicio",
+        cell: ({ row }) => (
+          <span className="tabular-nums">{formatEntryDateTime(row.original.date, row.original.startTime)}</span>
+        ),
+      },
+      {
+        id: "endDateTime",
+        accessorFn: (row) =>
+          row.endTime ? formatEntryDateTime(row.date, row.endTime) : "En curso",
+        header: "Fecha fin",
+        cell: ({ row }) =>
+          row.original.endTime ? (
+            <span className="tabular-nums">
+              {formatEntryDateTime(row.original.date, row.original.endTime)}
+            </span>
+          ) : (
+            <span className="text-xs text-amber-700">En curso</span>
+          ),
+      },
       { accessorKey: "userName", header: "Encargado" },
       {
         id: "requirement",
@@ -176,9 +205,24 @@ export function TimeEntriesTable({
       },
       { accessorKey: "contractStatus", header: "Estado contractual" },
       {
-        accessorKey: "durationMinutes",
-        header: "Duración",
-        cell: ({ row }) => row.original.durationLabel,
+        id: "durationHoursLabel",
+        accessorFn: (row) => row.durationLabel,
+        header: "Duración (horas)",
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.original.durationLabel}</span>
+        ),
+        sortingFn: (a, b) => a.original.durationMinutes - b.original.durationMinutes,
+      },
+      {
+        id: "durationHoursNumber",
+        accessorFn: (row) => row.durationHours ?? -1,
+        header: "Duración (núm.)",
+        cell: ({ row }) =>
+          row.original.durationHours == null ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <span className="tabular-nums">{row.original.durationHours.toFixed(2)}</span>
+          ),
         sortingFn: "basic",
       },
       { accessorKey: "clientLabel", header: "Cliente" },
@@ -222,6 +266,10 @@ export function TimeEntriesTable({
       [
         row.id,
         row.date,
+        row.startTime,
+        row.endTime,
+        row.endTime ? formatEntryDateTime(row.date, row.endTime) : "En curso",
+        formatEntryDateTime(row.date, row.startTime),
         row.userName,
         row.requirementTitle,
         row.requirementId,
@@ -230,6 +278,7 @@ export function TimeEntriesTable({
         row.openEndWarning ? "Sin hora termino" : "Cerrado",
         row.contractStatus,
         row.durationLabel,
+        row.durationHours?.toFixed(2),
         row.clientLabel,
       ]
         .filter(Boolean)

@@ -31,7 +31,7 @@ Si ves **`ENOENT ... routes-manifest.json`**, **`fallback-build-manifest.json`**
 | `/requirements` | Tabla CRUD (acciones según rol); filtro GET opcional `projectId` |
 | `/requirements/[id]` | Detalle, comentarios e historial de estado |
 | `/requirements/kanban` | Tablero por columnas de estado |
-| `/time-entries`, `/time-entries/new` | Listado e imputación; filtros GET `clientId` y `projectId` |
+| `/time-entries`, `/time-entries/new` | Listado e imputación; columnas de fecha inicio/fin, duración `H:MM:SS` y horas decimales; filtros GET `clientId`, `contractId`, `from`, `to`, `userId` |
 | `/reports` | Reporte de horas y costo estimado; filtros GET `clientId`, `projectId`, `from`, `to` |
 | `/budgets` | Presupuesto y asignaciones; filtro GET `projectId` |
 | `/team` | Directorio por persona; filtro GET `projectId` |
